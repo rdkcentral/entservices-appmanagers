@@ -1812,9 +1812,8 @@ uint32_t Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack()
 
 /* Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts
  *
- * Verifies that when config.mPorts is non-empty the appservicesrdk plugin
- * entry is added to rdkPlugins.
- * Covers DobbySpecGenerator.cpp lines 536-539.
+ * Verifies that a RALF widget spec includes AppServices, networking and the
+ * installed package's private image mount.
  */
 uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts()
 {
@@ -1824,12 +1823,18 @@ uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts()
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     appCfg.mPorts.push_back(8080u);
+    rtCfg.ralfPkgPath = "/tmp/xumo-manifest";
+    rtCfg.unpackedPath = "/tmp/xumo/data.img";
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
     L0Test::ExpectTrue(tr, result, "generate() succeeds when mPorts is non-empty");
-    L0Test::ExpectTrue(tr, spec.find("\"plugins\"") != std::string::npos,
-                       "Generated spec contains plugins section when ports are set");
+    L0Test::ExpectTrue(tr, spec.find("\"appservicesrdk\"") != std::string::npos,
+                       "RALF widget spec enables AppServices plugin");
+    L0Test::ExpectTrue(tr, spec.find("\"networking\"") != std::string::npos,
+                       "RALF widget spec enables networking plugin");
+    L0Test::ExpectTrue(tr, spec.find("\"source\":\"/tmp/xumo/data.img\"") != std::string::npos,
+                       "RALF widget spec mounts the private image rather than the package directory");
 
     return tr.failures;
 }
@@ -2358,6 +2363,11 @@ uint32_t Test_RuntimeConfigurationDecoder_RequiresCommandAndUserId()
     L0Test::ExpectTrue(tr,
         WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(R"({"userId":1,"ralfPkgPath":"/tmp/ralf"})", ralfConfig, ralfError, 0, 0, false),
         "decoder permits RALF configuration without a command");
+    WPEFramework::Plugin::RuntimeConfiguration legacyConfig;
+    std::string legacyError;
+    L0Test::ExpectTrue(tr,
+        !WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(R"({"userId":1})", legacyConfig, legacyError, 0, 0, false),
+        "decoder still requires a command for widgets when RALF support is enabled");
     return tr.failures;
 }
 

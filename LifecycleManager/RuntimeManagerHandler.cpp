@@ -88,6 +88,8 @@ bool RuntimeManagerHandler::getRuntimeStats(const string& appInstanceId, string&
 
 bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId, const string& launchArgs, Exchange::ILifecycleManager::LifecycleState targetState, std::string& runtimeConfigPayload, string& errorReason)
 {
+    LOGDBG("[ralf-debug] RuntimeManagerHandler::run appId='%s' instance='%s' ralfPkgPath='%s'", appId.c_str(),
+        appInstanceId.c_str(), runtimeConfigObject.ralfPkgPath.c_str());
     JsonArray debugSettingsArray, pathsArray, portsArray;
     // read data from parameters
     // QUESTION HOW TO GET OTHER PARAMS ports, paths, debugsettings?

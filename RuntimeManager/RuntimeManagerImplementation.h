@@ -111,6 +111,9 @@ namespace WPEFramework
 #ifdef ENABLE_RIALTO
                     bool usesRialto = false;
 #endif
+                    /* Launched from a RALF/Bolt OCI bundle rather than a legacy Dobby spec.
+                       Needed because terminate/failure handlers only receive appInstanceId. */
+                    bool ralfMode = false;
                 } RuntimeAppInfo;
 
                 class EXTERNAL Job : public Core::IDispatch
@@ -192,7 +195,9 @@ namespace WPEFramework
                 // IConfiguration methods
                 uint32_t Configure(PluginHost::IShell* service) override;
 
-                bool generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::string& dobbySpec);
+                bool generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::string& dobbySpec, bool classicRalfLaunch = false);
+                static bool isRalfPackage(const RuntimeConfiguration& runtimeConfig);
+                static void cleanupRalfInstance(const string& appInstanceId, bool ralfMode);
 
                 // IEventHandler methods
                 virtual void onOCIContainerStartedEvent(std::string name, JsonObject& data) override;

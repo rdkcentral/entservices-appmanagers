@@ -77,11 +77,13 @@ namespace ralf
          */
         bool addEntryArgsToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &ralfPackageConfigNode);
 
+        bool setLegacyProcessArgs(Json::Value &ociConfigRootNode, const std::vector<Json::Value> &packageConfigs);
+
         /**
          * Saves the OCI config JSON to mConfigFilePath.
          * @param ociConfigRootNode The root node of the OCI config JSON.
-         * @param uid The user ID to set as the owner of the file.
-         * @param gid The group ID to set as the owner of the file.
+         * @param uid Retained for compatibility; it does not change file ownership.
+         * @param gid Retained for compatibility; it does not change file ownership.
          * @return true if the OCI config was saved successfully, false otherwise.
          */
         bool saveOCIConfigToFile(const Json::Value &ociConfigRootNode, int uid, int gid);
@@ -127,6 +129,8 @@ namespace ralf
          * @return true if the environment variable was added successfully, false otherwise.
          */
         bool addFireboltEndPointToConfig(Json::Value &ociConfigRootNode, const std::vector<std::string> &envVars);
+        bool addRuntimeEnvironmentToOCIConfig(Json::Value &ociConfigRootNode, const std::vector<std::string> &envVariables);
+        bool addPackageSecretsToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &packageConfig);
 
         /**
          * Adds configuration overrides from the Ralf package config to the OCI config JSON.

@@ -755,10 +755,25 @@ uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath()
                         fx.impl->GetConfigForPackage("/tmp/fake.pkg", id, version, cfg),
                         ERROR_NONE,
                         "GetConfigForPackage() with non-empty locator returns ERROR_NONE in UNIT_TEST path");
-
     WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
     std::string error;
+    std::string ralfPkgPath;
     bool present = false;
+    L0Test::ExpectTrue(tr, payload.Parse(cfg, error) &&
+                       payload.GetString("ralfPkgPath", ralfPkgPath, present, error) &&
+                       present && ralfPkgPath.empty(),
+                       "legacy package metadata leaves the RALF mount manifest empty");
+
+    std::string ralfCfg;
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->GetConfigForPackage("/tmp/ralf-metadata.json", id, version, ralfCfg),
+                        ERROR_NONE,
+                        "GetConfigForPackage() accepts RALF package metadata");
+    L0Test::ExpectTrue(tr, payload.Parse(ralfCfg, error) &&
+                       payload.GetString("ralfPkgPath", ralfPkgPath, present, error) &&
+                       present && ralfPkgPath == "/tmp/ralf-metadata.json",
+                       "PackageManager forwards the RALF mount manifest in the JSON runtime config");
+
     std::vector<std::string> values;
     L0Test::ExpectTrue(tr, payload.Parse(cfg, error), "GetConfigForPackage() returns a valid JSON runtime payload");
     L0Test::ExpectTrue(tr,

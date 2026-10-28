@@ -1555,4 +1555,3 @@ Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(co
 }
 } // namespace Plugin
 } // namespace WPEFramework
-

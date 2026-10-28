@@ -26,9 +26,20 @@ namespace ralf
     const std::string RALF_OCI_BASE_SPEC_FILE = "/usr/share/ralf/oci-base-spec.json";
     const std::string RALF_GRAPHICS_LAYER_PATH = "/usr/share/gpu-layer/";
     const std::string RALF_GRAPHICS_LAYER_ROOTFS = RALF_GRAPHICS_LAYER_PATH + "rootfs";
+#ifdef ENTOS_RALF_SUPPORT
+#ifndef ENTOS_RALF_GPU_CONFIG_FILE
+#define ENTOS_RALF_GPU_CONFIG_FILE "/etc/sky/aisettings.overrides/vendor-gpu.json"
+#endif
+    const std::string RALF_GRAPHICS_LAYER_CONFIG = ENTOS_RALF_GPU_CONFIG_FILE;
+#ifndef ENTOS_RALF_BUNDLE_ROOT
+#define ENTOS_RALF_BUNDLE_ROOT "/run/sky/bundles/"
+#endif
+    const std::string RALF_APP_ROOTFS_DIR = ENTOS_RALF_BUNDLE_ROOT;
+#else
     const std::string RALF_GRAPHICS_LAYER_CONFIG = RALF_GRAPHICS_LAYER_PATH + "config.json";
-    const std::string RALF_OVERLAYFS_TYPE = "overlay";
     const std::string RALF_APP_ROOTFS_DIR = "/tmp/ralf/";
+#endif
+    const std::string RALF_OVERLAYFS_TYPE = "overlay";
     const std::string RALF_USER_NAME = "ralf";
     const std::string RALF_ZONE_INFO_PATH = "/usr/share/zoneinfo";
     const std::string RALF_HOST_LOCALTIME_PATH = "/opt/persistent/localtime";

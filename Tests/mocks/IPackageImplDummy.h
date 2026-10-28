@@ -157,7 +157,12 @@ namespace packagemanager
         virtual Result GetList(std::string &packageList) { return SUCCESS; }
         virtual Result Lock(const std::string &packageId, const std::string &version, std::string &unpackedPath, ConfigMetaData &configMetadata) { return SUCCESS; }
         
-        virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) { return SUCCESS; }
+        virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) {
+            if (fileLocator == "/tmp/ralf-metadata.json") {
+                configMetadata.ralfPkgPath = fileLocator;
+            }
+            return SUCCESS;
+        }
 
         // Only the package seeded by Initialize() is considered installed.
         virtual Result GetInstalledPackageMetadata(const std::string &packageId, const std::string &version, std::string &metadata) {

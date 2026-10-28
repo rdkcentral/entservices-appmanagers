@@ -145,7 +145,8 @@ extern uint32_t Test_Ralf_JsonFromFile_EmptyFileReturnsFalse();
 extern uint32_t Test_Ralf_ParseRalPkgInfo_NonExistentFileReturnsFalse();
 extern uint32_t Test_Ralf_ParseRalPkgInfo_MissingPackagesFieldReturnsFalse();
 extern uint32_t Test_Ralf_ParseRalPkgInfo_ValidPackagesFileReturnsTrue();
-extern uint32_t Test_Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds();
+extern uint32_t Test_Ralf_ParseRalPkgInfo_EmptyPackagesArrayReturnsFalse();
+extern uint32_t Test_Ralf_ParseRalPkgInfo_InvalidEntryDoesNotPartiallyAppend();
 extern uint32_t Test_Ralf_GetDevNodeMajorMinor_NonExistentNodeReturnsFalse();
 extern uint32_t Test_Ralf_GetDevNodeMajorMinor_DevNullReturnsTrue();
 extern uint32_t Test_Ralf_GetGroupId_UnknownGroupReturnsFalse();
@@ -157,6 +158,7 @@ extern uint32_t Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse();
 extern uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport();
 extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf();
 extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf();
+extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesStandardAndNonBindMountDirectories();
 extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory();
 extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor();
 
@@ -187,9 +189,12 @@ extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_I
 
 // ── ralf/RalfPackageBuilder tests ─────────────────────────────────────────────
 extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
+extern uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets();
 extern uint32_t Test_RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse();
 extern uint32_t Test_RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse();
+extern uint32_t Test_RuntimeManager_IsRalfPackage_DispatchesOnRalfPkgPath();
+extern uint32_t Test_RuntimeManager_CleanupRalfInstance_SkipsWidgetInstances();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_NonExistentPkgFileReturnsFalse();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_MalformedPkgFileReturnsFalse();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_PkgFileMissingPackagesFieldReturnsFalse();
@@ -207,11 +212,19 @@ extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec();
 extern uint32_t Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash();
 extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances();
 extern uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig();
+extern uint32_t Test_RalfOCIConfigGenerator_UsesConfiguredRialtoSocketPath();
+extern uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsFollowBaseRuntimeAppOrder();
+extern uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase();
+#ifdef ENTOS_RALF_SUPPORT
+extern uint32_t Test_Ralf_GetClassicRalfLaunchInfo();
+#endif
+extern uint32_t Test_RalfOCIConfigGenerator_UsesWaylandEglSonameForMissingConfiguredSource();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess();
+extern uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets();
 
 // ── Gateway/ContainerUtils tests ─────────────────────────────────────────────
 extern uint32_t Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero();
@@ -499,7 +512,8 @@ int main()
         { "Ralf_ParseRalPkgInfo_NonExistentFileReturnsFalse",                        Test_Ralf_ParseRalPkgInfo_NonExistentFileReturnsFalse },
         { "Ralf_ParseRalPkgInfo_MissingPackagesFieldReturnsFalse",                   Test_Ralf_ParseRalPkgInfo_MissingPackagesFieldReturnsFalse },
         { "Ralf_ParseRalPkgInfo_ValidPackagesFileReturnsTrue",                       Test_Ralf_ParseRalPkgInfo_ValidPackagesFileReturnsTrue },
-        { "Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds",                         Test_Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds },
+        { "Ralf_ParseRalPkgInfo_EmptyPackagesArrayReturnsFalse",                     Test_Ralf_ParseRalPkgInfo_EmptyPackagesArrayReturnsFalse },
+        { "Ralf_ParseRalPkgInfo_InvalidEntryDoesNotPartiallyAppend",                 Test_Ralf_ParseRalPkgInfo_InvalidEntryDoesNotPartiallyAppend },
         { "Ralf_GetDevNodeMajorMinor_NonExistentNodeReturnsFalse",                   Test_Ralf_GetDevNodeMajorMinor_NonExistentNodeReturnsFalse },
         { "Ralf_GetDevNodeMajorMinor_DevNullReturnsTrue",                            Test_Ralf_GetDevNodeMajorMinor_DevNullReturnsTrue },
         { "Ralf_GetGroupId_UnknownGroupReturnsFalse",                                Test_Ralf_GetGroupId_UnknownGroupReturnsFalse },
@@ -511,6 +525,7 @@ int main()
         { "Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport",                         Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport },
         { "Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf",      Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf },
         { "Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf",         Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf },
+        { "Ralf_PrepareMergedRootfsMountTargets_CreatesStandardAndNonBindMountDirectories", Test_Ralf_PrepareMergedRootfsMountTargets_CreatesStandardAndNonBindMountDirectories },
         { "Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory", Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory },
         { "Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor",  Test_Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor },
 
@@ -541,9 +556,12 @@ int main()
 
         // ── ralf/RalfPackageBuilder tests ────────────────────────────────────
         { "RalfPackageBuilder_ConstructionAndDestruction",                           Test_RalfPackageBuilder_ConstructionAndDestruction },
+        { "RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets",          Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets },
         { "RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse", Test_RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse },
         { "RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId",          Test_RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse",   Test_RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse },
+        { "RuntimeManager_IsRalfPackage_DispatchesOnRalfPkgPath",                    Test_RuntimeManager_IsRalfPackage_DispatchesOnRalfPkgPath },
+        { "RuntimeManager_CleanupRalfInstance_SkipsWidgetInstances",                 Test_RuntimeManager_CleanupRalfInstance_SkipsWidgetInstances },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_NonExistentPkgFileReturnsFalse", Test_RalfPackageBuilder_GenerateRalfDobbySpec_NonExistentPkgFileReturnsFalse },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_MalformedPkgFileReturnsFalse",   Test_RalfPackageBuilder_GenerateRalfDobbySpec_MalformedPkgFileReturnsFalse },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_PkgFileMissingPackagesField",    Test_RalfPackageBuilder_GenerateRalfDobbySpec_PkgFileMissingPackagesFieldReturnsFalse },
@@ -561,11 +579,19 @@ int main()
         { "RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash",                  Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash },
         { "RalfOCIConfigGenerator_GenerateWithDifferentAppInstances",                Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances },
         { "RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig",                   Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig },
+        { "RalfOCIConfigGenerator_UsesConfiguredRialtoSocketPath",                   Test_RalfOCIConfigGenerator_UsesConfiguredRialtoSocketPath },
+        { "RalfOCIConfigGenerator_LegacyProcessArgsFollowBaseRuntimeAppOrder",        Test_RalfOCIConfigGenerator_LegacyProcessArgsFollowBaseRuntimeAppOrder },
+        { "RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase",                Test_RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase },
+    #ifdef ENTOS_RALF_SUPPORT
+        { "Ralf_GetClassicRalfLaunchInfo",                                          Test_Ralf_GetClassicRalfLaunchInfo },
+    #endif
+        { "RalfOCIConfigGenerator_UsesWaylandEglSonameForMissingConfiguredSource",   Test_RalfOCIConfigGenerator_UsesWaylandEglSonameForMissingConfiguredSource },
         { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue },
         { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint },
         { "RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates", Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates },
         { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse },
         { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess },
+        { "RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets", Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets },
 
         // ── Gateway/ContainerUtils tests ─────────────────────────────────────
         { "ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero",        Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero },

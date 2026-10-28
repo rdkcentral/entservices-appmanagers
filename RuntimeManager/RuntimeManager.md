@@ -31,6 +31,75 @@ RuntimeManager and its standalone L0 tests to build and test this behavior.
 | OCIContainer (Dobby) | COM-RPC (outbound) | Executes container operations |
 | AppStorageManager | COM-RPC (outbound) | Gets application storage paths |
 
+### RALF Package Launch
+
+When RALF support is built in, `Run()` selects the RALF flow only when the
+runtime configuration contains a non-empty `ralfPkgPath`. The normal widget
+flow remains the default: it uses `DobbySpecGenerator` and starts from the
+legacy unpacked package path. RALF uses `RalfPackageBuilder` to read the
+PackageManager mount manifest, assemble the package-layer overlay and generate
+the RALF OCI configuration; the generated rootfs path is passed to
+`IOCIContainer::StartContainer`. Both paths continue to share display setup,
+container lifecycle notifications and AppStorageManager integration.
+
+PackageManager owns RALF verification, installation and package mounts. It
+provides RuntimeManager a neutral manifest of package rootfs paths and the
+associated RDK `config.json` files. The RALF builder unmounts its per-instance
+overlay on stop/failure, while PackageManager releases its package/dependency
+locks through the normal unlock lifecycle.
+
+`ENTOS_RALF_SUPPORT` is a RuntimeManager build option enabled by default (requires
+`RALF_PACKAGE_SUPPORT` and LibXml2 headers/libraries in the build sysroot).
+When enabled, RALF reads
+`/etc/sky/aisettings.overrides/vendor-gpu.json`, generates an instance-scoped
+vendor layer under `/run/sky/bundles/<instance>/vendor`, and uses the Broadcom-style
+device glob, bind, file-copy, and symlink entries instead of the preinstalled
+`/usr/share/gpu-layer/rootfs`. With the option off, the existing static GPU
+layer behavior is unchanged. RuntimeManager checks bundle-directory creation
+and keeps the bundle tree owned by the RuntimeManager process with `0755`
+directories before passing it to Dobby. The generated OCI config remains
+process-owned with mode `0644`; app UID/GID values are applied through the OCI
+mappings, not to host-side bundle directories. After generating the OCI config,
+mount-target preparation creates non-bind OCI mountpoint directories, the
+legacy standard `/home` directory, and bind targets inside the merged rootfs
+before Dobby applies the read-only root setting. It does so without chowning
+path ancestors (including `/run/sky/bundles/<instance>`); only newly created
+file targets may receive the app UID/GID. RALF also passes the Rialto
+connector's allocated socket path through as both `RIALTO_SOCKET_PATH` and the
+OCI bind source/destination. A temporary EntOS-only workaround redirects the
+missing Broadcom `libwayland-egl.so.1.20.0` host source to the device's
+`libwayland-egl.so.1` soname while preserving the configured container path.
+In this mode, a manifest containing a base package builds OCI `process.args`
+with its init entrypoint first, followed by the runtime and app entrypoints and
+the application's entryArgs. A RALF app with a W3C widget runtime instead reads
+the widget's `config.xml` content executable and mounts from the RALF manifest,
+then uses `DobbySpecGenerator` and `StartContainerFromDobbySpec` with `/runtime`
+and `/package`. This matches legacy's traditional host-rootfs launch: the
+two-layer RALF overlay lacks the ELF loader needed by `SkyBrowserLauncher`.
+For this widget path, `Run()` uses the app package's `data.img` as the private
+ext4 image when present, otherwise skips the `/home/private` loop mount. It
+never treats the RALF package directory itself as an image. The classic spec
+also enables the networking and AppServices plugins so the browser can discover
+its local AS endpoints from inside the container.
+RALF package identity and unlock handling remain unchanged. OCI packages with
+a missing base init fail generation before Dobby starts. When
+`RDK_APPMANAGERS_DEBUG` is enabled, the generated RALF OCI config is also
+written to `/tmp/generatedRalfSpec` for inspection after bundle cleanup.
+
+For launch-path diagnostics, debug logs trace `ralfPkgPath` from PackageManager's
+lock result through AppManager, LifecycleManager, and RuntimeManagerHandler to
+RuntimeManager `Run()`. A non-empty path selects RALF; an empty path selects the
+legacy widget flow. These temporary diagnostics use the `[ralf-debug]` keyword
+for easy filtering and removal. RuntimeManager also logs whether RALF support was
+compiled in.
+
+The Yocto recipe enables the `ralfsupport` PACKAGECONFIG only when the
+`enable_ralf` distro feature is present and packages the installed
+`/usr/share/ralf/oci-base-spec.json` with the application-managers package.
+For legacyappserviced-main parity, current mount-layer differences, and
+diagnosis of the EntOS overlay `ENOENT`, see
+[RALF Mount Parity and Overlay Failure Analysis](RALF_Mount_Parity_Analysis.md).
+
 ### What It Does NOT Do
 
 - Does not manage application lifecycle state machine (handled by LifecycleManager)
@@ -53,6 +122,7 @@ graph TB
         WMC[WindowManagerConnector<br/>Display Bridge]
         UIM[UserIdManager<br/>UID/GID Management]
         AIC[AIConfiguration<br/>YAML Config Loader]
+        RPB[RalfPackageBuilder<br/>RALF OCI Rootfs/Spec]
     end
 
     subgraph "External Services"
@@ -67,6 +137,7 @@ graph TB
     Impl --> WMC
     Impl --> UIM
     Impl --> AIC
+    Impl -->|non-empty ralfPkgPath| RPB
     DEL --> OCI
     WMC --> WM
     Impl --> ASM
@@ -442,7 +513,7 @@ ans(configuration)
 | `PLUGIN_RUNTIME_MANAGER_AUTOSTART` | Auto-start on boot | false |
 | `PLUGIN_RUNTIME_APP_PORTAL` | Runtime app portal identifier | "" |
 | `PLUGIN_RUNTIME_CONFIG_FILE` | Path to runtime config YAML | "" |
-| `RALF_PACKAGE_SUPPORT` | Enable RALF package support | OFF |
+| `RALF_PACKAGE_SUPPORT` | Enable RALF package support | ON |
 | `RIALTO_IN_DAC_FEATURE` | Enable Rialto in DAC | OFF |
 
 ### Dependencies

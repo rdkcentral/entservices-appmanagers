@@ -20,7 +20,9 @@
 #include <UtilsLogging.h>
 #include "RalfPackageBuilder.h"
 #include "RalfOCIConfigGenerator.h"
+#include "RalfVendorLayer.h"
 #include "RalfSupport.h"
+#include "OCISpecConstants.h"
 
 namespace ralf
 {
@@ -42,19 +44,71 @@ namespace ralf
         }
     }
 
-    bool RalfPackageBuilder::generateOCIRootfsPackage(const std::string &appInstanceId, const int uid, const int gid, std::string &ociRootfsPath)
+    bool RalfPackageBuilder::generateOCIRootfsPackage(const std::string &appInstanceId, std::string &ociRootfsPath)
     {
         // Let us extract the mount points.
+#ifdef ENTOS_RALF_SUPPORT
+        const std::string vendorGpuLayerPath = RALF_APP_ROOTFS_DIR + appInstanceId + "/vendor";
+        RalfVendorLayer vendorGpuLayer(vendorGpuLayerPath);
+        if (!vendorGpuLayer.create(RALF_GRAPHICS_LAYER_CONFIG))
+        {
+            LOGERR("Failed to create vendor GPU layer for appInstanceId: %s", appInstanceId.c_str());
+            return false;
+        }
+        std::string packageLayers;
+#else
         std::string packageLayers = RALF_GRAPHICS_LAYER_ROOTFS;
+#endif
         // RDKEMW-15736 We need to reverse iterate to maintain the correct order of layers
         // see https://docs.kernel.org/filesystems/overlayfs.html#multiple-lower-layers for more details.
 
+#ifdef ENTOS_RALF_SUPPORT
+        bool vendorGpuLayerAdded = false;
+#endif
         for (auto package = mRalfPackages.crbegin(); package != mRalfPackages.crend(); ++package)
         {
-            packageLayers += ":" + package->second; // Append mount paths
+#ifdef ENTOS_RALF_SUPPORT
+            if (!vendorGpuLayerAdded)
+            {
+                Json::Value packageConfig;
+                if (JsonFromFile(package->first, packageConfig) &&
+                    packageConfig[PACKAGE_TYPE].isString() &&
+                    PKG_TYPE_BASE == packageConfig[PACKAGE_TYPE].asString())
+                {
+                    if (!packageLayers.empty())
+                    {
+                        packageLayers += ":";
+                    }
+                    packageLayers += vendorGpuLayerPath;
+                    vendorGpuLayerAdded = true;
+                }
+            }
+#endif
+            if (!packageLayers.empty())
+            {
+                packageLayers += ":";
+            }
+            packageLayers += package->second; // Append mount paths
         }
+#ifdef ENTOS_RALF_SUPPORT
+        if (!vendorGpuLayerAdded)
+        {
+            if (!packageLayers.empty())
+            {
+                packageLayers += ":";
+            }
+            packageLayers += vendorGpuLayerPath;
+        }
+#endif
         // Create OCI rootfs package based on parsed data
-        return generateOCIRootfs(appInstanceId, packageLayers, uid, gid, ociRootfsPath);
+        const bool status = generateOCIRootfs(appInstanceId, packageLayers, ociRootfsPath);
+    #ifdef ENTOS_RALF_SUPPORT
+        if (!status)
+        {
+            removeDirectoryRecursively(RALF_APP_ROOTFS_DIR + appInstanceId);
+        }
+    #endif
+        return status;
     }
 
     bool RalfPackageBuilder::generateRalfDobbySpec(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, std::string &dobbySpec)
@@ -71,7 +125,7 @@ namespace ralf
         LOGDBG("Extracted %d Ralf packages from config\n", (int)mRalfPackages.size());
         // Step two: Generate overlay OCI rootfs package for the application instance
         std::string ociRootfsPath;
-        status = generateOCIRootfsPackage(config.mAppInstanceId, config.mUserId, config.mGroupId, ociRootfsPath);
+        status = generateOCIRootfsPackage(config.mAppInstanceId, ociRootfsPath);
         if (!status)
         {
             LOGERR("Failed to generate OCI rootfs package for appInstanceId: %s\n", config.mAppInstanceId.c_str());

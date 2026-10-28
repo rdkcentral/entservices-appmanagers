@@ -648,11 +648,11 @@ uint32_t Test_Ralf_ParseRalPkgInfo_ValidPackagesFileReturnsTrue()
     return tr.failures;
 }
 
-/* Test_Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds
+/* Test_Ralf_ParseRalPkgInfo_EmptyPackagesArrayReturnsFalse
  *
- * Verifies that parseRalPkgInfo() handles an empty packages array gracefully.
+ * An empty package list cannot produce a launchable RALF rootfs and must be rejected.
  */
-uint32_t Test_Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds()
+uint32_t Test_Ralf_ParseRalPkgInfo_EmptyPackagesArrayReturnsFalse()
 {
     L0Test::TestResult tr;
 
@@ -661,10 +661,40 @@ uint32_t Test_Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds()
 
     std::vector<ralf::RalfPkgInfoPair> packages;
     const bool result = ralf::parseRalPkgInfo(tmpPath, packages);
-    L0Test::ExpectTrue(tr, result,
-                       "parseRalPkgInfo() returns true for empty packages array");
+    L0Test::ExpectTrue(tr, !result,
+                       "parseRalPkgInfo() rejects an empty packages array");
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(packages.size()), 0u,
-                        "parseRalPkgInfo() produces empty vector for empty array");
+                        "parseRalPkgInfo() leaves the output empty for empty array");
+
+    ::remove(tmpPath.c_str());
+
+    return tr.failures;
+}
+
+/* Test_Ralf_ParseRalPkgInfo_InvalidEntryDoesNotPartiallyAppend
+ *
+ * Verifies malformed entries are rejected without changing pre-existing output.
+ */
+uint32_t Test_Ralf_ParseRalPkgInfo_InvalidEntryDoesNotPartiallyAppend()
+{
+    L0Test::TestResult tr;
+
+    const std::string tmpPath = "/tmp/ralf_l0test_invalid_entry.json";
+    WriteFile(tmpPath,
+        "{"
+        "  \"packages\": ["
+        "    {\"pkgMetaDataPath\": \"/pkg/meta/app.json\", \"pkgMountPath\": \"/mnt/app\"},"
+        "    {\"pkgMetaDataPath\": 123, \"pkgMountPath\": \"/mnt/runtime\"}"
+        "  ]"
+        "}");
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    packages.emplace_back("/existing/meta.json", "/existing/mount");
+    const bool result = ralf::parseRalPkgInfo(tmpPath, packages);
+    L0Test::ExpectTrue(tr, !result,
+                       "parseRalPkgInfo() rejects an entry with a non-string path");
+    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(packages.size()), 1u,
+                        "parseRalPkgInfo() does not partially append invalid entries");
 
     ::remove(tmpPath.c_str());
 
@@ -879,13 +909,27 @@ uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport()
 
     const std::string testInstanceId = "l0test_ociroot_inst_001";
     const std::string pkgMountPaths = "/tmp";
+    const std::string bundlePath = std::string(ralf::RALF_APP_ROOTFS_DIR) + testInstanceId;
     std::string ociRootfsPath;
 
-    const bool result = ralf::generateOCIRootfs(testInstanceId, pkgMountPaths,
-                                                0, 0, ociRootfsPath);
+    const bool result = ralf::generateOCIRootfs(testInstanceId, pkgMountPaths, ociRootfsPath);
 
     L0Test::ExpectTrue(tr, !result,
                        "generateOCIRootfs() returns false when overlayfs mount is unavailable");
+    const std::string bundleDirectories[] = {
+        bundlePath,
+        bundlePath + "/rootfs",
+        bundlePath + "/upper",
+        bundlePath + "/work"
+    };
+    for (const std::string &directory : bundleDirectories)
+    {
+        struct stat directoryStat;
+        L0Test::ExpectTrue(tr, 0 == stat(directory.c_str(), &directoryStat) &&
+                           0755 == (directoryStat.st_mode & 07777) && geteuid() == directoryStat.st_uid,
+                           "generateOCIRootfs() creates process-owned 0755 bundle directories");
+    }
+    ralf::removeDirectoryRecursively(bundlePath);
 
     return tr.failures;
 }
@@ -940,6 +984,44 @@ uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf()
     return tr.failures;
 }
 
+uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesStandardAndNonBindMountDirectories()
+{
+    L0Test::TestResult tr;
+
+    const std::string rootBase = "/tmp/ralf_l0test_mount_targets_non_bind";
+    const std::string rootfsPath = rootBase + "/rootfs";
+    if (ralf::checkIfPathExists(rootBase))
+    {
+        ralf::removeDirectoryRecursively(rootBase);
+    }
+    ralf::create_directories(rootfsPath);
+
+    Json::Value ociConfig(Json::objectValue);
+    ociConfig["mounts"] = Json::Value(Json::arrayValue);
+
+    Json::Value devMount(Json::objectValue);
+    devMount["type"] = "tmpfs";
+    devMount["destination"] = "/dev";
+    ociConfig["mounts"].append(devMount);
+
+    Json::Value devPtsMount(Json::objectValue);
+    devPtsMount["type"] = "devpts";
+    devPtsMount["destination"] = "/dev/pts";
+    ociConfig["mounts"].append(devPtsMount);
+
+    const bool status = ralf::prepareMergedRootfsMountTargets(ociConfig, rootfsPath, 0, 0);
+    L0Test::ExpectTrue(tr, status,
+                       "prepareMergedRootfsMountTargets() succeeds for non-bind mount destinations");
+    L0Test::ExpectTrue(tr, ralf::checkIfPathExists(rootfsPath + "/dev") &&
+                       ralf::checkIfPathExists(rootfsPath + "/dev/pts"),
+                       "non-bind mount destinations are created parent-first in merged rootfs");
+    L0Test::ExpectTrue(tr, ralf::checkIfPathExists(rootfsPath + "/home"),
+                       "legacy standard /home directory is created in merged rootfs");
+
+    ralf::removeDirectoryRecursively(rootBase);
+    return tr.failures;
+}
+
 uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory()
 {
     L0Test::TestResult tr;
@@ -976,6 +1058,8 @@ uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAnd
     dirMount["destination"] = "/opt/customdir";
     ociConfig["mounts"].append(dirMount);
 
+    struct stat before;
+    const bool ownerKnown = 0 == stat(rootBase.c_str(), &before);
     const bool status = ralf::prepareMergedRootfsMountTargets(ociConfig, rootfsPath, 0, 0);
     L0Test::ExpectTrue(tr, status,
                        "prepareMergedRootfsMountTargets() returns true for bind destination preparation");
@@ -983,6 +1067,18 @@ uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAnd
                        "file bind destination is pre-created in merged rootfs");
     L0Test::ExpectTrue(tr, ralf::checkIfPathExists(rootfsPath + "/opt/customdir"),
                        "directory bind destination is pre-created in merged rootfs");
+
+    Json::Value dirOnlyConfig(Json::objectValue);
+    dirOnlyConfig["mounts"] = Json::Value(Json::arrayValue);
+    dirOnlyConfig["mounts"].append(dirMount);
+    const int requestedUid = (0 == geteuid()) ? 0 : static_cast<int>(geteuid()) + 1;
+    const int requestedGid = (0 == geteuid()) ? 0 : static_cast<int>(getegid()) + 1;
+    const bool nonzeroUidStatus = ralf::prepareMergedRootfsMountTargets(
+        dirOnlyConfig, rootfsPath, requestedUid, requestedGid);
+    struct stat after;
+    L0Test::ExpectTrue(tr, nonzeroUidStatus && ownerKnown && 0 == stat(rootBase.c_str(), &after) &&
+                       before.st_uid == after.st_uid && before.st_gid == after.st_gid,
+                       "directory bind preparation does not chown the bundle or its ancestors");
 
     ralf::removeDirectoryRecursively(rootBase);
     ralf::removeDirectoryRecursively(sourceDir);

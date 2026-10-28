@@ -17,6 +17,7 @@ option(PLUGIN_PREINSTALL_MANAGER "Build PreinstallManager L0 test target" ON)
 option(PLUGIN_APP_MANAGER        "Build AppManager L0 test target"        ON)
 option(PLUGIN_VICTIM_SELECTOR    "Build VictimSelector L0 test target"    ON)
 
+option(ENTOS_RALF_SUPPORT "Build RuntimeManager L0 tests for EntOS RALF support" OFF)
 option(APPMGR_ENABLE_COVERAGE  "Enable coverage flags for runtimemanager_l0test"    ON)
 option(APPLCM_ENABLE_COVERAGE  "Enable coverage flags for lifecyclemanager_l0test"  ON)
 option(APPWM_ENABLE_COVERAGE   "Enable coverage flags for rdkwindowmanager_l0test"  ON)
@@ -74,6 +75,7 @@ set(RUNTIME_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/RalfSupport.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/RalfPackageBuilder.cpp
+    ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/RalfVendorLayer.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/NetworkConfigurationHelper.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/RalfOCIConfigGenerator.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway/WebInspector.cpp
@@ -334,6 +336,16 @@ if(PLUGIN_RUNTIME_MANAGER)
     )
     if(RUNTIMEMANAGER_ENABLE_DIALCONFIG)
         target_compile_definitions(runtimemanager_l0test PRIVATE RUNTIMEMANAGER_ENABLE_DIALCONFIG)
+    endif()
+    if(ENTOS_RALF_SUPPORT)
+        find_package(LibXml2 REQUIRED)
+        target_include_directories(runtimemanager_l0test PRIVATE ${LIBXML2_INCLUDE_DIRS})
+        target_link_libraries(runtimemanager_l0test PRIVATE LibXml2::LibXml2)
+        target_compile_definitions(runtimemanager_l0test PRIVATE
+            ENTOS_RALF_SUPPORT
+            ENTOS_RALF_BUNDLE_ROOT=\"/tmp/ralf_l0test_bundle_root/\"
+            ENTOS_RALF_GPU_CONFIG_FILE=\"/tmp/ralf_l0test_vendor_gpu_config.json\"
+        )
     endif()
 
     # Force include L0TestConfig.h in all source files
