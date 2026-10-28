@@ -41,6 +41,11 @@ PackageManager mount manifest, assemble the package-layer overlay and generate
 the RALF OCI configuration; the generated rootfs path is passed to
 `IOCIContainer::StartContainer`. Both paths continue to share display setup,
 container lifecycle notifications and AppStorageManager integration.
+When compiled with `RALF_PACKAGE_SUPPORT`, RuntimeManager's plugin configuration
+accepts `"ralfEnabled": false` to reject RALF launch requests explicitly
+(default `true`). This launch-time switch does not disable package installation,
+verification or the build-time libpackage RALF option; ordinary widgets remain
+unaffected. Secure-debug signature fallback is not enabled by this switch.
 
 PackageManager owns RALF verification, installation and package mounts. It
 provides RuntimeManager a neutral manifest of package rootfs paths and the
@@ -76,6 +81,8 @@ the widget's `config.xml` content executable and mounts from the RALF manifest,
 then uses `DobbySpecGenerator` and `StartContainerFromDobbySpec` with `/runtime`
 and `/package`. This matches legacy's traditional host-rootfs launch: the
 two-layer RALF overlay lacks the ELF loader needed by `SkyBrowserLauncher`.
+If a base-free runtime has no executable, the traditional launch runs the
+app's entry point and omits the `/runtime` bind mount.
 For this widget path, `Run()` uses the app package's `data.img` as the private
 ext4 image when present, otherwise skips the `/home/private` loop mount. It
 never treats the RALF package directory itself as an image. The classic spec

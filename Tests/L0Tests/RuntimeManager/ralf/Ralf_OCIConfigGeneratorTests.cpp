@@ -531,6 +531,25 @@ uint32_t Test_Ralf_GetClassicRalfLaunchInfo()
                        "classic spec receives app mount, runtime mount and executable");
 
     L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json",
+                       "{\"packageType\":\"runtime\",\"entryPoint\":\"\"}"),
+                       "runtime without an executable config is available");
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(appRoot + "/config.json",
+                       "{\"packageType\":\"application\",\"entryPoint\":\"bin/app\"}"),
+                       "application executable config is available");
+    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),
+                       "base-free runtime without an executable still selects classic launch");
+    L0Test::ExpectTrue(tr, appPath == appRoot && runtimePath.empty() && command == "bin/app",
+                       "classic spec uses the app executable and omits the runtime mount");
+
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json",
+                       "{\"packageType\":\"runtime\"}"),
+                       "runtime with no entryPoint field is available");
+    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),
+                       "runtime with no entryPoint uses the app executable");
+    L0Test::ExpectTrue(tr, runtimePath.empty() && command == "bin/app",
+                       "non-executable runtime is not bind-mounted");
+
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json",
                        "{\"packageType\":\"application\",\"entryPoint\":\"bin/widget\"}"),
                        "non-runtime dependency config is available");
     L0Test::ExpectTrue(tr, !ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),

@@ -672,6 +672,28 @@ uint32_t Test_Impl_RunNoWindowManagerConnector()
     return tr.failures;
 }
 
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+uint32_t Test_Impl_RunRejectsDisabledRalf()
+{
+    L0Test::TestResult tr;
+    L0Test::ServiceMock::Config config;
+    config.configLine = R"({"ralfEnabled":false})";
+    static L0Test::ServiceMock service(config);
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    const std::string runtimeConfigPayload =
+        R"({"ralfPkgPath":"/tmp/ralf-test-manifest.json","userId":10,"groupId":10})";
+    const auto result = impl->Run("appId", "ralfInstance", 10, 10, nullptr, nullptr, nullptr, runtimeConfigPayload);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
+                        "disabled RALF launch fails before display or OCI setup");
+
+    impl->Release();
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    return tr.failures;
+}
+#endif
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Mount / Unmount (stubs – expected to return ERROR_NONE)
 // ──────────────────────────────────────────────────────────────────────────────

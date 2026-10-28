@@ -37,6 +37,9 @@ extern uint32_t Test_Impl_GetInfoEmptyAppInstanceId();
 extern uint32_t Test_Impl_GetInfoNoOCIPlugin();
 extern uint32_t Test_Impl_RunEmptyAppInstanceId();
 extern uint32_t Test_Impl_RunNoWindowManagerConnector();
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+extern uint32_t Test_Impl_RunRejectsDisabledRalf();
+#endif
 extern uint32_t Test_Impl_MountReturnsSuccess();
 extern uint32_t Test_Impl_UnmountReturnsSuccess();
 extern uint32_t Test_Impl_GetInstanceReturnsSelf();
@@ -353,6 +356,9 @@ int main()
         { "Impl_GetInfoNoOCIPlugin",                                                 Test_Impl_GetInfoNoOCIPlugin },
         { "Impl_RunEmptyAppInstanceId",                                              Test_Impl_RunEmptyAppInstanceId },
         { "Impl_RunNoWindowManagerConnector",                                        Test_Impl_RunNoWindowManagerConnector },
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+        { "Impl_RunRejectsDisabledRalf",                                             Test_Impl_RunRejectsDisabledRalf },
+#endif
         { "Impl_MountReturnsSuccess",                                                Test_Impl_MountReturnsSuccess },
         { "Impl_UnmountReturnsSuccess",                                              Test_Impl_UnmountReturnsSuccess },
         { "Impl_GetInstanceReturnsSelf",                                             Test_Impl_GetInstanceReturnsSelf },

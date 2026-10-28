@@ -44,7 +44,11 @@ namespace WPEFramework
         RuntimeManagerImplementation *RuntimeManagerImplementation::_instance = nullptr;
 
         RuntimeManagerImplementation::RuntimeManagerImplementation()
-            : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal(""), mRuntimeConfigFile(""), mAIConfiguration(nullptr)
+            : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal(""), mRuntimeConfigFile("")
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            , mRalfEnabled(true)
+#endif
+            , mAIConfiguration(nullptr)
         {
             LOGINFO("Create RuntimeManagerImplementation Instance");
             if (nullptr == RuntimeManagerImplementation::_instance)
@@ -347,6 +351,10 @@ namespace WPEFramework
                     mRuntimeConfigFile = config.runtimeConfigFile.Value();
                 }
                 LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                mRalfEnabled = config.ralfEnabled.Value();
+                LOGINFO("RALF launch support %s by runtime configuration", mRalfEnabled ? "enabled" : "disabled");
+#endif
                 mAIConfiguration = new AIConfiguration();
                 mAIConfiguration->initialize(mRuntimeConfigFile);
 
@@ -627,6 +635,21 @@ namespace WPEFramework
                 notifyParameterCheckFailure(appInstanceId, "ERROR_INVALID_PARAM");
                 return Core::ERROR_INVALID_PARAMETER;
             }
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            if (!runtimeConfigObject.ralfPkgPath.empty() && !mRalfEnabled)
+            {
+                LOGERR("RALF launch disabled by RuntimeManager configuration for appId=%s", appId.c_str());
+                notifyParameterCheckFailure(appInstanceId, "ERROR_RALF_DISABLED");
+                return Core::ERROR_UNAVAILABLE;
+            }
+#else
+            if (!runtimeConfigObject.ralfPkgPath.empty())
+            {
+                LOGERR("RALF launch requested without RALF support for appId=%s", appId.c_str());
+                notifyParameterCheckFailure(appInstanceId, "ERROR_RALF_DISABLED");
+                return Core::ERROR_UNAVAILABLE;
+            }
+#endif
 
             Core::hresult status = Core::ERROR_GENERAL;
             RuntimeAppInfo runtimeAppInfo;
