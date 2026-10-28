@@ -183,6 +183,11 @@ set(VICTIMSELECTOR_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/VictimSele
 set(VICTIMSELECTOR_LIBS ${NAMESPACE}VictimSelector ${NAMESPACE}VictimSelectorImplementation)
 add_plugin_test_ex(PLUGIN_VICTIM_SELECTOR tests/test_VictimSelector.cpp "${VICTIMSELECTOR_INC}" "${VICTIMSELECTOR_LIBS}")
 
+# PLUGIN_RESOURCEMONITOR
+set(RESOURCEMONITOR_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/ResourceMonitor ${CMAKE_SOURCE_DIR}../entservices-appmanagers/helpers)
+set(RESOURCEMONITOR_LIBS ${NAMESPACE}ResourceMonitor ${NAMESPACE}ResourceMonitorImplementation)
+add_plugin_test_ex(PLUGIN_RESOURCEMONITOR tests/test_ResourceMonitor.cpp "${RESOURCEMONITOR_INC}" "${RESOURCEMONITOR_LIBS}")
+
 if(BUILD_L1_TESTS_SHARED_MODULE)
     add_library(${MODULE_NAME} SHARED ${TEST_SRC})
 endif()
