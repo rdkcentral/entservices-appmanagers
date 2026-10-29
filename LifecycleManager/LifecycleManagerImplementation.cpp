@@ -294,7 +294,6 @@ namespace WPEFramework
         
         Core::hresult LifecycleManagerImplementation::SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState, const string& runtimeConfigPayload, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success)
         {
-        LOGDBG("[ralf-debug] SpawnApp received appId='%s' ralfPkgPath='%s'", appId.c_str(), runtimeConfigObject.ralfPkgPath.c_str());
 	    // Launches an app.  This will be an asynchronous call.
             // Notifies appropriate API Gateway when an app is about to be loaded
             // Lifecycle manager will create the appInstanceId once the app is loaded.  Ripple is responsible for creating a token. 
@@ -305,6 +304,16 @@ namespace WPEFramework
                 success = false;
                 return Core::ERROR_GENERAL;
             }
+            std::string ralfPkgPath;
+            bool ralfPkgPathPresent = false;
+            if (!payload.GetString("ralfPkgPath", ralfPkgPath, ralfPkgPathPresent, errorReason))
+            {
+                LOGERR("SpawnApp received invalid ralfPkgPath: %s", errorReason.c_str());
+                success = false;
+                return Core::ERROR_GENERAL;
+            }
+            LOGDBG("[ralf-debug] SpawnApp received appId='%s' ralfPkgPath='%s'",
+                   appId.c_str(), ralfPkgPathPresent ? ralfPkgPath.c_str() : "(not set)");
 
             Core::hresult status = Core::ERROR_NONE;
             bool firstLaunch = false;
@@ -942,5 +951,4 @@ namespace WPEFramework
 
     } /* namespace Plugin */
 } /* namespace WPEFramework */
-
 
