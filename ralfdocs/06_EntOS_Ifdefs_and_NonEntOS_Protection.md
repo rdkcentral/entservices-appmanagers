@@ -68,7 +68,7 @@ endif()
 
 | # | File / function | `ENTOS_RALF_SUPPORT` ON (EntOS) | OFF (RDK generic, = develop behaviour) |
 |---|-----------------|--------------------------------|-----------------------------------------|
-| 1 | `RalfConstants.h` – `RALF_GRAPHICS_LAYER_CONFIG` | `ENTOS_RALF_GPU_CONFIG_FILE` = `/etc/sky/aisettings.overrides/vendor-gpu.json` | `/usr/share/gpu-layer/config.json` |
+| 1 | `RalfConstants.h` – `RALF_GRAPHICS_LAYER_CONFIG` | `ENTOS_RALF_GPU_CONFIG_FILE` = `/etc/rdk/vendor-gpu.json` | `/usr/share/gpu-layer/config.json` |
 | 2 | `RalfConstants.h` – `RALF_APP_ROOTFS_DIR` | `ENTOS_RALF_BUNDLE_ROOT` = `/run/sky/bundles/` | `/tmp/ralf/` |
 | 3 | `RalfPackageBuilder::generateOCIRootfsPackage` – layer seed | shared `RalfVendorLayer::createShared(<bundleRoot>/vendor, gpuConfig)` (built once per process, AI1 parity); start with empty lowerdir list | lowerdir starts with `/usr/share/gpu-layer/rootfs` (prebuilt GPU layer, top priority) |
 | 4 | same – loop | inserts `vendor` **just above the first `base` layer** encountered (reverse iteration) | plain `app:runtime:…:base` after the GPU layer |

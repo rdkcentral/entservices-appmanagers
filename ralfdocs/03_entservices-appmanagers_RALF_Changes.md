@@ -111,7 +111,7 @@ if (!runtimeConfig.ralfPkgPath.empty()) {          // classic RALF only
 | `prepareMergedRootfsMountTargets` | sorted creation of non-bind mount dirs + `/home` | none |
 | `addBindMountToOCIConfig` | new `recursive/noSuid/noDev` params (defaults keep old `rbind`) | none |
 | `parseRalPkgInfo` | strict validation, no partial append | none |
-| `RalfConstants.h` | EntOS: GPU config `/etc/sky/aisettings.overrides/vendor-gpu.json`, bundle root `/run/sky/bundles/` | `ENTOS_RALF_SUPPORT` |
+| `RalfConstants.h` | EntOS: GPU config `/etc/rdk/vendor-gpu.json`, bundle root `/run/sky/bundles/` | `ENTOS_RALF_SUPPORT` |
 | `RalfVendorLayer` (**new**) | builds the shared `<bundleRoot>/vendor` from the GPU config (`file` copies, `symlink`s, `bind`/`socket` mount targets); `createShared()` builds it once per process and reuses it for every bundle | used only under `ENTOS_RALF_SUPPORT` (compiled always) |
 
 #### Overlay layer order
@@ -164,7 +164,7 @@ semantics: PackageManager itself locks `state.runtimeApp` after the app and unlo
 | libpackage (aisettings) | `.packages.extractedTmpDir` | (existing) | RALF extraction fallback under `ralf/` |
 | libpackage (aisettings) | XML-DSig CA enables/locations | (existing) | RALF verification bundle |
 | libpackage (compile) | `RALF_PACKAGE_FILE_NAME` | `package.wgt` | RALF file name in the shared slot |
-| RuntimeManager (compile) | `ENTOS_RALF_GPU_CONFIG_FILE` | `/etc/sky/aisettings.overrides/vendor-gpu.json` | EntOS GPU layer config |
+| RuntimeManager (compile) | `ENTOS_RALF_GPU_CONFIG_FILE` | `/etc/rdk/vendor-gpu.json` | EntOS GPU layer config |
 | RuntimeManager (compile) | `ENTOS_RALF_BUNDLE_ROOT` | `/run/sky/bundles/` | EntOS OCI bundle root (shared vendor layer at `<root>/vendor`) |
 
 ---
