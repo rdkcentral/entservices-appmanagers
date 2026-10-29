@@ -56,7 +56,7 @@ locks through the normal unlock lifecycle.
 `ENTOS_RALF_SUPPORT` is a RuntimeManager build option enabled by default (requires
 `RALF_PACKAGE_SUPPORT` and LibXml2 headers/libraries in the build sysroot).
 When enabled, RALF reads
-`/etc/sky/aisettings.overrides/vendor-gpu.json`, generates an instance-scoped
+`/etc/rdk/vendor-gpu.json`, generates an instance-scoped
 vendor layer under `/run/sky/bundles/<instance>/vendor`, and uses the Broadcom-style
 device glob, bind, file-copy, and symlink entries instead of the preinstalled
 `/usr/share/gpu-layer/rootfs`. With the option off, the existing static GPU

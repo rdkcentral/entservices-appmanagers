@@ -478,7 +478,7 @@ flowchart TB
   <h3>ENTOS_RALF_SUPPORT sites</h3>
   <table>
     <tr><th>Site</th><th>EntOS (ON)</th><th>RDK generic (OFF)</th></tr>
-    <tr><td>GPU config</td><td><code>/etc/sky/aisettings.overrides/vendor-gpu.json</code></td><td><code>/usr/share/gpu-layer/config.json</code></td></tr>
+    <tr><td>GPU config</td><td><code>/etc/rdk/vendor-gpu.json</code></td><td><code>/usr/share/gpu-layer/config.json</code></td></tr>
     <tr><td>Bundle root</td><td><code>/run/sky/bundles/</code></td><td><code>/tmp/ralf/</code></td></tr>
     <tr><td>GPU layer</td><td>shared <code>RalfVendorLayer</code> (built once per process, AI1 parity), inserted above base</td><td>prebuilt <code>/usr/share/gpu-layer/rootfs</code> on top</td></tr>
     <tr><td>Bundle cleanup on failure</td><td>yes</td><td>no</td></tr>

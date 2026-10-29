@@ -186,7 +186,7 @@ flowchart LR
 | `.packages.limits.*` | same limits → `setMaxExtractionBytes/Entries` |
 | `.apps.ociBundleGenerator.enable` | – (always available with `RALF_PACKAGE_SUPPORT`) |
 | `.apps.ociBundleGenerator.mapHostCACertificates` | – (base spec template) |
-| vendor GPU config | `ENTOS_RALF_GPU_CONFIG_FILE` (`/etc/sky/aisettings.overrides/vendor-gpu.json`) |
+| vendor GPU config | `ENTOS_RALF_GPU_CONFIG_FILE` (`/etc/rdk/vendor-gpu.json`) |
 
 ## 8. Summary
 
