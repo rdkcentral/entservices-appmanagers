@@ -121,6 +121,8 @@ namespace ralf
          */
 
         bool addAppStorageToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath);
+        /// Loop-mounts a widget's data.img at /home/private via the Dobby storage plugin (AI1 parity).
+        void addPrivateDataToOCIConfig(Json::Value &ociConfigRootNode, const std::string &dataImagePath);
 
         /**
          * Reads the environment variables and pushes FIREBOLT_ENDPOINT to OCI config.

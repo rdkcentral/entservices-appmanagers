@@ -716,14 +716,6 @@ namespace WPEFramework
             }
 #endif
 
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-            /* RALF containers all share the single 'ralf' user; widgets keep the per-app
-               uid/gid assigned by UserIdManager. */
-            if (ralfInstance && !ralf::getRalfUserInfo(uid, gid))
-            {
-                LOGERR("Failed to get Ralf user info. This can lead to failure in launching the app. uid: %d, gid: %d", uid, gid);
-            }
-#endif
             std::ifstream inFile("/tmp/specchange");
             if (inFile.good())
             {
@@ -770,7 +762,7 @@ namespace WPEFramework
 
             if (!appIdForStorage.empty())
             {
-                /* RALF uses one userid/groupid for all apps; widgets request storage as root. */
+                /* RALF-layered containers run as the app's own uid ; widgets request storage as root. */
                 appStorageInfo.userId = ralfInstance ? uid : 0;
                 appStorageInfo.groupId = ralfInstance ? gid : 0;
                 if (Core::ERROR_NONE == getAppStorageInfo(appIdForStorage, appStorageInfo))

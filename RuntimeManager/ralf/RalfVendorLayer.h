@@ -10,6 +10,9 @@ namespace ralf
         explicit RalfVendorLayer(std::string layerPath);
         bool create(const std::string &configPath);
 
+        /// Builds the layer once per process and reuses it for every bundle (AI1 OCIVendorLayer semantics).
+        static bool createShared(const std::string &layerPath, const std::string &configPath);
+
     private:
         bool createFile(const std::string &source, const std::string &destination);
         bool createSymlink(const std::string &target, const std::string &linkPath);

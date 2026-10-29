@@ -8,6 +8,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <fstream>
+#include <mutex>
 #include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -18,6 +19,20 @@ namespace ralf
     RalfVendorLayer::RalfVendorLayer(std::string layerPath)
         : mLayerPath(std::move(layerPath))
     {
+    }
+
+    bool RalfVendorLayer::createShared(const std::string &layerPath, const std::string &configPath)
+    {
+        static std::mutex creationLock;
+        static bool created = false;
+
+        std::lock_guard<std::mutex> guard(creationLock);
+        if (!created)
+        {
+            RalfVendorLayer layer(layerPath);
+            created = layer.create(configPath);
+        }
+        return created;
     }
 
     bool RalfVendorLayer::create(const std::string &configPath)

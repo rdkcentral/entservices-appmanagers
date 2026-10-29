@@ -48,11 +48,10 @@ namespace ralf
     {
         // Let us extract the mount points.
 #ifdef ENTOS_RALF_SUPPORT
-        const std::string vendorGpuLayerPath = RALF_APP_ROOTFS_DIR + appInstanceId + "/vendor";
-        RalfVendorLayer vendorGpuLayer(vendorGpuLayerPath);
-        if (!vendorGpuLayer.create(RALF_GRAPHICS_LAYER_CONFIG))
+        const std::string vendorGpuLayerPath = RALF_APP_ROOTFS_DIR + "vendor";
+        if (!RalfVendorLayer::createShared(vendorGpuLayerPath, RALF_GRAPHICS_LAYER_CONFIG))
         {
-            LOGERR("Failed to create vendor GPU layer for appInstanceId: %s", appInstanceId.c_str());
+            LOGERR("Failed to create shared vendor GPU layer for appInstanceId: %s", appInstanceId.c_str());
             return false;
         }
         std::string packageLayers;

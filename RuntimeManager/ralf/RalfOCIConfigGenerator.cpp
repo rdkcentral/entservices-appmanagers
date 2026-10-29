@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <glob.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -193,6 +194,10 @@ namespace ralf
         // Mount persistent storage path
         std::string appStoragePath = appConfig.mAppStorageInfo.path;
         addAppStorageToOCIConfig(ociConfigRootNode, appStoragePath);
+        addPrivateDataToOCIConfig(ociConfigRootNode, runtimeConfigObject.unpackedPath);
+
+        // Same per-launch token the classic DobbySpecGenerator gives widgets; ASAppManager derives its AS token from it.
+        addToEnvironment(ociConfigRootNode, "APPLICATION_TOKEN", appConfig.mAppInstanceId);
 
         if (!appConfig.mRialtoSocketPath.empty())
         {
@@ -218,6 +223,29 @@ namespace ralf
         LOGDBG("Added application storage mount from %s to %s and set PERSIST_STORAGE_PATH environment variable\n", appStoragePath.c_str(), containerStoragePath.c_str());
         status = true;
         return status;
+    }
+
+    void RalfOCIConfigGenerator::addPrivateDataToOCIConfig(Json::Value &ociConfigRootNode, const std::string &dataImagePath)
+    {
+        // Only a ZIP widget layered on a RALF runtime has a data.img; RALF apps use AppStorageManager storage.
+        struct stat imageInfo;
+        if (dataImagePath.empty() || 0 != stat(dataImagePath.c_str(), &imageInfo) || !S_ISREG(imageInfo.st_mode))
+        {
+            return;
+        }
+
+        Json::Value loop(Json::objectValue);
+        loop[SOURCE] = dataImagePath;
+        loop[DESTINATION] = "/home/private";
+        loop["fstype"] = "ext4";
+        loop["flags"] = static_cast<Json::UInt>(MS_NOSUID | MS_NODEV | MS_NOEXEC);
+        loop["imgmanagement"] = false;
+
+        Json::Value &storage = ociConfigRootNode[RDKPLUGINS]["storage"];
+        storage["required"] = false;
+        storage["dependsOn"] = Json::Value(Json::arrayValue);
+        storage[DATA]["loopback"].append(loop);
+        LOGDBG("Added private data loop mount from %s to /home/private\n", dataImagePath.c_str());
     }
     bool RalfOCIConfigGenerator::generateHooksForOCIConfig(Json::Value &ociConfigRootNode)
     {
@@ -444,35 +472,10 @@ namespace ralf
                         fileEntry.isMember(SOURCE) && fileEntry[SOURCE].isString() &&
                         fileEntry.isMember(DESTINATION) && fileEntry[DESTINATION].isString())
                     {
-                        std::string sourcePath = fileEntry[SOURCE].asString();
-                        const std::string configuredWaylandEglSource = "/usr/lib/libwayland-egl.so.1.20.0";
-                        const std::string deviceWaylandEglSource = "/usr/lib/libwayland-egl.so.1";
-
-                        /*
-                         * TODO: Remove this temporary Broadcom image compatibility workaround once the
-                         * vendor GPU override is maintained alongside the target image's library versions.
-                         * The checked-in legacy override requests libwayland-egl.so.1.20.0, but some devices
-                         * only provide libwayland-egl.so.1 (which resolves to their installed version).
-                         * Keep the configured container destination unchanged so existing vendor symlinks
-                         * continue to resolve; redirect only the missing host bind source when the soname
-                         * path is present. Do not generalize this fallback to unrelated GPU libraries.
-                         */
-                        struct stat sourceStat;
-                        struct stat deviceSourceStat;
-                        if (configuredWaylandEglSource == sourcePath &&
-                            0 != stat(sourcePath.c_str(), &sourceStat) &&
-                            0 == stat(deviceWaylandEglSource.c_str(), &deviceSourceStat) &&
-                            S_ISREG(deviceSourceStat.st_mode))
-                        {
-                            LOGWARN("Configured Wayland EGL source is missing; using device soname path %s",
-                                    deviceWaylandEglSource.c_str());
-                            sourcePath = deviceWaylandEglSource;
-                        }
-
-                        addBindMountToOCIConfig(ociConfigRootNode, sourcePath,
+                        addBindMountToOCIConfig(ociConfigRootNode, fileEntry[SOURCE].asString(),
                                                 fileEntry[DESTINATION].asString(), true, false, true, true);
                         LOGDBG("Added read-only graphics bind mount from %s to %s\n",
-                               sourcePath.c_str(), fileEntry[DESTINATION].asCString());
+                               fileEntry[SOURCE].asCString(), fileEntry[DESTINATION].asCString());
                     }
                     else if (!fileEntry.isMember(TYPE) || !fileEntry[TYPE].isString() ||
                              ("symlink" != fileEntry[TYPE].asString() && "file" != fileEntry[TYPE].asString()))
@@ -627,15 +630,9 @@ namespace ralf
         }
 
         const Json::Value &app = packageConfigs.back();
-        if (!app[ENTRY_POINT].isString() || app[ENTRY_POINT].asString().empty())
-        {
-            LOGERR("RALF application package has no entryPoint");
-            return false;
-        }
-
         Json::Value args(Json::arrayValue);
         args.append(packageConfigs.front()[ENTRY_POINT]);
-        for (size_t index = 1; index + 1 < packageConfigs.size(); ++index)
+        for (size_t index = 1; index < packageConfigs.size(); ++index)
         {
             const Json::Value &entryPoint = packageConfigs[index][ENTRY_POINT];
             if (entryPoint.isString() && !entryPoint.asString().empty())
@@ -643,7 +640,12 @@ namespace ralf
                 args.append(entryPoint);
             }
         }
-        args.append(app[ENTRY_POINT]);
+        // #legacy - the app entry point is optional when a runtime provides the executable.
+        if (args.size() < 2)
+        {
+            LOGERR("RALF launch has no runtime or application entryPoint after the base init");
+            return false;
+        }
         const Json::Value &appArgs = app[ENTRY_ARGS];
         if (appArgs.isArray())
         {

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RALF Support in EntOS App Managers</title>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #111827; --card: #1f2937; --text: #e5e7eb; --muted: #9ca3af;
+    --accent: #38bdf8; --ok: #22c55e; --warn: #f59e0b; --bad: #ef4444; --border: #374151;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.55; }
+  header { padding: 28px 40px; background: linear-gradient(120deg, #0369a1, #312e81); }
+  header h1 { margin: 0 0 6px 0; font-size: 28px; }
+  header p { margin: 0; color: #dbeafe; }
+  nav { position: sticky; top: 0; z-index: 10; background: var(--panel); border-bottom: 1px solid var(--border);
+        display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 40px; }
+  nav button { background: transparent; border: 1px solid transparent; color: var(--muted);
+               padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  nav button.active, nav button:hover { color: var(--text); border-color: var(--accent); }
+  main { padding: 24px 40px 80px; max-width: 1400px; margin: 0 auto; }
+  section { display: none; }
+  section.active { display: block; }
+  h2 { color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  h3 { margin-top: 28px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 7px 10px; vertical-align: top; text-align: left; }
+  th { background: #1e293b; }
+  tr:nth-child(even) td { background: #0b1220; }
+  code { background: #0b1220; padding: 1px 5px; border-radius: 4px; color: #fcd34d; font-size: 13px; }
+  pre.code { background: #0b1220; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  .mermaid { background: #f8fafc; border-radius: 10px; padding: 16px; margin: 16px 0; overflow-x: auto; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card h4 { margin: 0 0 8px; color: var(--accent); }
+  .tag { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; margin-right: 4px; }
+  .ok { background: #14532d; color: #bbf7d0; } .warn { background: #78350f; color: #fde68a; }
+  .bad { background: #7f1d1d; color: #fecaca; } .new { background: #1e3a8a; color: #bfdbfe; }
+  .callout { border-left: 4px solid var(--accent); background: #0b1220; padding: 10px 14px; margin: 14px 0; border-radius: 4px; }
+  .callout.warn { border-color: var(--warn); }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>RALF ("Bolt") Package Support – EntOS App Managers</h1>
+  <p>libpackage-sky · PackageManager · RuntimeManager · libralf — architecture, launch modes, sequences, build gates</p>
+</header>
+
+<nav id="tabs">
+  <button data-tab="what" class="active">What is RALF</button>
+  <button data-tab="arch">Architecture</button>
+  <button data-tab="modes">Launch modes</button>
+  <button data-tab="seq">Sequences</button>
+  <button data-tab="libpkg">libpackage-sky changes</button>
+  <button data-tab="rm">RuntimeManager changes</button>
+  <button data-tab="ifdef">EntOS ifdefs</button>
+  <button data-tab="trouble">Troubleshooting</button>
+</nav>
+
+<main>
+
+<!-- ===================================================================== -->
+<section id="what" class="active">
+  <h2>What is RALF?</h2>
+  <p><b>RALF</b> is the RDK application package format implemented by <code>ralf-utils</code> (<b>libralf</b>).
+  A RALF package is a signed archive containing an OCI image layout whose payload is an <b>EROFS</b> filesystem image
+  protected by <b>dm-verity</b>. Instead of extracting files (as with EntOS ZIP widgets) the image is <b>mounted
+  read-only</b> and verified block-by-block while being read.</p>
+
+  <table>
+    <tr><th>Aspect</th><th>EntOS ZIP widget</th><th>RALF package</th></tr>
+    <tr><td>Archive</td><td>ZIP with <code>config.xml</code> + <code>signature1.xml</code></td><td>OCI layout (<code>oci-layout</code>, <code>index.json</code>, <code>blobs/sha256/…</code>)</td></tr>
+    <tr><td>Payload</td><td>files extracted to tmpfs</td><td>EROFS image, libralf <code>Package::mount()</code></td></tr>
+    <tr><td>Integrity</td><td>XML-DSig per file at extraction</td><td>signed manifest + dm-verity per block</td></tr>
+    <tr><td>Metadata</td><td>config.xml / capabilities</td><td><code>ralf::PackageMetaData</code> + aux <code>application/vnd.rdk.package.config.v1+json</code></td></tr>
+    <tr><td>Dependencies</td><td>implicit <code>runtime</code> → <code>findRuntime()</code></td><td>explicit list with <code>VersionConstraint</code></td></tr>
+    <tr><td>Layering</td><td><code>/package</code> + optional <code>/runtime</code> bind mounts</td><td>overlayfs base/runtime/app, or classic bind mounts without base</td></tr>
+    <tr><td>User</td><td>per-app uid</td><td>per-app uid (same <code>UserIdManager</code>)</td></tr>
+  </table>
+
+  <div class="callout">Package type is detected <b>by content</b>:
+  <code>ralf::Package::detectPackageFormat(path) == Format::Ralf</code>. A RALF archive lives in the same
+  <code>&lt;packagesDir&gt;/&lt;appId&gt;/package.wgt</code> slot as a ZIP widget.</div>
+
+  <h3>Life of a RALF package in one picture</h3>
+  <pre class="mermaid">
+flowchart LR
+    I[Install&lt;br/&gt;verify + stage + rename] --> R[Register&lt;br/&gt;PackageDatabase]
+    R --> L[Lock&lt;br/&gt;libralf mount EROFS]
+    L --> M[Mount manifest&lt;br/&gt;ralfPkgPath]
+    M --> X{RuntimeManager}
+    X -->|no base| C[Classic Dobby spec]
+    X -->|base layer| O[OCI bundle&lt;br/&gt;overlayfs]
+    C --> D[Dobby container]
+    O --> D
+    D --> U[Stop -> Unlock&lt;br/&gt;unmount]
+  </pre>
+</section>
+
+<!-- ===================================================================== -->
+<section id="arch">
+  <h2>Architecture</h2>
+  <pre class="mermaid">
+flowchart LR
+    subgraph Thunder[WPEFramework in-process plugins]
+        AM[AppManager]
+        LCM[LifecycleManager]
+        PM[PackageManager]
+        RM[RuntimeManager]
+        ASM[AppStorageManager]
+    end
+    subgraph LIB[libPackage.so - libpackage-sky]
+        PI[PackageImpl]
+        PDB[PackageDatabase]
+        PX[PackageExtractor ZIP]
+        RH[RalfPackageHandler NEW]
+        RCC[RalfCapabilityConverter NEW]
+    end
+    LR[libralf]
+    SC[rdkappmanagers-sysconfig&lt;br/&gt;ISystemConfigProvider]
+    subgraph RTI[RuntimeManager internals]
+        DSG[DobbySpecGenerator]
+        RPB[RalfPackageBuilder]
+        ROG[RalfOCIConfigGenerator]
+        RVL[RalfVendorLayer EntOS]
+    end
+    OCI[OCIContainer / Dobby]
+    AM --> PM
+    AM --> LCM --> RM
+    PM --> PI
+    PI --> PDB
+    PI --> PX
+    PI --> RH --> LR
+    RH --> RCC
+    RH --> PDB
+    PI --> SC
+    RM --> DSG
+    RM --> RPB --> ROG
+    RPB --> RVL
+    RM --> ASM
+    RM --> OCI
+  </pre>
+
+  <h3>Data contract (ConfigMetaData → runtime payload)</h3>
+  <table>
+    <tr><th>Field</th><th>Set by (RALF)</th><th>Consumed by</th></tr>
+    <tr><td><code>ralfPkgPath</code></td><td><code>RalfPackageHandler::lock()</code> – mount manifest path</td><td><code>isRalfPackage()</code> – the only RALF discriminator</td></tr>
+    <tr><td><code>appPath</code></td><td>package file; classic RALF: rewritten to app mount</td><td>DobbySpecGenerator → <code>/package</code></td></tr>
+    <tr><td><code>runtimePath</code></td><td>ZIP+RALF runtime: runtime EROFS mount; classic RALF: runtime mount</td><td>DobbySpecGenerator → <code>/runtime</code></td></tr>
+    <tr><td><code>command</code></td><td>runtime entryPoint (relative)</td><td><code>/runtime/&lt;command&gt;</code></td></tr>
+    <tr><td><code>envVars</code></td><td>entos sysconfig <code>getRalfContainerEnvVars(context)</code> (platform, secret, watchdog, DIAL, method) + deps env + app env</td><td><code>addRuntimeEnvironmentToOCIConfig</code></td></tr>
+    <tr><td><code>userId/groupId</code></td><td>app's own uid</td><td>RuntimeManager, AppStorageManager</td></tr>
+    <tr><td><code>capabilities</code></td><td><code>RalfCapabilityConverter</code></td><td>classic spec path, AppManager</td></tr>
+  </table>
+
+  <h3>Mount manifest</h3>
+<pre class="code">{ "packages": [
+    { "pkgMountPath": "/var/run/sky/mounts/com.sky.base_1.0.0/rootfs",   "pkgMetaDataPath": ".../com.sky.base_1.0.0/config.json" },
+    { "pkgMountPath": "/var/run/sky/mounts/com.sky.cobalt_X/rootfs",     "pkgMetaDataPath": ".../com.sky.cobalt_X/config.json" },
+    { "pkgMountPath": "/var/run/sky/mounts/com.example.app_1.2.3/rootfs","pkgMetaDataPath": ".../com.example.app_1.2.3/config.json" } ] }</pre>
+  <div class="callout warn"><b>Ordering rule:</b> dependencies first, requested package last (post-order).
+  RuntimeManager reverse-iterates to build the overlay <code>lowerdir</code>, giving the app top priority.</div>
+
+  <h3>Build switches</h3>
+  <table>
+    <tr><th>Switch</th><th>Where</th><th>Default</th><th>Effect</th></tr>
+    <tr><td><code>ENABLE_RALF_PACKAGE_SUPPORT</code></td><td>libpackage-sky</td><td>OFF</td><td>compiles RalfPackageHandler, links libralf; else inline stub</td></tr>
+    <tr><td><code>RALF_PACKAGE_SUPPORT</code></td><td>RuntimeManager / AppStorageManager</td><td>ON</td><td>compiles <code>ralf/*.cpp</code>, RALF dispatch</td></tr>
+    <tr><td><code>ENTOS_RALF_SUPPORT</code></td><td>RuntimeManager</td><td>ON</td><td>EntOS paths, vendor GPU layer, legacy args, glob devs</td></tr>
+    <tr><td><code>USE_LIBPACKAGE_RALF</code></td><td>PackageManager</td><td>OFF</td><td>generic libpackage runtime companion lock – keep OFF with libpackage-sky</td></tr>
+    <tr><td><code>ralfEnabled</code></td><td>RuntimeManager config</td><td>true</td><td>runtime kill-switch</td></tr>
+  </table>
+</section>
+
+<!-- ===================================================================== -->
+<section id="modes">
+  <h2>Launch modes</h2>
+  <pre class="mermaid">
+flowchart TD
+    START([launch]) --> LOCK[PackageImpl::Lock]
+    LOCK --> FMT{app is RALF?}
+    FMT -- no --> RTQ{widget has runtime?}
+    RTQ -- no --> M1[Mode 1 ZIP native]
+    RTQ -- yes --> RTF{runtime is RALF?}
+    RTF -- no --> M2[Mode 2 ZIP + ZIP runtime]
+    RTF -- yes --> RB{runtime has a base?}
+    RB -- no --> M3[Mode 3 ZIP + RALF runtime&lt;br/&gt;classic /runtime]
+    RB -- yes --> M3B[Mode 3b ZIP on RALF runtime + base&lt;br/&gt;manifest]
+    M3B --> EN
+    FMT -- yes --> RL[RalfPackageHandler::lock&lt;br/&gt;manifest]
+    RL --> EN{RALF build and ralfEnabled?}
+    EN -- no --> M6[Mode 6 rejected&lt;br/&gt;ERROR_RALF_DISABLED]
+    EN -- yes --> CL{getClassicRalfLaunchInfo}
+    CL -- yes --> M4[Mode 4 base-free RALF&lt;br/&gt;classic Dobby spec]
+    CL -- no --> M5[Mode 5 RALF OCI bundle]
+    M1 --> DSG[DobbySpecGenerator&lt;br/&gt;StartContainerFromDobbySpec]
+    M2 --> DSG
+    M3 --> DSG
+    M4 --> DSG
+    M5 --> OB[RalfPackageBuilder&lt;br/&gt;StartContainer bundle]
+  </pre>
+
+  <div class="cards">
+    <div class="card"><h4>Mode 1 – ZIP native</h4><span class="tag ok">unchanged</span>
+      <p>Extracted widget bind-mounted at <code>/package</code>, <code>data.img</code> loop-mounted. Per-app uid.</p></div>
+    <div class="card"><h4>Mode 2 – ZIP app + ZIP runtime</h4><span class="tag ok">unchanged</span>
+      <p>Runtime extracted, bind-mounted at <code>/runtime</code>; args <code>/runtime/&lt;execFilePath&gt;</code>.</p></div>
+    <div class="card"><h4>Mode 3 – ZIP app + RALF runtime</h4><span class="tag new">new</span>
+      <p>e.g. YouTube widget + <code>com.sky.cobalt</code>. <code>RalfPackageHandler::lockRuntime()</code> mounts the runtime with libralf;
+      <code>runtimePath</code> = EROFS mount, <code>command</code> = runtime entryPoint. Lock fails cleanly if the runtime cannot be mounted.</p></div>
+    <div class="card"><h4>Mode 3b – ZIP app on RALF runtime with base</h4><span class="tag new">new</span>
+      <p>As in AI1, a runtime that depends on a base turns the widget into the top layer of an OCI bundle:
+      manifest <code>[base, runtime, widget]</code>, synthetic widget layer config (permissions from capabilities),
+      widget <code>data.img</code> at <code>/home/private</code>, env from entos sysconfig.</p></div>
+    <div class="card"><h4>Mode 4 – base-free RALF</h4><span class="tag new">new</span>
+      <p>Manifest has 1–2 layers (<code>[runtime, application]</code>). RuntimeManager rewrites <code>appPath/runtimePath/command</code>
+      and uses the classic DobbySpecGenerator with the app's own uid, networking + appservicesrdk plugins.</p></div>
+    <div class="card"><h4>Mode 5 – RALF OCI bundle</h4><span class="tag ok">existing, extended</span>
+      <p>overlayfs <code>app:runtime:[vendor]:base</code> + <code>RalfOCIConfigGenerator</code>; <code>StartContainer(bundle)</code>.
+      EntOS adds the vendor GPU layer and base-init process args.</p></div>
+    <div class="card"><h4>Mode 6 – disabled</h4><span class="tag bad">rejected</span>
+      <p><code>ralfEnabled=false</code> or non-RALF RuntimeManager → <code>ERROR_UNAVAILABLE</code> / <code>ERROR_RALF_DISABLED</code>.</p></div>
+  </div>
+
+  <h3>Comparison</h3>
+  <table>
+    <tr><th></th><th>1 ZIP</th><th>2 ZIP+ZIP rt</th><th>3 ZIP+RALF rt</th><th>4 base-free RALF</th><th>5 OCI bundle</th></tr>
+    <tr><td>App payload</td><td>extracted</td><td>extracted</td><td>extracted</td><td>EROFS mount</td><td>EROFS mount</td></tr>
+    <tr><td>Runtime payload</td><td>–</td><td>extracted</td><td><b>EROFS mount</b></td><td>EROFS mount / extracted ZIP</td><td>EROFS mount</td></tr>
+    <tr><td><code>ralfPkgPath</code></td><td>empty</td><td>empty</td><td>empty</td><td>manifest</td><td>manifest</td></tr>
+    <tr><td>uid</td><td>per-app</td><td>per-app</td><td>per-app</td><td>per-app</td><td>per-app</td></tr>
+    <tr><td>Spec</td><td colspan="4">DobbySpecGenerator (classic)</td><td>RalfOCIConfigGenerator</td></tr>
+    <tr><td><code>/runtime</code></td><td>–</td><td>extracted runtime</td><td>runtime mount</td><td>runtime mount</td><td>overlay rootfs</td></tr>
+    <tr><td>Rootfs</td><td colspan="4">Dobby default</td><td>overlayfs</td></tr>
+    <tr><td>OCIContainer</td><td colspan="4"><code>StartContainerFromDobbySpec</code></td><td><code>StartContainer</code></td></tr>
+    <tr><td>Stop cleanup</td><td colspan="4">–</td><td>unmount overlay, rm bundle</td></tr>
+  </table>
+
+  <h3>Mode 3 mounts</h3>
+  <pre class="mermaid">
+flowchart LR
+    A[YouTube package.wgt ZIP] --> AE[extracted YouTube] -->|bind ro| P["/package"]
+    R[com.sky.cobalt package.wgt RALF] -->|libralf mount RO DirectIO NoSuid| M["/var/run/sky/mounts/com.sky.cobalt_ver/rootfs&lt;br/&gt;erofs"]
+    M -->|bind ro nosuid nodev| RT["/runtime"]
+    RT --> CMD["args0 = /runtime/entryPoint"]
+  </pre>
+
+  <h3>Mode 5 bundle and overlay order</h3>
+  <pre class="mermaid">
+flowchart LR
+    subgraph EntOS[ENTOS_RALF_SUPPORT ON - left is highest]
+        A1[app] --> R1[runtime] --> V1[vendor GPU layer] --> B1[base]
+    end
+    subgraph RDK[ENTOS_RALF_SUPPORT OFF]
+        G2["/usr/share/gpu-layer/rootfs"] --> A2[app] --> R2[runtime] --> B2[base]
+    end
+  </pre>
+</section>
+
+<!-- ===================================================================== -->
+<section id="seq">
+  <h2>Key sequences</h2>
+
+  <h3>RALF app with base (Mode 5) – end to end</h3>
+  <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant AM
+    participant PM
+    participant PI as PackageImpl
+    participant RH as RalfPackageHandler
+    participant LR as libralf
+    participant RM as RuntimeManager
+    participant RPB as RalfPackageBuilder
+    participant OCI
+    AM->>PM: Lock(app)
+    PM->>PI: Lock
+    PI->>RH: lock(app)
+    RH->>RH: lockRecursive: base, runtime, app (post-order)
+    RH->>LR: open + isMountable + mount(RO DirectIO NoSuid) per layer
+    RH->>RH: emitPackageConfig per layer
+    RH->>RH: serializeMountInfo -> ralfPkgPath
+    RH-->>PI: SUCCESS
+    PI-->>PM: cfg (ralfPkgPath, sysconfig env, app uid)
+    PM-->>AM: payload
+    AM->>RM: Run(payload) via LifecycleManager
+    RM->>RM: isRalfPackage = true, classic = false
+    RM->>RPB: generateRalfDobbySpec
+    RPB->>RPB: EntOS shared vendor layer, overlay mount, OCI config.json + APPLICATION_TOKEN
+    RPB-->>RM: bundle path
+    RM->>OCI: StartContainer(id, bundle)
+  </pre>
+
+  <h3>ZIP widget + RALF runtime (Mode 3)</h3>
+  <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant PM
+    participant PI as PackageImpl
+    participant PDB as PackageDatabase
+    participant RH as RalfPackageHandler
+    participant LR as libralf
+    participant RM as RuntimeManager
+    participant OCI
+    PM->>PI: Lock(YouTube)
+    PI->>PDB: loadPackage(YouTube) ZIP extract+verify
+    PI->>PDB: findRuntime(application/cobalt) -> com.sky.cobalt
+    PI->>RH: isRalfPackageInstalled(cobalt) = true
+    PI->>RH: lockRuntime(cobalt)
+    RH->>LR: open, mount(RO DirectIO NoSuid)
+    RH-->>PI: runtimePath = EROFS rootfs, command = entryPoint
+    PI->>PI: remember LockedWidget.ralfRuntime
+    PI-->>PM: SUCCESS
+    PM-->>RM: Run(payload runtimePath, command)
+    RM->>RM: widget flow, DobbySpecGenerator binds /runtime
+    RM->>OCI: StartContainerFromDobbySpec
+  </pre>
+
+  <h3>Base-free RALF (Mode 4)</h3>
+  <pre class="mermaid">
+sequenceDiagram
+    participant RH as RalfPackageHandler
+    participant RM as RuntimeManager
+    participant DSG as DobbySpecGenerator
+    participant OCI
+    RH-->>RM: manifest [runtime, application]
+    RM->>RM: getClassicRalfLaunchInfo = true
+    RM->>RM: appPath=app mount, runtimePath=runtime mount, command=entryPoint
+    RM->>RM: unpackedPath = data.img if present
+    RM->>DSG: generate(launchConfig)
+    DSG-->>RM: spec (/package, /runtime, networking, appservicesrdk)
+    RM->>OCI: StartContainerFromDobbySpec
+  </pre>
+
+  <h3>Stop and unlock</h3>
+  <pre class="mermaid">
+sequenceDiagram
+    participant RM as RuntimeManager
+    participant RPB as RalfPackageBuilder
+    participant PM
+    participant PI as PackageImpl
+    participant RH as RalfPackageHandler
+    participant LR as libralf
+    RM->>RPB: cleanupRalfInstance(id, ralfMode)
+    Note over RPB: Mode 5 only: umount overlay, rm bundle
+    PM->>PI: Unlock(app)
+    alt ZIP app
+        PI->>PI: pop LockedWidget
+        PI->>RH: unlock(ralfRuntime) if set
+    else RALF app
+        PI->>RH: unlock(app)
+    end
+    RH->>RH: unlockRecursive deps first, mountCount--
+    RH->>LR: PackageMount::unmount at 0, detach, rm workDir
+  </pre>
+
+  <h3>Install</h3>
+  <pre class="mermaid">
+sequenceDiagram
+    participant PI as PackageImpl
+    participant RH as RalfPackageHandler
+    participant LR as libralf
+    participant PDB as PackageDatabase
+    PI->>RH: install (isRalfPackageFile)
+    RH->>LR: open(CheckCertificateExpiry) + verify()
+    RH->>RH: copy to package.wgt.tmp
+    RH->>LR: re-open staged + verify() (TOCTOU)
+    RH->>RH: fsync, rename, fsync dir
+    RH->>PDB: registerVerifiedPackage
+  </pre>
+</section>
+
+<!-- ===================================================================== -->
+<section id="libpkg">
+  <h2>libpackage-sky changes <span class="tag new">highlight</span></h2>
+  <p class="muted">Branch <code>topic/entos-ralf-support</code> @ <code>01d0ec6</code> vs <code>develop</code> @ <code>55652dc</code> — 23 files, +3167 / −56.</p>
+
+  <table>
+    <tr><th>File</th><th>Change</th></tr>
+    <tr><td><code>RalfPackageHandler.h/.cpp</code> <span class="tag new">new</span></td><td>detect, verify, install, register, initialize, lockRecursive (mixed ZIP/RALF), <b>lockRuntime</b>, unlock, manifest, layer config; inline stub when RALF disabled</td></tr>
+    <tr><td><code>RalfCapabilityConverter.h/.cpp</code> <span class="tag new">new</span></td><td>25 permission URNs + lifecycle + keys → capability string</td></tr>
+    <tr><td><code>PackageImpl.h/.cpp</code></td><td>handler construction; dispatch Install/Uninstall/Lock/Unlock/GetFileMetadata; ZIP-app RALF runtime via <code>lockRuntime</code>; <code>LockedWidget{pinnedWidgets, ralfRuntime}</code>; <code>mOperationLock</code></td></tr>
+    <tr><td><code>PackageDatabase.*</code></td><td><code>registerVerifiedPackage()</code>; ZIP install stage→verify→fsync→rename; boot scan preserves RALF files</td></tr>
+    <tr><td><code>IPackageDatabase.h</code></td><td><code>registerVerifiedPackage()</code> default impl; removed <code>getPackageVersion()</code></td></tr>
+    <tr><td><code>PackageMetadata.*</code></td><td><code>packageFormat</code>, <code>execArgs</code>, <code>environment</code>, <code>dependencies</code></td></tr>
+    <tr><td><code>Config/*</code>, <code>IPackageManagerConfig.h</code></td><td><code>.packages.mountsTmpDir</code> = <code>/var/run/sky/mounts</code></td></tr>
+    <tr><td><code>ISystemConfigProvider.h</code></td><td><code>RalfContainerEnvContext</code> + <code>getRalfContainerEnvVars()</code> overloads with defaults</td></tr>
+    <tr><td><code>CMakeLists.txt</code></td><td><code>ENABLE_RALF_PACKAGE_SUPPORT</code> (OFF), <code>find_package(libralf)</code>, link <code>ralf</code></td></tr>
+  </table>
+
+  <h3>lockRecursive – how a RALF tree is mounted</h3>
+  <pre class="mermaid">
+flowchart TD
+    S([lockRecursive pkg]) --> V{cycle?}
+    V -- yes --> F[false]
+    V -- no --> D{for each dependency}
+    D --> RES[resolveDependencyVersion&lt;br/&gt;ZIP first, then RALF]
+    RES --> W{ZIP widget?}
+    W -- yes --> LW[lockWidget&lt;br/&gt;loadPackage + synthetic config.json]
+    W -- no --> LR[lockRecursive dep]
+    LW --> D
+    LR --> D
+    D -- done --> EX{already mounted?}
+    EX -- yes --> INC[mountCount++] --> OK([true])
+    EX -- no --> CLR[detach stale mount, clear dirs]
+    CLR --> MT{isMountable?}
+    MT -- yes --> MO[mount RO DirectIO NoSuid]
+    MO -- fail --> FB
+    MT -- no --> FB[verify + extractTo fallback]
+    MO -- ok --> CFG[emitPackageConfig]
+    FB --> CFG
+    CFG --> REC[record MountedPackage, mountInfo += layer] --> OK
+  </pre>
+
+  <h3>The ZIP-app + RALF-runtime fix</h3>
+  <div class="callout warn">Before: <code>loadPackage(com.sky.cobalt)</code> ran the ZIP extractor →
+  <code>package widget is missing files (signature1.xml no / config.xml no)</code> →
+  <code>can't find runtimePackage</code> → Lock still returned SUCCESS with empty runtime.</div>
+  <div class="callout">After: <code>PackageImpl::Lock</code> checks <code>isRalfPackageInstalled(runtimeId)</code> and calls
+  <code>RalfPackageHandler::lockRuntime()</code> (same libralf mount as RALF apps). Failure now fails the lock.
+  The runtime is released by <code>Unlock()</code> via <code>LockedWidget.ralfRuntime</code>.</div>
+
+  <h3>Compile-time isolation</h3>
+  <pre class="mermaid">
+flowchart LR
+    H[RalfPackageHandler.h] -->|ENABLE_RALF_PACKAGE_SUPPORT off| S[inline stub&lt;br/&gt;never instantiated]
+    H -->|on| R[real class + libralf]
+    PI[PackageImpl] -->|mRalfPackageHandler == nullptr| Z[unchanged ZIP path]
+  </pre>
+</section>
+
+<!-- ===================================================================== -->
+<section id="rm">
+  <h2>RuntimeManager changes</h2>
+  <p>Before: a RALF build treated <b>every</b> app as RALF (compile-time). After: dispatch at <b>runtime</b> on <code>ralfPkgPath</code>.</p>
+  <pre class="mermaid">
+flowchart TD
+    RUN[Run payload] --> DEC[Decode]
+    DEC --> KS{ralfPkgPath set?}
+    KS -- yes, disabled --> DIS[ERROR_RALF_DISABLED]
+    KS --> RI[ralfInstance = isRalfPackage]
+    RI --> CL{ralfInstance?}
+    CL -- yes --> GC[getClassicRalfLaunchInfo]
+    CL -- no --> UID
+    GC --> UID[uid: app's own uid from payload]
+    UID --> STO[AppStorageManager]
+    STO --> LEG[legacyContainer = !ralf or classic]
+    LEG --> GEN{generate}
+    GEN -- RALF and not classic --> OB[RalfPackageBuilder -> StartContainer]
+    GEN -- else --> DS[DobbySpecGenerator -> StartContainerFromDobbySpec]
+  </pre>
+  <table>
+    <tr><th>Area</th><th>Change</th></tr>
+    <tr><td><code>isRalfPackage()</code></td><td><code>!ralfPkgPath.empty()</code>, false in non-RALF builds</td></tr>
+    <tr><td><code>ralfEnabled</code></td><td>plugin config kill-switch</td></tr>
+    <tr><td><code>getClassicRalfLaunchInfo()</code></td><td>1–2 layers, app last, runtime first, safe relative entryPoint</td></tr>
+    <tr><td><code>cleanupRalfInstance()</code></td><td>overlay cleanup only for RALF instances (<code>ralfMode</code>)</td></tr>
+    <tr><td>DobbySpecGenerator</td><td>private mount only if <code>unpackedPath</code>; networking + appservicesrdk for classic RALF</td></tr>
+    <tr><td>OCI generator</td><td>secrets (<code>APPLICATION_SECRET</code>), payload env, Rialto from session, 0600 config with secrets, merged-rootfs targets</td></tr>
+    <tr><td>EntOS</td><td>vendor GPU layer, <code>/run/sky/bundles</code>, base-init args, bind-only graphics files, glob devs</td></tr>
+  </table>
+</section>
+
+<!-- ===================================================================== -->
+<section id="ifdef">
+  <h2>EntOS-specific ifdefs and protection of non-EntOS RALF</h2>
+  <pre class="mermaid">
+flowchart TB
+    L0[Library choice: libpackage-sky vs generic libpackage] --> L1[ENABLE_RALF_PACKAGE_SUPPORT - libpackage-sky]
+    L1 --> L2[RALF_PACKAGE_SUPPORT_ENABLED - RuntimeManager / AppStorageManager]
+    L2 --> L3[ENTOS_RALF_SUPPORT - RuntimeManager PRIVATE]
+    L3 --> L4[Runtime: ralfPkgPath, ralfEnabled, packageFormat, classic detection]
+  </pre>
+
+  <h3>ENTOS_RALF_SUPPORT sites</h3>
+  <table>
+    <tr><th>Site</th><th>EntOS (ON)</th><th>RDK generic (OFF)</th></tr>
+    <tr><td>GPU config</td><td><code>/etc/sky/aisettings.overrides/vendor-gpu.json</code></td><td><code>/usr/share/gpu-layer/config.json</code></td></tr>
+    <tr><td>Bundle root</td><td><code>/run/sky/bundles/</code></td><td><code>/tmp/ralf/</code></td></tr>
+    <tr><td>GPU layer</td><td>shared <code>RalfVendorLayer</code> (built once per process, AI1 parity), inserted above base</td><td>prebuilt <code>/usr/share/gpu-layer/rootfs</code> on top</td></tr>
+    <tr><td>Bundle cleanup on failure</td><td>yes</td><td>no</td></tr>
+    <tr><td>Process args</td><td><code>setLegacyProcessArgs</code>: base init → runtime → app entryPoint (optional) → app args</td><td>per-layer entryPoints</td></tr>
+    <tr><td>Graphics files</td><td>typed; only <code>bind</code> mounted ro/nosuid/nodev as configured (symlinks via vendor-gpu.json, no source rewriting)</td><td>every entry rbind</td></tr>
+    <tr><td>Graphics devs</td><td><code>glob()</code></td><td>literal</td></tr>
+  </table>
+
+  <h3>Build matrix</h3>
+  <table>
+    <tr><th>Config</th><th>libpkg RALF</th><th>RALF_PACKAGE_SUPPORT</th><th>ENTOS_RALF_SUPPORT</th><th>Result</th></tr>
+    <tr><td>EntOS widget-only</td><td>OFF</td><td>OFF</td><td>OFF (explicit)</td><td><span class="tag warn">configure fails if left default ON (F1)</span></td></tr>
+    <tr><td>EntOS + RALF</td><td>ON</td><td>ON</td><td>ON</td><td><span class="tag ok">intended</span></td></tr>
+    <tr><td>RDK generic RALF</td><td>generic libpackage</td><td>ON</td><td>OFF (explicit)</td><td><span class="tag warn">ungated changes apply</span></td></tr>
+    <tr><td>RDK generic, flag forgotten</td><td>generic</td><td>ON</td><td>ON (default)</td><td><span class="tag bad">EntOS behaviour on non-EntOS</span></td></tr>
+    <tr><td>L0 tests</td><td>–</td><td>defined</td><td>OFF (test default)</td><td><span class="tag ok">non-EntOS covered</span></td></tr>
+  </table>
+
+  <h3>Not protected by ENTOS_RALF_SUPPORT</h3>
+  <table>
+    <tr><th>ID</th><th>Change</th><th>Risk</th></tr>
+    <tr><td>U1</td><td>runtime dispatch on <code>ralfPkgPath</code></td><td><span class="tag ok">low</span></td></tr>
+    <tr><td>U2</td><td>classic base-free RALF launch</td><td><span class="tag bad">medium-high</span></td></tr>
+    <tr><td>U3</td><td>Rialto socket from session (was fixed <code>/tmp/rlto-id</code>)</td><td><span class="tag warn">medium</span></td></tr>
+    <tr><td>U4</td><td>bundle dirs/config no chown, 0755 / 0644 / 0600</td><td><span class="tag warn">low-medium</span></td></tr>
+    <tr><td>U5–U9</td><td>merged-rootfs dirs, secrets/env, strict manifest parse, bind options, classic plugins</td><td><span class="tag ok">low</span></td></tr>
+  </table>
+
+  <h3>Findings</h3>
+  <table>
+    <tr><th>ID</th><th>Finding</th><th>Recommendation</th></tr>
+    <tr><td>F1</td><td><code>ENTOS_RALF_SUPPORT</code> default ON + recipe never sets it → <code>FATAL_ERROR</code> when <code>RALF_PACKAGE_SUPPORT=OFF</code></td><td><code>cmake_dependent_option</code> or default OFF</td></tr>
+    <tr><td>F2</td><td>non-EntOS RALF gets EntOS behaviour by default</td><td>make EntOS opt-in</td></tr>
+    <tr><td>F3</td><td>LibXml2 required/linked but unused</td><td>drop dependency</td></tr>
+    <tr><td>F4</td><td>classic launch ungated</td><td>gate or make configurable</td></tr>
+    <tr><td>F5</td><td>Rialto path change for all RALF</td><td>keep old path under <code>#ifndef ENTOS_RALF_SUPPORT</code> if needed</td></tr>
+    <tr><td>F6</td><td>AppManager RALF block never compiled (no define for AppManager)</td><td>wire define or remove</td></tr>
+    <tr><td>F7</td><td>corrected: <code>getRalfContainerEnvVars</code> exists in sysconfig, now with package context</td><td>closed</td></tr>
+    <tr><td>F9</td><td>per-app uid, <code>APPLICATION_TOKEN</code>, widget data.img apply to every RALF build</td><td>non-EntOS users relying on <code>ralf</code> uid must adapt</td></tr>
+    <tr><td>F8</td><td><code>USE_LIBPACKAGE_RALF</code> + libpackage-sky can double-lock</td><td>keep OFF</td></tr>
+  </table>
+</section>
+
+<!-- ===================================================================== -->
+<section id="trouble">
+  <h2>Troubleshooting</h2>
+  <table>
+    <tr><th>Log substring</th><th>Meaning</th></tr>
+    <tr><td><code>RALF/Bolt package support enabled</code></td><td>libpackage-sky built with RALF</td></tr>
+    <tr><td><code>preserving RALF package</code></td><td>boot scan kept RALF file</td></tr>
+    <tr><td><code>installed RALF package</code></td><td>install success</td></tr>
+    <tr><td><code>mounted '...' at '...' (volume</code></td><td>libralf EROFS mount OK</td></tr>
+    <tr><td><code>trying verified extraction fallback</code></td><td>mount failed → extraction</td></tr>
+    <tr><td><code>Lock '...': ralfPkgPath=</code></td><td>RALF app locked</td></tr>
+    <tr><td><code>Locked RALF runtime</code></td><td>Mode 3 runtime locked</td></tr>
+    <tr><td><code>failed to lock RALF runtime</code></td><td>Mode 3 failure</td></tr>
+    <tr><td><code>Base-free RALF launch</code></td><td>Mode 4</td></tr>
+    <tr><td><code>Generating Ralf Package Config</code></td><td>Mode 5</td></tr>
+    <tr><td><code>RALF launch requires a base package with an init entryPoint</code></td><td>EntOS Mode 5 without base</td></tr>
+    <tr><td><code>ERROR_RALF_DISABLED</code></td><td>Mode 6</td></tr>
+  </table>
+<pre class="code"># libralf mounts
+grep erofs /proc/self/mountinfo
+ls /var/run/sky/mounts/
+# manifest of a locked RALF app
+cat /tmp/APPID_VERSION_metadata.json
+# EntOS OCI bundle
+ls /run/sky/bundles/INSTANCE/
+# Mode 3
+journalctl | grep -E 'Locked RALF runtime|failed to lock RALF runtime'</pre>
+</section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'strict',
+                       flowchart: { htmlLabels: true }, sequence: { useMaxWidth: true } });
+  const rendered = new Set();
+  async function renderSection(id) {
+    if (rendered.has(id)) return;
+    rendered.add(id);
+    const nodes = document.querySelectorAll('#' + id + ' .mermaid');
+    if (nodes.length) await mermaid.run({ nodes });
+  }
+  document.querySelectorAll('#tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('main section').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      const id = btn.dataset.tab;
+      document.getElementById(id).classList.add('active');
+      renderSection(id);
+    });
+  });
+  renderSection('what');
+</script>
+</body>
+</html>
