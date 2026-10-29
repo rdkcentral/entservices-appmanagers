@@ -1,6 +1,6 @@
 precondition = ["Platform"]
 callsign = "org.rdk.LifecycleManager"
-autostart = "false"
+autostart = "@PLUGIN_LIFECYCLEMANAGER_AUTOSTART@"
 
 configuration = JSON()
 
