@@ -1,6 +1,6 @@
 precondition = ["Platform"]
 callsign = "org.rdk.RDKWindowManager"
-autostart = "false"
+autostart = "@PLUGIN_RDKWINDOWMANAGER_AUTOSTART@"
 startuporder = "@PLUGIN_RDK_WINDOW_MANAGER_STARTUPORDER@"
 
 configuration = JSON()
