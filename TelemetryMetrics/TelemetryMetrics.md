@@ -114,6 +114,12 @@ private:
 
 The plugin settings are `mode`, `locator`, `autostart`, and `startuporder`. `APPMANAGERS_ENABLE_T2_INIT` controls T2 initialization in [CMakeLists.txt](CMakeLists.txt). There is no direct TelemetryMetrics-specific L0 target in the current [Tests/L0Tests/CMakeLists.txt](../Tests/L0Tests/CMakeLists.txt); other subsystem telemetry tests exercise the integration indirectly.
 
+The `ENTS_INFO_HomeApp_LaunchRetries` marker from ASAppManager is allowlisted in
+[TelemetryFilters.h](TelemetryFilters.h). Its fields are `timestampMs`,
+`eventType`, `appId`, `scenario`, `totalRetryAttempts`, `configuredRetryLimit`,
+and `retryDurationMs` (plus the plugin-supplied `markerName`). Deployments
+must activate this plugin for ASAppManager's `Record`/`Publish` calls to succeed.
+
 ## 6. Internal Workflows & Execution Flow
 
 ### Metric Recording Flow
