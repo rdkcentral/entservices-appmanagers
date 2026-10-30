@@ -95,7 +95,7 @@ namespace ralf
 
     bool RalfOCIConfigGenerator::addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode)
     {
-        const char* thunderaccess = getenv(THUNDER_ACCESS_ENV_KEY);
+        const char *thunderaccess = getenv(THUNDER_ACCESS_ENV_KEY);
         if (nullptr != thunderaccess)
         {
             addToEnvironment(ociConfigRootNode, THUNDER_ACCESS_ENV_KEY, thunderaccess);
@@ -484,10 +484,69 @@ namespace ralf
         if (packageType == PKG_TYPE_APPLICATION)
         {
             addAppPackageVersionToConfig(ociConfigRootNode, manifestRootNode);
+#ifdef ALLOW_DEV_MOUNT_SUPPORT
+            if (applyDevMountSupport(ociConfigRootNode, configNode))
+            {
+                LOGWARN("Applied development mount support to OCI config\n");
+            }
+#else
+            LOGDBG("Development mount support is not enabled\n");
+#endif // ALLOW_DEV_MOUNT_SUPPORT
         }
 
         return true;
     }
+
+#ifdef ALLOW_DEV_MOUNT_SUPPORT
+    bool RalfOCIConfigGenerator::applyDevMountSupport(Json::Value &ociConfigRootNode, Json::Value &configNode)
+    {
+        bool status = false;
+        if (configNode.isMember(DEV_MOUNT_SUPPORT_URN) && configNode[DEV_MOUNT_SUPPORT_URN].isArray())
+        {
+            /**The structure of the node is defined as follows
+             *
+              "urn:rdk:config:extra-mounts-dbg": [
+                {
+                    "destination": "/folder-inside-container",
+                    "type":"none",
+                    "source": "/folder-on-host",
+                    "options": [
+                         "rbind",
+                         "ro",
+                         "noexec",
+                         "nodev",
+                         "nosuid"
+                    ]
+                }
+              ]
+
+              There is no parsing of the arguments. Each object in the array is added as a mount point to the OCI configuration.
+            *
+            */
+
+            LOGDBG("Processing development mount configuration\n");
+            Json::Value devMountConfig = configNode[DEV_MOUNT_SUPPORT_URN];
+            for (const auto &mount : devMountConfig)
+            {
+                if (mount.isObject())
+                {
+                    ociConfigRootNode[MOUNTS].append(mount);
+                }
+                else
+                {
+                    LOGWARN("Invalid mount configuration, expected an array.\n");
+                }
+            }
+            status = true;
+        }
+        else
+        {
+            LOGDBG("No development mount configuration found\n");
+        }
+        return status;
+    }
+#endif // ALLOW_DEV_MOUNT_SUPPORT
+
     bool RalfOCIConfigGenerator::addAppPackageVersionToConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
     {
         // Identifies the application package version. This value is used for logging, debugging, and version-specific behavior.
@@ -664,18 +723,18 @@ namespace ralf
         return status;
     }
 
-    bool RalfOCIConfigGenerator::applyPermissionsToOCIConfig(Json::Value& ociConfigRootNode,
-                                                        const Json::Value& manifestRootNode,
-                                                        const std::vector<std::string>& envVariables)
+    bool RalfOCIConfigGenerator::applyPermissionsToOCIConfig(Json::Value &ociConfigRootNode,
+                                                             const Json::Value &manifestRootNode,
+                                                             const std::vector<std::string> &envVariables)
     {
-        const auto& pkgNode = manifestRootNode[PACKAGE_TYPE];
+        const auto &pkgNode = manifestRootNode[PACKAGE_TYPE];
         if (!pkgNode.isString())
         {
             LOGWARN("Package type is missing or not a string; skipping permission-based OCI config updates");
             return true;
         }
 
-        const char* pkgTypeStr = pkgNode.asCString();
+        const char *pkgTypeStr = pkgNode.asCString();
         if (!pkgTypeStr)
         {
             return true;
@@ -689,7 +748,7 @@ namespace ralf
             return true;
         }
 
-        const auto& permissions = manifestRootNode[ralf::PERMISSIONS];
+        const auto &permissions = manifestRootNode[ralf::PERMISSIONS];
         if (!permissions.isArray())
         {
             LOGWARN("Permissions node is missing or not an array; skipping permission-based OCI config updates");
@@ -704,10 +763,10 @@ namespace ralf
         return (nwStatus && envStatus);
     }
 
-    bool RalfOCIConfigGenerator::addPermissionBasedEnvironmentVariables(Json::Value& ociConfigRootNode,
-                                    const Json::Value& permissions, const std::vector<std::string>& envVariables)
+    bool RalfOCIConfigGenerator::addPermissionBasedEnvironmentVariables(Json::Value &ociConfigRootNode,
+                                                                        const Json::Value &permissions, const std::vector<std::string> &envVariables)
     {
-        for (const auto& permValue : permissions)
+        for (const auto &permValue : permissions)
         {
             if (!permValue.isString())
             {
