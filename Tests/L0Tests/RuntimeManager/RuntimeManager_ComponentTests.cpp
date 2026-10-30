@@ -34,6 +34,12 @@
 #include <iostream>
 #include <unistd.h>
 #include <string>
+#include <set>
+#include <sstream>
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+#include <json/json.h>
+#include <sys/mount.h>
+#endif
 
 #include "AIConfiguration.h"
 #include "ApplicationConfiguration.h"
@@ -669,6 +675,139 @@ WPEFramework::Plugin::RuntimeConfiguration MakeValidRuntimeConfiguration()
     return cfg;
 }
 } // namespace
+
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+uint32_t Test_AIConfig_VendorMounts()
+{
+    L0Test::TestResult tr;
+    const std::string configPath = CreateUniqueTmpPath("vendor_mounts_yaml");
+    {
+        std::ofstream configFile(configPath);
+        configFile << "mounts:\n"
+                   << "  - /tmp/redis.sock,MS_BIND|MS_NOSUID|MS_NODEV|MS_NOEXEC\n"
+                   << "  - /dev/fwsocket,MS_BIND|MS_NOSUID|MS_NODEV|MS_NOEXEC\n"
+                   << "  - /dev/sysfwsocket,MS_BIND|MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC\n"
+                   << "  - /tmp/rtkaudiosvc,MS_BIND|MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC\n"
+                   << "  - /tmp/rtkaudiofd,MS_BIND|MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC\n";
+    }
+    WPEFramework::Plugin::AIConfiguration config;
+    config.initialize(configPath);
+    const auto& mounts = config.getVendorMounts();
+    L0Test::ExpectTrue(tr, 5u == mounts.size(), "All five Realtek vendor mounts are parsed");
+    if (5u == mounts.size())
+    {
+        const unsigned long baseFlags = MS_BIND | MS_NOSUID | MS_NODEV | MS_NOEXEC;
+        const std::vector<std::string> paths = {
+            "/tmp/redis.sock", "/dev/fwsocket", "/dev/sysfwsocket", "/tmp/rtkaudiosvc", "/tmp/rtkaudiofd"
+        };
+        for (size_t index = 0; index < paths.size(); ++index)
+        {
+            L0Test::ExpectTrue(tr, paths[index] == mounts[index].getPath(), "Vendor mount path preserved");
+            const unsigned long expectedFlags = baseFlags | (index < 2 ? 0 : MS_RDONLY);
+            L0Test::ExpectTrue(tr, expectedFlags == mounts[index].getMountFlags(), "Vendor mount flags preserved");
+        }
+    }
+    config.initialize(configPath);
+    L0Test::ExpectTrue(tr, 5u == config.getVendorMounts().size(), "Reload does not duplicate vendor mounts");
+    config.initialize();
+    L0Test::ExpectTrue(tr, config.getVendorMounts().empty(), "Absent vendor config leaves no vendor mounts");
+    std::remove(configPath.c_str());
+    return tr.failures;
+}
+
+uint32_t Test_AIConfig_InvalidVendorMounts()
+{
+    L0Test::TestResult tr;
+    const std::string configPath = CreateUniqueTmpPath("invalid_vendor_mounts_yaml");
+    {
+        std::ofstream configFile(configPath);
+        configFile << "mounts:\n"
+                   << "  - /tmp/missing_separator\n"
+                   << "  - relative.sock,MS_BIND\n"
+                   << "  - /tmp/no_bind.sock,MS_RDONLY\n"
+                   << "  - /tmp/unknown.sock,MS_BIND|MS_UNKNOWN\n"
+                   << "  - /tmp/empty_flag.sock,MS_BIND|\n"
+                   << "  - /tmp/empty_middle.sock,MS_BIND||MS_RDONLY\n"
+                   << "  - /tmp/extra_comma.sock,MS_BIND,MS_RDONLY\n"
+                   << "  - {path: /tmp/wrong_type.sock}\n"
+                   << "  - ' /tmp/valid.sock , MS_BIND | MS_RDONLY '\n"
+                   << "  - /tmp/valid.sock,MS_BIND|MS_RDONLY\n";
+    }
+    WPEFramework::Plugin::AIConfiguration config;
+    config.initialize(configPath);
+    L0Test::ExpectTrue(tr, 1u == config.getVendorMounts().size(), "Malformed and duplicate mounts are skipped");
+    if (1u == config.getVendorMounts().size())
+    {
+        L0Test::ExpectTrue(tr, "/tmp/valid.sock" == config.getVendorMounts()[0].getPath(), "Whitespace is trimmed");
+    }
+    {
+        std::ofstream configFile(configPath);
+        configFile << "mounts: invalid\n";
+    }
+    config.initialize(configPath);
+    L0Test::ExpectTrue(tr, config.getVendorMounts().empty(), "Non-sequence mounts are ignored");
+    std::remove(configPath.c_str());
+    return tr.failures;
+}
+
+uint32_t Test_DobbySpecGenerator_VendorMounts()
+{
+    L0Test::TestResult tr;
+    const std::string configPath = CreateUniqueTmpPath("vendor_spec_yaml");
+    const std::string writablePath = CreateUniqueTmpPath("vendor_writable");
+    const std::string readonlyPath = CreateUniqueTmpPath("vendor_readonly");
+    const std::string missingPath = CreateUniqueTmpPath("vendor_missing");
+    {
+        std::ofstream writableFile(writablePath);
+        std::ofstream readonlyFile(readonlyPath);
+        std::ofstream configFile(configPath);
+        configFile << "mounts:\n"
+                   << "  - " << writablePath << ",MS_BIND|MS_NOSUID|MS_NODEV|MS_NOEXEC\n"
+                   << "  - " << readonlyPath << ",MS_BIND|MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC\n"
+                   << "  - " << missingPath << ",MS_BIND\n";
+    }
+    WPEFramework::Plugin::AIConfiguration config;
+    config.initialize(configPath);
+    WPEFramework::Plugin::DobbySpecGenerator generator(config);
+    auto appConfig = MakeValidAppConfig();
+    auto runtimeConfig = MakeValidRuntimeConfiguration();
+    std::string spec;
+    L0Test::ExpectTrue(tr, generator.generate(appConfig, runtimeConfig, spec), "Vendor mount spec generation succeeds");
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::istringstream stream(spec);
+    std::string errors;
+    L0Test::ExpectTrue(tr, Json::parseFromStream(builder, stream, &root, &errors), "Generated spec is valid JSON");
+    size_t vendorCount = 0;
+    for (const auto& mount : root["mounts"])
+    {
+        const std::string source = mount["source"].asString();
+        L0Test::ExpectTrue(tr, missingPath != source, "Unavailable vendor mount is omitted");
+        if (writablePath == source || readonlyPath == source)
+        {
+            ++vendorCount;
+            L0Test::ExpectTrue(tr, source == mount["destination"].asString(), "Vendor mount destination matches source");
+            L0Test::ExpectTrue(tr, "bind" == mount["type"].asString(), "Vendor mount type is bind");
+            std::set<std::string> options;
+            for (const auto& option : mount["options"])
+            {
+                options.insert(option.asString());
+            }
+            std::set<std::string> expected = {"bind", "nosuid", "nodev", "noexec"};
+            if (readonlyPath == source)
+            {
+                expected.insert("ro");
+            }
+            L0Test::ExpectTrue(tr, expected == options, "Vendor mount options preserve YAML flags");
+        }
+    }
+    L0Test::ExpectTrue(tr, 2u == vendorCount, "Both available vendor mounts are included");
+    std::remove(configPath.c_str());
+    std::remove(writablePath.c_str());
+    std::remove(readonlyPath.c_str());
+    return tr.failures;
+}
+#endif
 
 /* Test_DobbySpecGenerator_GenerateWithValidConfig
  *
