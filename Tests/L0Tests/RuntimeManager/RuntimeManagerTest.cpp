@@ -80,6 +80,11 @@ extern uint32_t Test_AIConfig_ResourceManagerClientDisabledByDefault();
 extern uint32_t Test_AIConfig_SvpDisabledByDefault();
 extern uint32_t Test_AIConfig_IPv6DisabledByDefault();
 extern uint32_t Test_AIConfig_PrintAIConfigurationDoesNotCrash();
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+extern uint32_t Test_AIConfig_VendorMounts();
+extern uint32_t Test_AIConfig_InvalidVendorMounts();
+extern uint32_t Test_DobbySpecGenerator_VendorMounts();
+#endif
 extern uint32_t Test_DobbyEventListener_ConstructionAndDestruction();
 extern uint32_t Test_DobbyEventListener_InitializeWithNullOCIPlugin();
 extern uint32_t Test_DobbyEventListener_DeinitializeWithoutInitialize();
@@ -383,6 +388,11 @@ int main()
         { "AIConfig_SvpDisabledByDefault",                                           Test_AIConfig_SvpDisabledByDefault },
         { "AIConfig_IPv6DisabledByDefault",                                          Test_AIConfig_IPv6DisabledByDefault },
         { "AIConfig_PrintAIConfigurationDoesNotCrash",                               Test_AIConfig_PrintAIConfigurationDoesNotCrash },
+    #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+        { "AIConfig_VendorMounts",                                                  Test_AIConfig_VendorMounts },
+        { "AIConfig_InvalidVendorMounts",                                           Test_AIConfig_InvalidVendorMounts },
+        { "DobbySpecGenerator_VendorMounts",                                         Test_DobbySpecGenerator_VendorMounts },
+    #endif
         { "DobbyEventListener_ConstructionAndDestruction",                           Test_DobbyEventListener_ConstructionAndDestruction },
         { "DobbyEventListener_InitializeWithNullOCIPlugin",                          Test_DobbyEventListener_InitializeWithNullOCIPlugin },
         { "DobbyEventListener_DeinitializeWithoutInitialize",                        Test_DobbyEventListener_DeinitializeWithoutInitialize },

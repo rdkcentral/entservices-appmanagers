@@ -584,11 +584,25 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
 
     //TODO SUPPORT Netflix specific mounts
     //TODO SUPPORT SVP file mounts
-    //TODO SUPPORT Platform specific mounts
     //TODO SUPPORT Airplay specific mounts
     //TODO SUPPORT TSB Storage
     //TODO SUPPORT USB Mass storage
     //TODO SUPPORT PerfettoSocketPath not mounted
+
+    for (const auto& vendorMount : mAIConfiguration->getVendorMounts())
+    {
+        if (0 == access(vendorMount.getPath().c_str(), F_OK))
+        {
+            LOGINFO("Applying vendor mount source=%s destination=%s for appId=%s",
+                vendorMount.getPath().c_str(), vendorMount.getPath().c_str(), config.mAppId.c_str());
+            mounts.append(createBindMount(vendorMount.getPath(), vendorMount.getPath(), vendorMount.getMountFlags()));
+        }
+        else
+        {
+            LOGWARN("Vendor mount source '%s' unavailable for appId=%s (errno=%d)",
+                    vendorMount.getPath().c_str(), config.mAppId.c_str(), errno);
+        }
+    }
 
     std::vector<ExtraBindMount> extraMountEntries;
     if (true == getExtraMountEntries(runtimeConfig.capabilities, extraMountEntries))

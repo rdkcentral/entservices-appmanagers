@@ -22,6 +22,28 @@ environment-variable generation in `DobbySpecGenerator` for DIAL-enabled
 applications. Set `-DRUNTIMEMANAGER_ENABLE_DIALCONFIG=ON` when configuring both
 RuntimeManager and its standalone L0 tests to build and test this behavior.
 
+### Vendor Bind Mounts
+
+With `ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG=ON`, `AIConfiguration` reads the YAML
+file selected by RuntimeManager's `runtimeConfigFile`. The optional `mounts`
+sequence supplies platform bind mounts to `DobbySpecGenerator`:
+
+```yaml
+mounts:
+    - /tmp/redis.sock,MS_BIND|MS_NOSUID|MS_NODEV|MS_NOEXEC
+    - /tmp/rtkaudiosvc,MS_BIND|MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC
+```
+
+Each entry uses the same absolute path on the host and in the container.
+`MS_BIND` is required; malformed entries and unknown flags are skipped with a
+warning. Duplicate paths are included only once. Host services must create their
+socket paths before app launch. Unavailable paths are skipped with a warning;
+relaunch the app after the service becomes available. App-capability `extraMounts`
+remain independent. These vendor mounts apply to Dobby-spec generation, not RALF.
+
+Enable the same CMake option for the standalone L0 target to build the YAML
+parsing and vendor-mount regression tests; this requires `yaml-cpp`.
+
 ### Interacting Subsystems
 
 | Subsystem | Interaction Type | Purpose |

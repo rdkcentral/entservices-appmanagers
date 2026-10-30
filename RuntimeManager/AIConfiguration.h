@@ -33,6 +33,19 @@ namespace Plugin
     class AIConfiguration
     {
         public:
+            class VendorMount
+            {
+                public:
+                    VendorMount(const std::string& path, unsigned long flags)
+                        : mPath(path), mMountFlags(flags) {}
+                    const std::string& getPath() const { return mPath; }
+                    unsigned long getMountFlags() const { return mMountFlags; }
+
+                private:
+                    std::string mPath;
+                    unsigned long mMountFlags;
+            };
+
             AIConfiguration();
             virtual ~AIConfiguration();
             void initialize(const std::string& runtimeConfigFile = "");
@@ -60,6 +73,7 @@ namespace Plugin
             // system configuration
             std::list<std::string> getPreloads() const;
             std::list<std::string> getEnvs() const;
+            const std::vector<VendorMount>& getVendorMounts() const;
 
             int getRialtoOverride() const;
 
@@ -92,6 +106,7 @@ namespace Plugin
             // system configuration
             std::list<std::string> mPreloads;
             std::list<std::string> mEnvVariables;
+            std::vector<VendorMount> mExtraMounts;
             std::list<std::string> mSvpFiles;
             std::list<std::string> mDefaultAllowedLogLevels;
             int mRialtoOverride;
