@@ -25,7 +25,6 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
-#include <ftw.h>
 #include <mutex>
 #include <sys/statvfs.h>
 #include <vector>
@@ -40,34 +39,31 @@
 
 #define PACKAGES_STORAGE_PATH "/media/apps/sky/packages"
 
-namespace {
-    // nftw() callbacks take no user data, so the running total is file-static.
-    std::mutex gDirSizeLock;
-    uint64_t gDirSizeBytes = 0;
+namespace WPEFramework {
+namespace Plugin {
 
-    int getSize(const char*, const struct stat* sb, int typeflag, struct FTW*)
+    std::mutex PackageManagerImplementation::mDirSizeLock;
+    uint64_t PackageManagerImplementation::mDirSizeBytes = 0;
+
+    int PackageManagerImplementation::getSize(const char*, const struct stat* sb, int typeflag, struct FTW*)
     {
         if ((FTW_NS != typeflag) && (FTW_DNR != typeflag) && (nullptr != sb)) {
             // st_blocks is always in 512-byte units, matching `du -sk`.
-            gDirSizeBytes += static_cast<uint64_t>(sb->st_blocks) * 512;
+            mDirSizeBytes += static_cast<uint64_t>(sb->st_blocks) * 512;
         }
         return 0;
     }
 
-    bool getDirectorySizeInBytes(const std::string& path, uint64_t& sizeBytes)
+    bool PackageManagerImplementation::getDirectorySizeInBytes(const std::string& path, uint64_t& sizeBytes)
     {
-        std::lock_guard<std::mutex> lock(gDirSizeLock);
-        gDirSizeBytes = 0;
+        std::lock_guard<std::mutex> lock(mDirSizeLock);
+        mDirSizeBytes = 0;
         if (0 != nftw(path.c_str(), getSize, 64, FTW_PHYS | FTW_MOUNT)) {
             return false;
         }
-        sizeBytes = gDirSizeBytes;
+        sizeBytes = mDirSizeBytes;
         return true;
     }
-}
-
-namespace WPEFramework {
-namespace Plugin {
 
     RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::PackageManagerTelemetryReporting, "packageManagerBootstrapTime")
 
@@ -1508,4 +1504,3 @@ Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(co
 }
 } // namespace Plugin
 } // namespace WPEFramework
-
