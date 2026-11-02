@@ -220,6 +220,10 @@ namespace WPEFramework
         std::string base2 = (pos2 == std::string::npos) ? v2 : v2.substr(0, pos2);
 
         auto parseVersion = [](const std::string& version, int& major, int& minor, int& patch, int& build) -> bool {
+            if (version.empty() || ('.' == version.back()))
+            {
+                return false;
+            }
             std::istringstream versionStream(version);
             std::string token;
             int components[4] = {0, 0, 0, 0};
@@ -318,7 +322,7 @@ namespace WPEFramework
             PackageInfo packageInfo;
             packageInfo.fileLocator = filepath;
             LOGDBG("Found package folder: %s", filepath.c_str());
-            if (packageInstaller->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.configMetadata) == Core::ERROR_NONE)
+            if (packageInstaller->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.runtimeConfigPayload) == Core::ERROR_NONE)
             {
                 LOGINFO("Found package: %s, version: %s", packageInfo.packageId.c_str(), packageInfo.version.c_str());
             }
@@ -586,6 +590,9 @@ namespace WPEFramework
 
         releasePackageManagerObject(packageInstaller);
 
+        mAdminLock.Lock();
+        mPreinstallState = State::IN_PROGRESS;
+        mAdminLock.Unlock();
         try
         {
             mInstallThread = std::thread(&PreinstallManagerImplementation::installPackages, this, std::move(preinstallPackages));

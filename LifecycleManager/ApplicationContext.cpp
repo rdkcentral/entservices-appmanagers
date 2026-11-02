@@ -24,7 +24,7 @@ namespace WPEFramework
 {
     namespace Plugin
     {
-	ApplicationLaunchParams::ApplicationLaunchParams(): mAppId(""), mLaunchIntent(""), mLaunchArgs(""), mTargetState(Exchange::ILifecycleManager::LifecycleState::UNLOADED), mRuntimeConfigObject()
+	ApplicationLaunchParams::ApplicationLaunchParams(): mAppId(""), mLaunchIntent(""), mLaunchArgs(""), mTargetState(Exchange::ILifecycleManager::LifecycleState::UNLOADED), mRuntimeConfigPayload()
         {
 	}
 
@@ -104,13 +104,13 @@ namespace WPEFramework
             mStateChangeId = id;		
 	}
 
-        void ApplicationContext::setApplicationLaunchParams(const string& appId, const string& launchIntent, const string& launchArgs, Exchange::ILifecycleManager::LifecycleState targetState, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject)
+        void ApplicationContext::setApplicationLaunchParams(const string& appId, const string& launchIntent, const string& launchArgs, Exchange::ILifecycleManager::LifecycleState targetState, const std::string& runtimeConfigPayload)
 	{
             mLaunchParams.mAppId = appId;
             mLaunchParams.mLaunchIntent = launchIntent;
             mLaunchParams.mLaunchArgs = launchArgs;
             mLaunchParams.mTargetState = targetState;
-            mLaunchParams.mRuntimeConfigObject = runtimeConfigObject;
+            mLaunchParams.mRuntimeConfigPayload = runtimeConfigPayload;
 	}
 
         void ApplicationContext::setApplicationKillParams(bool force)
