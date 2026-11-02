@@ -531,13 +531,13 @@ namespace ralf
                 if (mount.isObject())
                 {
                     ociConfigRootNode[MOUNTS].append(mount);
+                    status = true;
                 }
                 else
                 {
                     LOGWARN("Invalid mount configuration, expected an array.\n");
                 }
             }
-            status = true;
         }
         else
         {
