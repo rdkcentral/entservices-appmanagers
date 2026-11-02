@@ -30,7 +30,7 @@ public:
 
     MOCK_METHOD(WPEFramework::Core::hresult, Register, (INotification *notification), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Unregister, (INotification *notification), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Run, (const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, Run, (const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings, const std::string& runtimeConfigObject), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Hibernate, (const string& appInstanceId), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Wake, (const string& appInstanceId, const RuntimeState runtimeState), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Suspend, (const string& appInstanceId), (override));

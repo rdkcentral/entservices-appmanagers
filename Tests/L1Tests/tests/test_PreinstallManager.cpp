@@ -31,54 +31,6 @@
 #include <utility>
 #include <vector>
 
-// Keep RuntimeConfig ABI consistent in this TU to prevent weak-symbol
-// destructor interposition from picking a mismatched layout at runtime.
-#ifndef RUNTIME_CONFIG
-#define RUNTIME_CONFIG
-namespace WPEFramework {
-namespace Exchange {
-struct RuntimeConfig {
-    bool dial;
-    bool wanLanAccess;
-    bool thunder;
-    int32_t systemMemoryLimit;
-    int32_t gpuMemoryLimit;
-    std::string envVariables;
-    uint32_t userId;
-    uint32_t groupId;
-    uint32_t dataImageSize;
-
-    bool resourceManagerClientEnabled;
-    std::string dialId;
-    std::string command;
-    std::string appType;
-    std::string appPath;
-    std::string runtimePath;
-
-    std::string logFilePath;
-    uint32_t logFileMaxSize;
-    std::string logLevels;
-    bool mapi;
-    std::string fkpsFiles;
-    std::string capabilities;
-    std::string ralfPkgPath;
-
-    std::string fireboltVersion;
-    bool enableDebugger;
-
-    ~RuntimeConfig();
-};
-} // namespace Exchange
-} // namespace WPEFramework
-#endif
-
-namespace WPEFramework {
-namespace Exchange {
-RuntimeConfig::~RuntimeConfig() = default;
-} // namespace Exchange
-} // namespace WPEFramework
-
-
 #include "COMLinkMock.h"
 #include "FactoriesImplementation.h"
 #include "Module.h"
@@ -495,7 +447,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallSendsCompletionE
         .WillOnce(Invoke([](const std::string&,
                             std::string& id,
                             std::string& version,
-                            WPEFramework::Exchange::RuntimeConfig&) {
+                            std::string&) {
             id = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
             version = PREINSTALL_MANAGER_TEST_VERSION;
             return Core::ERROR_NONE;
@@ -578,7 +530,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallHandlesInvalidPackageFromGetConfig)
         .WillOnce(Invoke([](const std::string&,
                             std::string&,
                             std::string&,
-                            WPEFramework::Exchange::RuntimeConfig&) {
+                            std::string&) {
             return Core::ERROR_GENERAL;
         }));
 
@@ -609,7 +561,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallSkipsEqualVersio
         .WillOnce(Invoke([](const std::string&,
                             std::string& id,
                             std::string& version,
-                            WPEFramework::Exchange::RuntimeConfig&) {
+                            std::string&) {
             id = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
             version = PREINSTALL_MANAGER_TEST_VERSION;
             return Core::ERROR_NONE;
@@ -644,7 +596,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallInstallsNewerVer
         .WillOnce(Invoke([](const std::string&,
                             std::string& id,
                             std::string& version,
-                            WPEFramework::Exchange::RuntimeConfig&) {
+                            std::string&) {
             id = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
             version = PREINSTALL_MANAGER_TEST_VERSION;
             return Core::ERROR_NONE;
@@ -679,7 +631,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallInvalidInstalled
         .WillOnce(Invoke([](const std::string&,
                             std::string& id,
                             std::string& version,
-                            WPEFramework::Exchange::RuntimeConfig&) {
+                            std::string&) {
             id = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
             version = PREINSTALL_MANAGER_TEST_VERSION;
             return Core::ERROR_NONE;
@@ -708,7 +660,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallListPackagesFail
         .WillOnce(Invoke([](const std::string&,
                             std::string& id,
                             std::string& version,
-                            WPEFramework::Exchange::RuntimeConfig&) {
+                            std::string&) {
             id = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
             version = PREINSTALL_MANAGER_TEST_VERSION;
             return Core::ERROR_NONE;

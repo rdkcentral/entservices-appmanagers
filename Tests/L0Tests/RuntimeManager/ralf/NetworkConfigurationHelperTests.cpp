@@ -205,7 +205,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_INTERNET);
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
 
-    const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
+    const std::vector<std::string> envVariables = { "FIREBOLT_ENDPOINT=ws://127.0.0.1:3473" };
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
         ociConfigRootNode, manifestRootNode, envVariables);
@@ -230,7 +230,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     Json::Value manifestRootNode(Json::objectValue);
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
-        ociConfigRootNode, manifestRootNode, std::string());
+        ociConfigRootNode, manifestRootNode, std::vector<std::string>());
     L0Test::ExpectTrue(tr, status,
                        "updatePermissionBasedNetworkConfiguration() returns true when permissions node is absent");
     L0Test::ExpectTrue(tr, !ociConfigRootNode.isMember(ralf::RDKPLUGINS),
@@ -248,7 +248,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     manifestRootNode[ralf::PERMISSIONS] = "urn:rdk:permission:firebolt";
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
-        ociConfigRootNode, manifestRootNode, std::string());
+        ociConfigRootNode, manifestRootNode, std::vector<std::string>());
     L0Test::ExpectTrue(tr, status,
                        "updatePermissionBasedNetworkConfiguration() returns true when permissions node is not an array");
     L0Test::ExpectTrue(tr, !ociConfigRootNode.isMember(ralf::RDKPLUGINS),
@@ -267,7 +267,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     manifestRootNode[ralf::PERMISSIONS].append("urn:rdk:permission:irrelevant");
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
-        ociConfigRootNode, manifestRootNode, std::string());
+        ociConfigRootNode, manifestRootNode, std::vector<std::string>());
     L0Test::ExpectTrue(tr, status,
                        "updatePermissionBasedNetworkConfiguration() returns true when no relevant permissions are present");
     L0Test::ExpectTrue(tr, !ociConfigRootNode.isMember(ralf::RDKPLUGINS),
@@ -292,7 +292,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     netData[NETWORK_IPV6] = true;
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
-        ociConfigRootNode, manifestRootNode, std::string());
+        ociConfigRootNode, manifestRootNode, std::vector<std::string>());
     L0Test::ExpectTrue(tr, status,
                        "updatePermissionBasedNetworkConfiguration() returns true when internet permission is already fulfilled");
     L0Test::ExpectEqStr(tr, netData[ralf::TYPE].asString(), NETWORK_TYPE_NAT,
@@ -313,7 +313,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_INTERNET);
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
-        ociConfigRootNode, manifestRootNode, std::string());
+        ociConfigRootNode, manifestRootNode, std::vector<std::string>());
     L0Test::ExpectTrue(tr, status,
                        "updatePermissionBasedNetworkConfiguration() returns true when internet permission requires only NAT/dnsmasq defaults");
 
@@ -337,7 +337,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     setenv(ralf::THUNDER_ACCESS_ENV_KEY, "127.0.0.1:9998", 1);
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
-        ociConfigRootNode, manifestRootNode, std::string());
+        ociConfigRootNode, manifestRootNode, std::vector<std::string>());
     L0Test::ExpectTrue(tr, status,
                        "updatePermissionBasedNetworkConfiguration() returns true for THUNDER_ACCESS host:port form");
 
@@ -370,7 +370,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     setenv(ralf::THUNDER_ACCESS_ENV_KEY, "127.0.0.1:abc", 1);
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
-        ociConfigRootNode, manifestRootNode, std::string());
+        ociConfigRootNode, manifestRootNode, std::vector<std::string>());
     L0Test::ExpectTrue(tr, !status,
                        "updatePermissionBasedNetworkConfiguration() returns false for invalid Thunder endpoint when THUNDER permission is requested");
 
@@ -396,7 +396,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     setenv(ralf::THUNDER_ACCESS_ENV_KEY, "192.168.0.5:9998", 1);
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
-        ociConfigRootNode, manifestRootNode, std::string());
+        ociConfigRootNode, manifestRootNode, std::vector<std::string>());
     L0Test::ExpectTrue(tr, !status,
                        "updatePermissionBasedNetworkConfiguration() returns false when THUNDER_ACCESS is non-loopback");
 
@@ -414,7 +414,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
-        ociConfigRootNode, manifestRootNode, std::string());
+        ociConfigRootNode, manifestRootNode, std::vector<std::string>());
     L0Test::ExpectTrue(tr, !status,
                        "updatePermissionBasedNetworkConfiguration() returns false when FIREBOLT permission is requested but endpoint is absent");
 
@@ -435,7 +435,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
 
-    const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://10.0.0.9:3473\"]";
+    const std::vector<std::string> envVariables = { "FIREBOLT_ENDPOINT=ws://10.0.0.9:3473" };
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
         ociConfigRootNode, manifestRootNode, envVariables);
     L0Test::ExpectTrue(tr, !status,
@@ -458,7 +458,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     existingRule[ralf::PROTOCOL] = "tcp";
     ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(existingRule);
 
-    const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
+    const std::vector<std::string> envVariables = { "FIREBOLT_ENDPOINT=ws://127.0.0.1:3473" };
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
         ociConfigRootNode, manifestRootNode, envVariables);
     L0Test::ExpectTrue(tr, status,
@@ -492,7 +492,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     existingThunderRule[ralf::PROTOCOL] = "tcp";
     ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(existingThunderRule);
 
-    const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
+    const std::vector<std::string> envVariables = { "FIREBOLT_ENDPOINT=ws://127.0.0.1:3473" };
     setenv(ralf::THUNDER_ACCESS_ENV_KEY, "127.0.0.1:9998", 1);
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
@@ -523,7 +523,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     invalidExistingRule[ralf::PROTOCOL] = "tcp";
     ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(invalidExistingRule);
 
-    const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
+    const std::vector<std::string> envVariables = { "FIREBOLT_ENDPOINT=ws://127.0.0.1:3473" };
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
         ociConfigRootNode, manifestRootNode, envVariables);
     L0Test::ExpectTrue(tr, status,
@@ -621,7 +621,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_THUNDER);
 
-    const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
+    const std::vector<std::string> envVariables = { "FIREBOLT_ENDPOINT=ws://127.0.0.1:3473" };
     setenv(ralf::THUNDER_ACCESS_ENV_KEY, "127.0.0.1:9998", 1);
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
@@ -662,7 +662,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
 
-    const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
+    const std::vector<std::string> envVariables = { "FIREBOLT_ENDPOINT=ws://127.0.0.1:3473" };
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
         ociConfigRootNode, manifestRootNode, envVariables);
 
@@ -691,7 +691,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_THUNDER);
 
-    const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\",\"TARGET_STATE=4\"]";
+    const std::vector<std::string> envVariables = { "FIREBOLT_ENDPOINT=ws://127.0.0.1:3473", "TARGET_STATE=4" };
     setenv(ralf::THUNDER_ACCESS_ENV_KEY, "127.0.0.1:9998", 1);
 
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(

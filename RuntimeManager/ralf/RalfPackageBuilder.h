@@ -22,7 +22,7 @@
 #include <vector>
 #include "RalfConstants.h"
 #include "../ApplicationConfiguration.h"
-#include <interfaces/IRuntimeManager.h>
+#include "../RuntimeConfiguration.h"
 
 namespace ralf
 {
@@ -55,13 +55,13 @@ namespace ralf
         /**
          * This function generates the dobby specification for a Ralf package based on the given application configuration and runtime configuration.
          * We will get details about userid,groupid, mWesterosSocketPath etc from ApplicationConfiguration
-         * and Ralf package details from RuntimeConfig
+         * and Ralf package details from RuntimeConfiguration
          * @param config The application configuration.
          * @param runtimeConfigObject The runtime configuration.
          * @param dobbySpec Output parameter that will hold the path to the RALF rootfs
          * @return true if the dobby specification was generated successfully, false otherwise.
          */
-        bool generateRalfDobbySpec(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, std::string &dobbySpec);
+        bool generateRalfDobbySpec(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, std::string &dobbySpec);
 
         bool unmountOverlayfsIfExists(const std::string &appInstanceId);
         

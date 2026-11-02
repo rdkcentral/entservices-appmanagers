@@ -59,6 +59,7 @@ extern uint32_t Test_AM_SingletonPointerSetAndCleared();
 extern uint32_t Test_AM_LifecycleConnectorLaunchNewApp();
 extern uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp();
 extern uint32_t Test_AM_LifecycleConnectorLaunchPausedApp();
+extern uint32_t Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload();
 extern uint32_t Test_AM_LifecycleConnectorPreloadApp();
 extern uint32_t Test_AM_LifecycleConnectorTerminateApp();
 extern uint32_t Test_AM_LifecycleConnectorCloseApp();
@@ -154,6 +155,7 @@ extern uint32_t Test_AM_ClearAppDataStorageError();
 extern uint32_t Test_AM_ClearAllAppDataNullStorage();
 extern uint32_t Test_AM_ClearAllAppDataStorageError();
 extern uint32_t Test_AM_WorkerThreadLaunchSuccess();
+extern uint32_t Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn();
 extern uint32_t Test_AM_WorkerThreadPackageLockFails();
 extern uint32_t Test_AM_WorkerThreadPreloadSuccess();
 extern uint32_t Test_AM_PackageLockAlreadyLoadedEmptyVersion();
@@ -221,6 +223,7 @@ int main()
     };
 
     const Case cases[] = {
+        { "AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload", Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload },
         { "AM_InitializeSucceedsAndDeinitializeCleansUp", Test_AM_InitializeSucceedsAndDeinitializeCleansUp },
         { "AM_InformationReturnsEmptyString", Test_AM_InformationReturnsEmptyString },
         { "AM_RegisterAndUnregisterNotification", Test_AM_RegisterAndUnregisterNotification },
@@ -355,6 +358,7 @@ int main()
         { "AM_ClearAllAppDataNullStorage", Test_AM_ClearAllAppDataNullStorage },
         { "AM_ClearAllAppDataStorageError", Test_AM_ClearAllAppDataStorageError },
         { "AM_WorkerThreadLaunchSuccess", Test_AM_WorkerThreadLaunchSuccess },
+        { "AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn", Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn },
         { "AM_WorkerThreadPackageLockFails", Test_AM_WorkerThreadPackageLockFails },
         { "AM_WorkerThreadPreloadSuccess", Test_AM_WorkerThreadPreloadSuccess },
         { "AM_PackageLockAlreadyLoadedEmptyVersion", Test_AM_PackageLockAlreadyLoadedEmptyVersion },

@@ -20,6 +20,7 @@
 #include "Module.h"
 #include "LifecycleInterfaceConnector.h"
 #include "AppInfoManager.h"
+#include "RuntimeConfigPayload.h"
 #include <algorithm>
 #include <string>
 #include <memory>
@@ -190,27 +191,30 @@ namespace WPEFramework
             return status;
         }
 
-        void LifecycleInterfaceConnector::appendLaunchParametersEnv(const std::string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) const
+        bool LifecycleInterfaceConnector::appendLaunchParametersEnv(const std::string& launchArgs, std::string& runtimeConfigPayload, std::string& error) const
         {
-            Json::Value envArr(Json::arrayValue);
+            Utils::RuntimeConfigPayload payload;
+            if (!payload.Parse(runtimeConfigPayload, error))
             {
-                Json::Reader rd;
-                Json::Value existing;
-                if (rd.parse(runtimeConfigObject.envVariables, existing) && existing.isArray())
-                    envArr = existing;
+                return false;
             }
 
-            const std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
-            envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + LifecycleInterfaceConnector::base64Encode(normalizedLaunchArgs));
+            std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
+            if (normalizedLaunchArgs == "{}" || normalizedLaunchArgs == "{ }") {
+                normalizedLaunchArgs.clear();
+            }
 
-            Json::StreamWriterBuilder w;
-            w["indentation"] = "";
-            runtimeConfigObject.envVariables = Json::writeString(w, envArr);
+            if (!payload.UpsertEnvironment(std::string("APPLICATION_LAUNCH_PARAMETERS=") + LifecycleInterfaceConnector::base64Encode(normalizedLaunchArgs), error)
+                || !payload.Serialize(runtimeConfigPayload, error))
+            {
+                return false;
+            }
             LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS set");
+            return true;
         }
 
         Core::hresult LifecycleInterfaceConnector::launchRequestedPackage(const string& appId, const string& intent,
-            const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject)
+            const string& launchArgs, Utils::RuntimeConfigPayload& runtimeConfigObject)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             string appInstanceId = "";
@@ -219,6 +223,7 @@ namespace WPEFramework
             Exchange::ILifecycleManager::LifecycleState state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
             AppManagerImplementation* appManagerImplInstance = AppManagerImplementation::getInstance();
             AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
+            std::string runtimeConfigPayload;
 
             if (nullptr == appManagerImplInstance)
             {
@@ -231,10 +236,19 @@ namespace WPEFramework
             string source = "";
             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
 
-            appendLaunchParametersEnv(launchArgs, runtimeConfigObject);
+            if (!runtimeConfigObject.Serialize(runtimeConfigPayload, errorReason))
+            {
+                LOGERR("Failed to serialize runtime config for appId=%s: %s", appId.c_str(), errorReason.c_str());
+                return Core::ERROR_GENERAL;
+            }
+            if (!appendLaunchParametersEnv(launchArgs, runtimeConfigPayload, errorReason))
+            {
+                LOGERR("Invalid runtime configuration payload for appId=%s: %s", appId.c_str(), errorReason.c_str());
+                return Core::ERROR_INVALID_PARAMETER;
+            }
 
             LOGINFO("spawnApp called ,state %u", state);
-            status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);
+            status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success);
 
             if ((Core::ERROR_NONE == status) && (true == success))
             {
@@ -247,8 +261,13 @@ namespace WPEFramework
                     a.setAppIntent(intent);
                     a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
                     AppManagerTypes::PackageInfo packageInfo = a.getPackageInfo();
-                    packageInfo.unpackedPath = runtimeConfigObject.unpackedPath;
-                    packageInfo.configMetadata = runtimeConfigObject;
+                    std::string unpackedPath;
+                    bool unpackedPathPresent = false;
+                    if (runtimeConfigObject.GetString("unpackedPath", unpackedPath, unpackedPathPresent, errorReason) && unpackedPathPresent)
+                    {
+                        packageInfo.unpackedPath = unpackedPath;
+                    }
+                    packageInfo.configMetadata = runtimeConfigPayload;
                     a.setPackageInfo(packageInfo);
                     a.setTargetAppState(targetState);
                 });
@@ -268,7 +287,7 @@ namespace WPEFramework
         }
 
         Core::hresult LifecycleInterfaceConnector::restartSuspendedWithRequestedVersion(const string& appId,
-            const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject,
+            const string& intent, const string& launchArgs, Utils::RuntimeConfigPayload& runtimeConfigObject,
             const string& suspendedAppInstanceId, const string& requestedVersion)
         {
             (void)intent;
@@ -363,7 +382,7 @@ namespace WPEFramework
             LOGINFO("Relaunching appId=%s after old-instance cleanup for suspendedAppInstanceId=%s",
             pendingRelaunch.appId.c_str(),suspendedAppInstanceId.c_str());
             mAdminLock.Lock();
-            WPEFramework::Exchange::RuntimeConfig runtimeConfigObject = pendingRelaunch.runtimeConfigObject;
+            Utils::RuntimeConfigPayload runtimeConfigObject = pendingRelaunch.runtimeConfig;
             Core::hresult status = launchRequestedPackage(pendingRelaunch.appId, pendingRelaunch.intent,
                 pendingRelaunch.launchArgs, runtimeConfigObject);
             mAdminLock.Unlock();
@@ -397,7 +416,7 @@ namespace WPEFramework
  * @Params  : const string& appId , const string& intent , const string& launchArgs
  * @return  : Core::hresult
  */
-        Core::hresult LifecycleInterfaceConnector::launch(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject)
+        Core::hresult LifecycleInterfaceConnector::launch(const string& appId, const string& intent, const string& launchArgs, std::string& runtimeConfigPayload)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             const std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
@@ -437,12 +456,27 @@ namespace WPEFramework
                         const string runningVersion = appInfoSnap.getPackageInfo().version;
                         const string requestedVersion = appInfoSnap.getRequestedLaunchVersion();
                         const string runningUnpackedPath = appInfoSnap.getPackageInfo().unpackedPath;
+
+                        Utils::RuntimeConfigPayload runtimeConfigObject;
+                        std::string requestedUnpackedPath;
+                        bool requestedUnpackedPathPresent = false;
+                        std::string runtimeConfigError;
+                        if (!runtimeConfigObject.Parse(runtimeConfigPayload, runtimeConfigError))
+                        {
+                            LOGERR("Invalid runtime config payload for appId=%s: %s", appId.c_str(), runtimeConfigError.c_str());
+                            status = Core::ERROR_INVALID_PARAMETER;
+                        }
+                        else if (runtimeConfigObject.GetString("unpackedPath", requestedUnpackedPath, requestedUnpackedPathPresent, runtimeConfigError) && requestedUnpackedPathPresent)
+                        {
+                            // requested unpacked path has been parsed and is available for version-change checks below
+                        }
+
                         const bool hasRunningPath = (false == runningUnpackedPath.empty());
-                        const bool hasRequestedPath = (false == runtimeConfigObject.unpackedPath.empty());
+                        const bool hasRequestedPath = requestedUnpackedPathPresent;
                         const bool versionKnown = ((false == runningVersion.empty()) && (false == requestedVersion.empty()));
                         const bool versionChanged = (true == versionKnown)
                             ? (0 != runningVersion.compare(requestedVersion))
-                            : ((hasRunningPath && hasRequestedPath && (0 != runningUnpackedPath.compare(runtimeConfigObject.unpackedPath))) ||
+                            : ((hasRunningPath && hasRequestedPath && (0 != runningUnpackedPath.compare(requestedUnpackedPath))) ||
                                (hasRunningPath != hasRequestedPath));
                         if ((true == loaded) &&
                             (Core::ERROR_NONE == status) &&
@@ -485,42 +519,45 @@ namespace WPEFramework
                             else
                             {
                                 const string suspendedAppInstanceId = appInfoSnap.getAppInstanceId();
-
                                 std::map<std::string, PendingRelaunchRequest>::iterator pendingRelaunchIter = mPendingRelaunches.find(suspendedAppInstanceId);
                                 if (mPendingRelaunches.end() != pendingRelaunchIter)
                                 {
-                                    LOGWARN("Pending relaunch already queued for appId=%s ""suspendedAppInstanceId=%s; ignoring duplicate request",
-				             appId.c_str(),suspendedAppInstanceId.c_str());
+                                    LOGWARN("Pending relaunch already queued for appId=%s suspendedAppInstanceId=%s; ignoring duplicate request",
+                                            appId.c_str(), suspendedAppInstanceId.c_str());
                                     const Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(appId, requestedVersion);
                                     if (Core::ERROR_NONE != releaseStatus)
                                     {
                                         LOGERR("Failed to release duplicate replacement lock for appId=%s requestedVersion=%s status=%d",
-                                        appId.c_str(), requestedVersion.c_str(), releaseStatus);
-
+                                                appId.c_str(), requestedVersion.c_str(), releaseStatus);
                                         status = releaseStatus;
                                     }
                                     else
                                     {
-                                       status = Core::ERROR_NONE;
+                                        status = Core::ERROR_NONE;
                                     }
                                 }
                                 else
                                 {
-                                   PendingRelaunchRequest pendingRelaunch;
-                                   pendingRelaunch.appId = appId;
-                                   pendingRelaunch.intent = intent;
-                                   pendingRelaunch.launchArgs = launchArgs;
-                                   pendingRelaunch.requestedVersion = requestedVersion;
-                                   pendingRelaunch.runtimeConfigObject = runtimeConfigObject;
-                                   mPendingRelaunches.emplace(suspendedAppInstanceId, pendingRelaunch);
+                                    PendingRelaunchRequest pendingRelaunch;
+                                    pendingRelaunch.appId = appId;
+                                    pendingRelaunch.intent = intent;
+                                    pendingRelaunch.launchArgs = launchArgs;
+                                    pendingRelaunch.requestedVersion = requestedVersion;
+                                    pendingRelaunch.runtimeConfig = runtimeConfigObject;
+                                    mPendingRelaunches.emplace(suspendedAppInstanceId, pendingRelaunch);
 
-                                   LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s runningPath=%s requestedPath=%s",
-                                   appId.c_str(), runningVersion.c_str(), requestedVersion.c_str(), runningUnpackedPath.c_str(), runtimeConfigObject.unpackedPath.c_str());
-                                   LOGINFO("Queued pending relaunch before kill for appId=%s suspendedAppInstanceId=%s",
-                                   appId.c_str(), suspendedAppInstanceId.c_str());
-                                   status = restartSuspendedWithRequestedVersion(appId, intent, launchArgs, runtimeConfigObject, suspendedAppInstanceId, requestedVersion);
-				 }
-                                     
+                                    std::string requestedPathForLog;
+                                    bool requestedPathForLogPresent = false;
+                                    std::string requestedPathError;
+                                    if (runtimeConfigObject.GetString("unpackedPath", requestedPathForLog, requestedPathForLogPresent, requestedPathError) && requestedPathForLogPresent)
+                                    {
+                                        LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s runningPath=%s requestedPath=%s",
+                                                appId.c_str(), runningVersion.c_str(), requestedVersion.c_str(), runningUnpackedPath.c_str(), requestedPathForLog.c_str());
+                                    }
+                                    LOGINFO("Queued pending relaunch before kill for appId=%s suspendedAppInstanceId=%s",
+                                            appId.c_str(), suspendedAppInstanceId.c_str());
+                                    status = restartSuspendedWithRequestedVersion(appId, intent, launchArgs, runtimeConfigObject, suspendedAppInstanceId, requestedVersion);
+                                }
                             }
                         }
                         else
@@ -546,7 +583,7 @@ namespace WPEFramework
         }
 
         /* PreloadApp invokes it */
-        Core::hresult LifecycleInterfaceConnector::preLoadApp(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& error)
+        Core::hresult LifecycleInterfaceConnector::preLoadApp(const string& appId, const string& intent, const string& launchArgs, std::string& runtimeConfigPayload, string& error)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             const std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
@@ -578,7 +615,14 @@ namespace WPEFramework
                 {
                     appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_PRELOAD);
                     state = Exchange::ILifecycleManager::LifecycleState::PAUSED;
-                    status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, normalizedLaunchArgs, appInstanceId, error, success);
+                    if (!appendLaunchParametersEnv(normalizedLaunchArgs, runtimeConfigPayload, error))
+                    {
+                        LOGERR("Invalid runtime configuration payload: %s", error.c_str());
+                    }
+                    else
+                    {
+                        status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, normalizedLaunchArgs, appInstanceId, error, success);
+                    }
                     if (Core::ERROR_NONE == status)
                     {
                         LOGINFO("Update App Info");
