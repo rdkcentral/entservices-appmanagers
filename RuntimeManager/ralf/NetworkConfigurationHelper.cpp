@@ -785,8 +785,8 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
     }
 
     const Json::Value& configurationNode = manifestRootNode[ralf::CONFIGURATION];
-    const bool hasNetworkConfig = configurationNode.isMember(ralf::NETWORK_CONFIG_URN);
-    const bool hasDialConfig = configurationNode.isMember(ralf::DIAL_CONFIG_URN);
+    bool hasNetworkConfig = configurationNode.isMember(ralf::NETWORK_CONFIG_URN);
+    bool hasDialConfig = configurationNode.isMember(ralf::DIAL_CONFIG_URN);
 
     if (!hasNetworkConfig && !hasDialConfig)
     {

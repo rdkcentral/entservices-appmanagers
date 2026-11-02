@@ -725,6 +725,40 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     return tr.failures;
 }
 
+uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    Json::Value dialConfig(Json::objectValue);
+    dialConfig["type"] = "dial";
+    dialConfig["port"] = 56889;
+    manifestRootNode[ralf::CONFIGURATION][ralf::DIAL_CONFIG_URN] = dialConfig;
+
+    const bool status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
+    L0Test::ExpectTrue(tr, status,
+                       "updateNetworkConfigurationNode() returns true when only DIAL config is present");
+
+    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
+    const Json::Value& containerToHost = networkingData[PORT_FORWARDING][CONTAINER_TO_HOST];
+    L0Test::ExpectTrue(tr, containerToHost.isArray() && 1u == containerToHost.size(),
+                       "DIAL config adds the expected containerToHost port-forward rule");
+
+    if (containerToHost.isArray() && 1u == containerToHost.size())
+    {
+        L0Test::ExpectEqU32(tr, containerToHost[0][ralf::PORT].asUInt(), 56889u,
+                            "DIAL REST port is exposed through containerToHost");
+        L0Test::ExpectEqStr(tr, containerToHost[0][ralf::PROTOCOL].asString(), "tcp",
+                            "DIAL loopback forwarding preserves the TCP protocol");
+    }
+
+    L0Test::ExpectTrue(tr, networkingData[PORT_FORWARDING][LOCALHOST_MASQUERADE].asBool(),
+                       "DIAL loopback port forwarding enables localhost masquerade");
+
+    return tr.failures;
+}
+
 uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost()
 {
     L0Test::TestResult tr;

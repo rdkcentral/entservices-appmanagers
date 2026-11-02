@@ -184,6 +184,7 @@ extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConf
 extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission();
 extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints();
 extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig();
 
 // ── ralf/RalfPackageBuilder tests ─────────────────────────────────────────────
 extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
@@ -538,6 +539,7 @@ int main()
         { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission },
         { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints },
         { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig },
 
         // ── ralf/RalfPackageBuilder tests ────────────────────────────────────
         { "RalfPackageBuilder_ConstructionAndDestruction",                           Test_RalfPackageBuilder_ConstructionAndDestruction },
