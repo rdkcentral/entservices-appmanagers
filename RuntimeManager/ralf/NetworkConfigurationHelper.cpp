@@ -795,9 +795,9 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
     }
 
     const Json::Value& networkConfiguration = hasNetworkConfig ? configurationNode[ralf::NETWORK_CONFIG_URN] : Json::Value::nullSingleton();
-    if (hasNetworkConfig && !networkConfiguration.isArray())
+    if (hasNetworkConfig && (!networkConfiguration.isArray() || networkConfiguration.empty()))
     {
-        LOGWARN("%s: Network configuration is not an array, no need to process it.", MODULE_LOGTAG);
+        LOGWARN("%s: Network configuration is not an array or is empty, no need to process it.", MODULE_LOGTAG);
         hasNetworkConfig = false;
     }
 
@@ -867,7 +867,8 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
 
         for (const auto& dialPort : dialPorts)
         {
-            if (hasPortFwdContainerToHostRule(*netDataNode, static_cast<unsigned int>(dialPort.first), "tcp"))
+            if (hasPortFwdContainerToHostRule(*netDataNode, static_cast<unsigned int>(dialPort.first), "tcp") &&
+                (*netDataNode)[PORT_FORWARDING].get(LOCALHOST_MASQUERADE, false).asBool())
             {
                 continue;
             }
