@@ -189,8 +189,8 @@ uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_NetworkC
     manifestRootNode[ralf::CONFIGURATION][ralf::NETWORK_CONFIG_URN] = Json::Value(Json::objectValue);
 
     const bool status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
-    L0Test::ExpectTrue(tr, !status,
-                       "updateNetworkConfigurationNode() returns false when network configuration is not an array");
+    L0Test::ExpectTrue(tr, status,
+                       "updateNetworkConfigurationNode() returns true when network configuration is invalid and no valid DIAL config is present");
 
     return tr.failures;
 }
