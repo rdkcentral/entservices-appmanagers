@@ -228,7 +228,6 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                         runtimeConfig.SetUnsigned("groupId", groupId);
                                 }
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-
                                 getCustomValues(runtimeConfig);
                                 string launchArgs = appRequestParam->launchArgs;
                                 JsonObject launchArgsObj;
@@ -253,6 +252,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
                                 }
 
+                                AppInfoManager::getInstance().setRequestedLaunchVersion(appId, packageData.version);
                                 // Preserve legacy behavior by appending launchArgs["env"] only for preload requests.
                                 if ((APP_ACTION_PRELOAD == action) && (Core::ERROR_NONE == status) && launchArgsObj.HasLabel("env"))
                                 {
@@ -296,7 +296,6 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     }
                                     else if (action == APP_ACTION_LAUNCH)
                                     {
-                                        AppInfoManager::getInstance().setRequestedLaunchVersion(appId, packageData.version);
                                         status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfigPayload);
                                         LOGINFO("Application Launch from thread returns with status %d", status);
 
