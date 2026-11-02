@@ -229,23 +229,6 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 }
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
 
-                            AppInfoManager::getInstance().setRequestedLaunchVersion(appId, packageData.version);
-
-                            if (action == APP_ACTION_LAUNCH)
-                            {
-                                mAdminLock.Lock();
-                                if (nullptr != mLifecycleInterfaceConnector)
-                                {
-                                    status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfig);
-                                }
-                                else
-                                {
-                                    if (userIdPresent)
-                                        runtimeConfig.SetUnsigned("userId", userId);
-                                    if (groupIdPresent)
-                                        runtimeConfig.SetUnsigned("groupId", groupId);
-                                }
-#endif // RALF_PACKAGE_SUPPORT_ENABLED
                                 getCustomValues(runtimeConfig);
                                 string launchArgs = appRequestParam->launchArgs;
                                 JsonObject launchArgsObj;
@@ -313,6 +296,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     }
                                     else if (action == APP_ACTION_LAUNCH)
                                     {
+                                        AppInfoManager::getInstance().setRequestedLaunchVersion(appId, packageData.version);
                                         status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfigPayload);
                                         LOGINFO("Application Launch from thread returns with status %d", status);
 
