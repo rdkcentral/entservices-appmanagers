@@ -46,7 +46,7 @@ namespace AppManagerTypes {
         std::string version      = "";
         uint32_t    lockId       = 0;
         std::string unpackedPath = "";
-        WPEFramework::Exchange::RuntimeConfig configMetadata;
+        std::string configMetadata = "";
         std::string appMetadata  = "";
         ApplicationType type     = APPLICATION_TYPE_UNKNOWN;
     } PackageInfo;
