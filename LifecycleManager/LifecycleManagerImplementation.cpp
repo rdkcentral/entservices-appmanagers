@@ -153,6 +153,48 @@ namespace WPEFramework
             }
         }
         
+        void LifecycleManagerImplementation::submitStateChangeNotifications(const JsonObject& data)
+        {
+            const string appId = data["appId"].String();
+            const string appInstanceId = data["appInstanceId"].String();
+            const string errorReason = data["errorReason"].String();
+            const uint32_t oldLifecycleState = data["oldLifecycleState"].Number();
+            const uint32_t newLifecycleState = data["newLifecycleState"].Number();
+            const string navigationIntent = data["navigationIntent"].String();
+
+            std::list<Exchange::ILifecycleManager::INotification*> appStateListeners;
+            std::list<Exchange::ILifecycleManagerState::INotification*> stateChangeListeners;
+            {
+                Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
+                appStateListeners = mLifecycleManagerNotification;
+                stateChangeListeners = mLifecycleManagerStateNotification;
+            }
+
+            for (auto* listener : appStateListeners)
+            {
+                if (nullptr != listener)
+                {
+                    Core::IWorkerPool::Instance().Submit(AppStateListenerJob::Create(listener,
+                        appId,
+                        static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                        errorReason));
+                }
+            }
+
+            for (auto* listener : stateChangeListeners)
+            {
+                if (nullptr != listener)
+                {
+                    Core::IWorkerPool::Instance().Submit(LifecycleStateListenerJob::Create(listener,
+                        appId,
+                        appInstanceId,
+                        static_cast<Exchange::ILifecycleManager::LifecycleState>(oldLifecycleState),
+                        static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                        navigationIntent));
+                }
+            }
+        }
+
         void LifecycleManagerImplementation::Dispatch(EventNames event, const JsonValue params)
         {
              JsonObject obj = params.Object();
@@ -186,23 +228,14 @@ namespace WPEFramework
                      {
                          shouldRespawn = tryGetPendingRespawn(appInstanceId, pendingRespawn);
                      }
-                     while (index != mLifecycleManagerNotification.end())
-                     {
-                         (*index)->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
-                         ++index;
+                     const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
+                     const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
+                     const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
+                     submitStateChangeNotifications(obj);
+                     if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
+                         context->setUnexpectedTermination(false);
                      }
-                    const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
-                    const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
-                    const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
-                    while (stateNotificationIndex != mLifecycleManagerStateNotification.end())
-                    {
-                        (*stateNotificationIndex)->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, effectiveNavigationIntent);
-                        ++stateNotificationIndex;
-                    }
-                    if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
-                        context->setUnexpectedTermination(false);
-                    }
-                    break;
+                     break;
                  }
                  case LIFECYCLE_MANAGER_EVENT_RUNTIME:
                      handleRuntimeManagerEvent(obj);
@@ -211,11 +244,7 @@ namespace WPEFramework
                       handleWindowManagerEvent(obj);
                       break;
                  case LIFECYCLE_MANAGER_EVENT_ONFAILURE:
-                      while (index != mLifecycleManagerNotification.end())
-                      {
-                          (*index)->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
-                          ++index;
-                      }
+                      submitStateChangeNotifications(obj);
                       break;
                  default:
                      LOGWARN("Event[%u] not handled appId=%s appInstanceId=%s", event, appId.c_str(), appInstanceId.c_str());
@@ -738,9 +767,7 @@ namespace WPEFramework
 
         void LifecycleManagerImplementation::onStateChangeEvent(JsonObject& data)
 	{
-            dispatchEvent(LifecycleManagerImplementation::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, data);
-	}
-
+            submitStateChangeNotifications(data);
         void LifecycleManagerImplementation::handleRuntimeManagerEvent(const JsonObject &data)
         {
             string eventName = data["name"];
