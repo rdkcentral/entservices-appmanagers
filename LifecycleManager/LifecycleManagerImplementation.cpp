@@ -216,7 +216,6 @@ namespace WPEFramework
 
              //below is additional for ILifecycleManagerState notification
              string appInstanceId(obj["appInstanceId"].String());
-             uint32_t oldLifecycleState(obj["oldLifecycleState"].Number());
              string navigationIntent(obj["navigationIntent"].String());
              auto contextHolder = getContext("", appId);
              ApplicationContext* context = contextHolder.get();
