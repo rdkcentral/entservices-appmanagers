@@ -153,7 +153,9 @@ namespace WPEFramework
             }
         }
         
-        void LifecycleManagerImplementation::submitStateChangeNotifications(const JsonObject& data)
+        void LifecycleManagerImplementation::submitStateChangeNotifications(const JsonObject& data,
+            bool includeAppStateNotifications,
+            bool includeLifecycleStateNotifications)
         {
             const string appId = data["appId"].String();
             const string appInstanceId = data["appInstanceId"].String();
@@ -170,27 +172,33 @@ namespace WPEFramework
                 stateChangeListeners = mLifecycleManagerStateNotification;
             }
 
-            for (auto* listener : appStateListeners)
+            if (includeAppStateNotifications)
             {
-                if (nullptr != listener)
+                for (auto* listener : appStateListeners)
                 {
-                    Core::IWorkerPool::Instance().Submit(AppStateListenerJob::Create(listener,
-                        appId,
-                        static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
-                        errorReason));
+                    if (nullptr != listener)
+                    {
+                        Core::IWorkerPool::Instance().Submit(AppStateListenerJob::Create(listener,
+                            appId,
+                            static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                            errorReason));
+                    }
                 }
             }
 
-            for (auto* listener : stateChangeListeners)
+            if (includeLifecycleStateNotifications)
             {
-                if (nullptr != listener)
+                for (auto* listener : stateChangeListeners)
                 {
-                    Core::IWorkerPool::Instance().Submit(LifecycleStateListenerJob::Create(listener,
-                        appId,
-                        appInstanceId,
-                        static_cast<Exchange::ILifecycleManager::LifecycleState>(oldLifecycleState),
-                        static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
-                        navigationIntent));
+                    if (nullptr != listener)
+                    {
+                        Core::IWorkerPool::Instance().Submit(LifecycleStateListenerJob::Create(listener,
+                            appId,
+                            appInstanceId,
+                            static_cast<Exchange::ILifecycleManager::LifecycleState>(oldLifecycleState),
+                            static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                            navigationIntent));
+                    }
                 }
             }
         }
@@ -231,7 +239,7 @@ namespace WPEFramework
                      const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
                      const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
                      const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
-                     submitStateChangeNotifications(obj);
+                     submitStateChangeNotifications(obj, true, true);
                      if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
                          context->setUnexpectedTermination(false);
                      }
@@ -244,7 +252,7 @@ namespace WPEFramework
                       handleWindowManagerEvent(obj);
                       break;
                  case LIFECYCLE_MANAGER_EVENT_ONFAILURE:
-                      submitStateChangeNotifications(obj);
+                      submitStateChangeNotifications(obj, true, false);
                       break;
                  default:
                      LOGWARN("Event[%u] not handled appId=%s appInstanceId=%s", event, appId.c_str(), appInstanceId.c_str());
@@ -767,7 +775,9 @@ namespace WPEFramework
 
         void LifecycleManagerImplementation::onStateChangeEvent(JsonObject& data)
 	{
-            submitStateChangeNotifications(data);
+            submitStateChangeNotifications(data, true, true);
+        }
+
         void LifecycleManagerImplementation::handleRuntimeManagerEvent(const JsonObject &data)
         {
             string eventName = data["name"];

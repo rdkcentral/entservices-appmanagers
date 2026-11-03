@@ -321,7 +321,7 @@ namespace WPEFramework
                 void dispatchEvent(EventNames, const JsonValue &params);
                 void drainEvents();
                 void Dispatch(EventNames event, const JsonValue params);
-                void submitStateChangeNotifications(const JsonObject& data);
+                void submitStateChangeNotifications(const JsonObject& data, bool includeAppStateNotifications = true, bool includeLifecycleStateNotifications = true);
                 void handleRuntimeManagerEvent(const JsonObject &data);
                 void notifyOnFailure(const string& appInstanceId, const string& errorCode);
                 void handleStateChangeEvent(const JsonObject &data);
