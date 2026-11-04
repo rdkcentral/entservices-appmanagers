@@ -419,10 +419,13 @@ public:
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState newState,
         const std::string& errorReason) override
     {
-        onAppStateChangedCount++;
-        lastAppId = appId;
-        lastState = newState;
-        lastError = errorReason;
+        {
+            std::lock_guard<std::mutex> lock(_callbackMutex);
+            lastAppId = appId;
+            lastState = newState;
+            lastError = errorReason;
+            onAppStateChangedCount.fetch_add(1, std::memory_order_release);
+        }
         _callbackCV.notify_all();
     }
 
@@ -487,13 +490,16 @@ public:
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState newState,
         const std::string& navigationIntent) override
     {
-        transitions.emplace_back(oldState, newState);
-        onStateChangedCount++;
-        lastAppId = appId;
-        lastAppInstanceId = appInstanceId;
-        lastOldState = oldState;
-        lastNewState = newState;
-        lastNavigationIntent = navigationIntent;
+        {
+            std::lock_guard<std::mutex> lock(_callbackMutex);
+            transitions.emplace_back(oldState, newState);
+            lastAppId = appId;
+            lastAppInstanceId = appInstanceId;
+            lastOldState = oldState;
+            lastNewState = newState;
+            lastNavigationIntent = navigationIntent;
+            onStateChangedCount.fetch_add(1, std::memory_order_release);
+        }
         _callbackCV.notify_all();
     }
 

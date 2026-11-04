@@ -129,7 +129,14 @@ namespace WPEFramework
             std::unique_lock<std::mutex> lock(mAppStateNotificationLock);
             mAppStateNotificationCV.wait(lock, [this, notification]() {
                 auto it = mAppStateNotificationInFlight.find(notification);
-                return (it == mAppStateNotificationInFlight.end()) || (0U == it->second);
+                if ((it == mAppStateNotificationInFlight.end()) || (0U == it->second))
+                {
+                    return true;
+                }
+
+                auto dispatchIt = mAppStateNotificationDispatchingThread.find(notification);
+                return ((dispatchIt != mAppStateNotificationDispatchingThread.end()) &&
+                        (dispatchIt->second == std::this_thread::get_id()));
             });
         }
 
@@ -138,7 +145,14 @@ namespace WPEFramework
             std::unique_lock<std::mutex> lock(mLifecycleStateNotificationLock);
             mLifecycleStateNotificationCV.wait(lock, [this, notification]() {
                 auto it = mLifecycleStateNotificationInFlight.find(notification);
-                return (it == mLifecycleStateNotificationInFlight.end()) || (0U == it->second);
+                if ((it == mLifecycleStateNotificationInFlight.end()) || (0U == it->second))
+                {
+                    return true;
+                }
+
+                auto dispatchIt = mLifecycleStateNotificationDispatchingThread.find(notification);
+                return ((dispatchIt != mLifecycleStateNotificationDispatchingThread.end()) &&
+                        (dispatchIt->second == std::this_thread::get_id()));
             });
         }
 

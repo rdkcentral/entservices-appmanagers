@@ -872,6 +872,8 @@ uint32_t Test_Impl_QueuedLifecycleEventsPreserveOrder()
 
     L0Test::ExpectTrue(tr, notification->WaitForLifecycleStateChangedCount(2U),
         "Queued lifecycle dispatch completes before assertion");
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "Queued lifecycle jobs complete before fixture teardown");
     L0Test::ExpectEqU32(tr, notification->onStateChangedCount.load(), 2U,
         "Both lifecycle transitions are delivered");
     if (2U == notification->transitions.size()) {
