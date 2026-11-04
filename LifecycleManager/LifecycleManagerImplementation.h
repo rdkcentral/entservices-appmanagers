@@ -158,6 +158,138 @@ namespace WPEFramework
                         const string mErrorReason;
                 };
 
+                struct AppStateNotification
+                {
+                    string appId;
+                    Exchange::ILifecycleManager::LifecycleState newLifecycleState;
+                    string errorReason;
+                };
+
+                class EXTERNAL AppStateNotificationQueueJob : public Core::IDispatch
+                {
+                    protected:
+                        AppStateNotificationQueueJob(Exchange::ILifecycleManager::INotification* notification,
+                            std::deque<AppStateNotification> notifications)
+                            : mNotification(notification)
+                            , mNotifications(std::move(notifications))
+                        {
+                            if (mNotification != nullptr)
+                            {
+                                mNotification->AddRef();
+                            }
+                        }
+
+                    public:
+                        AppStateNotificationQueueJob() = delete;
+                        AppStateNotificationQueueJob(const AppStateNotificationQueueJob&) = delete;
+                        AppStateNotificationQueueJob& operator=(const AppStateNotificationQueueJob&) = delete;
+                        ~AppStateNotificationQueueJob() override
+                        {
+                            if (mNotification != nullptr)
+                            {
+                                mNotification->Release();
+                            }
+                        }
+
+                        static Core::ProxyType<Core::IDispatch> Create(Exchange::ILifecycleManager::INotification* notification,
+                            std::deque<AppStateNotification> notifications)
+                        {
+#ifndef USE_THUNDER_R4
+                            return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<AppStateNotificationQueueJob>::Create(notification, std::move(notifications))));
+#else
+                            return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<AppStateNotificationQueueJob>::Create(notification, std::move(notifications))));
+#endif
+                        }
+
+                        void Dispatch() override
+                        {
+                            if (mNotification == nullptr)
+                            {
+                                return;
+                            }
+
+                            while (!mNotifications.empty())
+                            {
+                                const auto notification = mNotifications.front();
+                                mNotifications.pop_front();
+                                mNotification->OnAppStateChanged(notification.appId, notification.newLifecycleState, notification.errorReason);
+                            }
+                        }
+
+                    private:
+                        Exchange::ILifecycleManager::INotification* mNotification;
+                        std::deque<AppStateNotification> mNotifications;
+                };
+
+                struct LifecycleStateNotification
+                {
+                    string appId;
+                    string appInstanceId;
+                    Exchange::ILifecycleManager::LifecycleState oldLifecycleState;
+                    Exchange::ILifecycleManager::LifecycleState newLifecycleState;
+                    string navigationIntent;
+                };
+
+                class EXTERNAL LifecycleStateNotificationQueueJob : public Core::IDispatch
+                {
+                    protected:
+                        LifecycleStateNotificationQueueJob(Exchange::ILifecycleManagerState::INotification* notification,
+                            std::deque<LifecycleStateNotification> notifications)
+                            : mNotification(notification)
+                            , mNotifications(std::move(notifications))
+                        {
+                            if (mNotification != nullptr)
+                            {
+                                mNotification->AddRef();
+                            }
+                        }
+
+                    public:
+                        LifecycleStateNotificationQueueJob() = delete;
+                        LifecycleStateNotificationQueueJob(const LifecycleStateNotificationQueueJob&) = delete;
+                        LifecycleStateNotificationQueueJob& operator=(const LifecycleStateNotificationQueueJob&) = delete;
+                        ~LifecycleStateNotificationQueueJob() override
+                        {
+                            if (mNotification != nullptr)
+                            {
+                                mNotification->Release();
+                            }
+                        }
+
+                        static Core::ProxyType<Core::IDispatch> Create(Exchange::ILifecycleManagerState::INotification* notification,
+                            std::deque<LifecycleStateNotification> notifications)
+                        {
+#ifndef USE_THUNDER_R4
+                            return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<LifecycleStateNotificationQueueJob>::Create(notification, std::move(notifications))));
+#else
+                            return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<LifecycleStateNotificationQueueJob>::Create(notification, std::move(notifications))));
+#endif
+                        }
+
+                        void Dispatch() override
+                        {
+                            if (mNotification == nullptr)
+                            {
+                                return;
+                            }
+
+                            while (!mNotifications.empty())
+                            {
+                                const auto notification = mNotifications.front();
+                                mNotifications.pop_front();
+                                mNotification->OnAppLifecycleStateChanged(notification.appId,
+                                    notification.appInstanceId,
+                                    notification.oldLifecycleState,
+                                    notification.newLifecycleState,
+                                    notification.navigationIntent);
+                            }
+                        }
+
+                    private:
+                        Exchange::ILifecycleManagerState::INotification* mNotification;
+                        std::deque<LifecycleStateNotification> mNotifications;
+                };
+
                 class EXTERNAL LifecycleStateListenerJob : public Core::IDispatch
                 {
                     protected:

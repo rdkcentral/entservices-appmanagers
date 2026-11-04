@@ -23,6 +23,7 @@
 #include <interfaces/json/JsonData_LifecycleManagerState.h>
 #include <interfaces/json/JLifecycleManagerState.h>
 #include <semaphore.h>
+#include <vector>
 #include "LifecycleManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
 #include "RuntimeConfigPayload.h"
@@ -164,42 +165,63 @@ namespace WPEFramework
             const uint32_t newLifecycleState = data["newLifecycleState"].Number();
             const string navigationIntent = data["navigationIntent"].String();
 
-            std::list<Exchange::ILifecycleManager::INotification*> appStateListeners;
-            std::list<Exchange::ILifecycleManagerState::INotification*> stateChangeListeners;
+            std::map<Exchange::ILifecycleManager::INotification*, std::deque<AppStateNotification>> appStateNotificationsPerListener;
+            std::map<Exchange::ILifecycleManagerState::INotification*, std::deque<LifecycleStateNotification>> lifecycleStateNotificationsPerListener;
+            std::vector<Core::ProxyType<Core::IDispatch>> appStateJobs;
+            std::vector<Core::ProxyType<Core::IDispatch>> lifecycleStateJobs;
+
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
-                appStateListeners = mLifecycleManagerNotification;
-                stateChangeListeners = mLifecycleManagerStateNotification;
-            }
 
-            if (includeAppStateNotifications)
-            {
-                for (auto* listener : appStateListeners)
+                if (includeAppStateNotifications)
                 {
-                    if (nullptr != listener)
+                    for (auto* listener : mLifecycleManagerNotification)
                     {
-                        Core::IWorkerPool::Instance().Submit(AppStateListenerJob::Create(listener,
-                            appId,
-                            static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
-                            errorReason));
+                        if (nullptr != listener)
+                        {
+                            appStateNotificationsPerListener[listener].emplace_back(AppStateNotification{
+                                appId,
+                                static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                                errorReason});
+                        }
                     }
+                }
+
+                if (includeLifecycleStateNotifications)
+                {
+                    for (auto* listener : mLifecycleManagerStateNotification)
+                    {
+                        if (nullptr != listener)
+                        {
+                            lifecycleStateNotificationsPerListener[listener].emplace_back(LifecycleStateNotification{
+                                appId,
+                                appInstanceId,
+                                static_cast<Exchange::ILifecycleManager::LifecycleState>(oldLifecycleState),
+                                static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                                navigationIntent});
+                        }
+                    }
+                }
+
+                for (auto& [listener, notifications] : appStateNotificationsPerListener)
+                {
+                    appStateJobs.emplace_back(AppStateNotificationQueueJob::Create(listener, std::move(notifications)));
+                }
+
+                for (auto& [listener, notifications] : lifecycleStateNotificationsPerListener)
+                {
+                    lifecycleStateJobs.emplace_back(LifecycleStateNotificationQueueJob::Create(listener, std::move(notifications)));
                 }
             }
 
-            if (includeLifecycleStateNotifications)
+            for (auto& job : appStateJobs)
             {
-                for (auto* listener : stateChangeListeners)
-                {
-                    if (nullptr != listener)
-                    {
-                        Core::IWorkerPool::Instance().Submit(LifecycleStateListenerJob::Create(listener,
-                            appId,
-                            appInstanceId,
-                            static_cast<Exchange::ILifecycleManager::LifecycleState>(oldLifecycleState),
-                            static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
-                            navigationIntent));
-                    }
-                }
+                Core::IWorkerPool::Instance().Submit(job);
+            }
+
+            for (auto& job : lifecycleStateJobs)
+            {
+                Core::IWorkerPool::Instance().Submit(job);
             }
         }
 
@@ -238,6 +260,7 @@ namespace WPEFramework
                      const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
                      const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
                      const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
+                     obj["navigationIntent"] = effectiveNavigationIntent;
                      submitStateChangeNotifications(obj, true, true);
                      if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
                          context->setUnexpectedTermination(false);
@@ -774,7 +797,7 @@ namespace WPEFramework
 
         void LifecycleManagerImplementation::onStateChangeEvent(JsonObject& data)
 	{
-            submitStateChangeNotifications(data, true, true);
+            dispatchEvent(LifecycleManagerImplementation::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, data);
         }
 
         void LifecycleManagerImplementation::handleRuntimeManagerEvent(const JsonObject &data)
