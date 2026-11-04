@@ -27,8 +27,6 @@
 #include <condition_variable>
 #include <fstream>
 #include <cstdio>
-#include <cstdint>
-#include <ftw.h>
 
 #if defined(UNIT_TEST)
 #include "IPackageImplDummy.h"
@@ -41,6 +39,7 @@
 #include "UtilsLogging.h"
 #include "TelemetryMarkers.h"
 #include <interfaces/IAppPackageManager.h>
+#include <interfaces/IAppPackageConnector.h>
 #include <interfaces/IAppPackagesStatus.h>
 #include <interfaces/IAppStorageManager.h>
 
@@ -61,6 +60,7 @@ class PackageManagerImplementation
     , public Exchange::IAppPackageManagerConfig
     , public Exchange::IPackageCacheInitializer
     , public Exchange::IAppPackagesStatus
+    , public Exchange::IAppPackageConnector
 {
     private:
         class State {
@@ -87,8 +87,10 @@ class PackageManagerImplementation
                 Configuration()
                     : Core::JSON::Container()
                     , downloadDir()
+                    , enablePackageSpecifierRuntimes()
                 {
                     Add(_T("downloadDir"), &downloadDir); //
+                    Add(_T("enablePackageSpecifierRuntimes"), &enablePackageSpecifierRuntimes);
                 }
                 ~Configuration() = default;
 
@@ -99,6 +101,7 @@ class PackageManagerImplementation
 
             public:
                 Core::JSON::String downloadDir;
+                Core::JSON::Boolean enablePackageSpecifierRuntimes;
         };
 
         class DownloadInfo {
@@ -197,6 +200,11 @@ class PackageManagerImplementation
 	// IAppPackagesStatus methods
         Core::hresult GetRunningApplicationsUsingPackage(const string &packageId, string& applicationIds) override;
 
+        // IAppPackageConnector methods
+        Core::hresult GetPackageSpecifierRuntimes(
+            Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator*& runtimes) override;
+        Core::hresult SetPackageSpecifier(const string& packageSpecifier, const string& packageId) override;
+
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
             INTERFACE_ENTRY(Exchange::IPackageDownloader)
             INTERFACE_ENTRY(Exchange::IPackageInstaller)
@@ -204,11 +212,10 @@ class PackageManagerImplementation
             INTERFACE_ENTRY(Exchange::IAppPackageManagerConfig)
             INTERFACE_ENTRY(Exchange::IPackageCacheInitializer)
             INTERFACE_ENTRY(Exchange::IAppPackagesStatus)
+            INTERFACE_ENTRY(Exchange::IAppPackageConnector)
         END_INTERFACE_MAP
 
     private:
-        static int getSize(const char* path, const struct stat* sb, int typeflag, struct FTW* ftw);
-        static bool getDirectorySizeInBytes(const std::string& path, uint64_t& sizeBytes);
         bool getRuntimeConfig(const packagemanager::ConfigMetaData &config, string &runtimeConfigPayload);
         bool getRuntimeConfigString(const string &runtimeConfigPayload, const string &key, string &value);
         bool getRuntimeConfigUnsigned(const string &runtimeConfigPayload, const string &key, uint64_t &value);
@@ -302,9 +309,6 @@ class PackageManagerImplementation
     void populateRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata);
 
     private:
-        // nftw has no callback context; serialize access to the class-owned accumulator.
-        static std::mutex mDirSizeLock;
-        static uint64_t mDirSizeBytes;
         mutable Core::CriticalSection mAdminLock;
         std::list<Exchange::IPackageDownloader::INotification*> mDownloaderNotifications;
         std::list<Exchange::IPackageInstaller::INotification*> mInstallNotifications;
@@ -321,6 +325,7 @@ class PackageManagerImplementation
         std::recursive_mutex mtxState;
         StateMap  mState;
         bool cacheInitialized = false;
+        bool enablePackageSpecifierRuntimes = false;
 
         std::string downloadDir = "/opt/CDL/";
         string configStr;
