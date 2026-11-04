@@ -714,7 +714,9 @@ namespace WPEFramework
             {
 
                 mWindowManagerConnector->getDisplayInfo(appInstanceId, xdgRuntimeDir, waylandDisplay);
-                displayResult = mWindowManagerConnector->createDisplay(appInstanceId, waylandDisplay, uid, gid, runtimeConfigObject.capabilities);
+                const bool startSuspended = DobbySpecGenerator::startsSuspended(runtimeConfigObject);
+                displayResult = mWindowManagerConnector->createDisplay(appInstanceId, waylandDisplay, uid, gid,
+                    runtimeConfigObject.capabilities, appId, startSuspended);
                 if (false == displayResult)
                 {
                     LOGERR("Failed to create display");

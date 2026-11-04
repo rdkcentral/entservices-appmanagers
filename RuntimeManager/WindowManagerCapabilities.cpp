@@ -39,7 +39,7 @@ std::string buildWindowManagerCapabilities(const std::string& runtimeCapabilitie
         if (capName == "home-app")              // IPackage::Capability::HomeApp / CompositorApp
         {
             if (!result.empty()) result += ',';
-            result += "privilegedclient";
+            result += "privilegedclient,home-app";
         }
         else if (capName == "issue-notifications")  // IPackage::Capability::DisplayOverlays
         {
@@ -65,6 +65,16 @@ std::string buildWindowManagerCapabilities(const std::string& runtimeCapabilitie
         {
             if (!result.empty()) result += ',';
             result += "gamecontrollersupport";
+        }
+        else if ("as-player" == capName || "requiresasplayer" == capName)
+        {
+            if (!result.empty()) result += ',';
+            result += "requiresasplayer";
+        }
+        else if ("start-suspended" == capName)
+        {
+            if (!result.empty()) result += ',';
+            result += capName;
         }
     }
 

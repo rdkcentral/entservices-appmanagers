@@ -57,6 +57,7 @@ namespace Plugin
                               std::vector<std::pair<std::string, std::string>>& parsedCapabilities);
             static bool hasCapability(const std::vector<std::pair<std::string, std::string>>& capabilities,
                            const std::string& capabilityName);
+            static bool startsSuspended(const RuntimeConfiguration& runtimeConfig);
 
         private:
             Json::Value createEnvVars(const ApplicationConfiguration& config,
