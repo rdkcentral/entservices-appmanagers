@@ -27,6 +27,7 @@
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 #include "ApplicationContext.h"
+#include <condition_variable>
 #include <deque>
 #include <map>
 #include <mutex>
@@ -168,10 +169,10 @@ namespace WPEFramework
                 class EXTERNAL AppStateNotificationQueueJob : public Core::IDispatch
                 {
                     protected:
-                        AppStateNotificationQueueJob(Exchange::ILifecycleManager::INotification* notification,
-                            std::deque<AppStateNotification> notifications)
-                            : mNotification(notification)
-                            , mNotifications(std::move(notifications))
+                        AppStateNotificationQueueJob(LifecycleManagerImplementation* manager,
+                            Exchange::ILifecycleManager::INotification* notification)
+                            : mLifecycleManager(manager)
+                            , mNotification(notification)
                         {
                             if (mNotification != nullptr)
                             {
@@ -191,34 +192,86 @@ namespace WPEFramework
                             }
                         }
 
-                        static Core::ProxyType<Core::IDispatch> Create(Exchange::ILifecycleManager::INotification* notification,
-                            std::deque<AppStateNotification> notifications)
+                        static Core::ProxyType<Core::IDispatch> Create(LifecycleManagerImplementation* manager,
+                            Exchange::ILifecycleManager::INotification* notification)
                         {
 #ifndef USE_THUNDER_R4
-                            return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<AppStateNotificationQueueJob>::Create(notification, std::move(notifications))));
+                            return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<AppStateNotificationQueueJob>::Create(manager, notification)));
 #else
-                            return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<AppStateNotificationQueueJob>::Create(notification, std::move(notifications))));
+                            return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<AppStateNotificationQueueJob>::Create(manager, notification)));
 #endif
                         }
 
                         void Dispatch() override
                         {
-                            if (mNotification == nullptr)
+                            if ((mLifecycleManager == nullptr) || (mNotification == nullptr))
                             {
                                 return;
                             }
 
-                            while (!mNotifications.empty())
                             {
-                                const auto notification = mNotifications.front();
-                                mNotifications.pop_front();
+                                std::lock_guard<std::mutex> lock(mLifecycleManager->mAppStateNotificationLock);
+                                ++mLifecycleManager->mAppStateNotificationInFlight[mNotification];
+                            }
+
+                            std::deque<AppStateNotification> notifications;
+                            {
+                                Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
+                                auto it = mLifecycleManager->mAppStateNotifications.find(mNotification);
+                                if (it == mLifecycleManager->mAppStateNotifications.end())
+                                {
+                                    mLifecycleManager->mAppStateNotificationDrainScheduled.erase(mNotification);
+                                    {
+                                        std::lock_guard<std::mutex> lock(mLifecycleManager->mAppStateNotificationLock);
+                                        auto inFlight = mLifecycleManager->mAppStateNotificationInFlight.find(mNotification);
+                                        if (inFlight != mLifecycleManager->mAppStateNotificationInFlight.end())
+                                        {
+                                            if (0U < inFlight->second)
+                                            {
+                                                --inFlight->second;
+                                            }
+                                            if (0U == inFlight->second)
+                                            {
+                                                mLifecycleManager->mAppStateNotificationCV.notify_all();
+                                            }
+                                        }
+                                    }
+                                    return;
+                                }
+
+                                notifications = std::move(it->second);
+                                it->second.clear();
+                                mLifecycleManager->mAppStateNotifications.erase(it);
+                                mLifecycleManager->mAppStateNotificationDrainScheduled[mNotification] = false;
+                            }
+
+                            while (!notifications.empty())
+                            {
+                                const auto notification = notifications.front();
+                                notifications.pop_front();
                                 mNotification->OnAppStateChanged(notification.appId, notification.newLifecycleState, notification.errorReason);
+                            }
+
+                            {
+                                std::lock_guard<std::mutex> lock(mLifecycleManager->mAppStateNotificationLock);
+                                auto inFlight = mLifecycleManager->mAppStateNotificationInFlight.find(mNotification);
+                                if (inFlight != mLifecycleManager->mAppStateNotificationInFlight.end())
+                                {
+                                    if (0U < inFlight->second)
+                                    {
+                                        --inFlight->second;
+                                    }
+                                    if (0U == inFlight->second)
+                                    {
+                                        mLifecycleManager->mAppStateNotificationCV.notify_all();
+                                    }
+                                }
                             }
                         }
 
                     private:
+                        LifecycleManagerImplementation* mLifecycleManager;
                         Exchange::ILifecycleManager::INotification* mNotification;
-                        std::deque<AppStateNotification> mNotifications;
                 };
 
                 struct LifecycleStateNotification
@@ -233,10 +286,10 @@ namespace WPEFramework
                 class EXTERNAL LifecycleStateNotificationQueueJob : public Core::IDispatch
                 {
                     protected:
-                        LifecycleStateNotificationQueueJob(Exchange::ILifecycleManagerState::INotification* notification,
-                            std::deque<LifecycleStateNotification> notifications)
-                            : mNotification(notification)
-                            , mNotifications(std::move(notifications))
+                        LifecycleStateNotificationQueueJob(LifecycleManagerImplementation* manager,
+                            Exchange::ILifecycleManagerState::INotification* notification)
+                            : mLifecycleManager(manager)
+                            , mNotification(notification)
                         {
                             if (mNotification != nullptr)
                             {
@@ -256,38 +309,90 @@ namespace WPEFramework
                             }
                         }
 
-                        static Core::ProxyType<Core::IDispatch> Create(Exchange::ILifecycleManagerState::INotification* notification,
-                            std::deque<LifecycleStateNotification> notifications)
+                        static Core::ProxyType<Core::IDispatch> Create(LifecycleManagerImplementation* manager,
+                            Exchange::ILifecycleManagerState::INotification* notification)
                         {
 #ifndef USE_THUNDER_R4
-                            return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<LifecycleStateNotificationQueueJob>::Create(notification, std::move(notifications))));
+                            return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<LifecycleStateNotificationQueueJob>::Create(manager, notification)));
 #else
-                            return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<LifecycleStateNotificationQueueJob>::Create(notification, std::move(notifications))));
+                            return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<LifecycleStateNotificationQueueJob>::Create(manager, notification)));
 #endif
                         }
 
                         void Dispatch() override
                         {
-                            if (mNotification == nullptr)
+                            if ((mLifecycleManager == nullptr) || (mNotification == nullptr))
                             {
                                 return;
                             }
 
-                            while (!mNotifications.empty())
                             {
-                                const auto notification = mNotifications.front();
-                                mNotifications.pop_front();
+                                std::lock_guard<std::mutex> lock(mLifecycleManager->mLifecycleStateNotificationLock);
+                                ++mLifecycleManager->mLifecycleStateNotificationInFlight[mNotification];
+                            }
+
+                            std::deque<LifecycleStateNotification> notifications;
+                            {
+                                Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
+                                auto it = mLifecycleManager->mLifecycleStateNotifications.find(mNotification);
+                                if (it == mLifecycleManager->mLifecycleStateNotifications.end())
+                                {
+                                    mLifecycleManager->mLifecycleStateNotificationDrainScheduled.erase(mNotification);
+                                    {
+                                        std::lock_guard<std::mutex> lock(mLifecycleManager->mLifecycleStateNotificationLock);
+                                        auto inFlight = mLifecycleManager->mLifecycleStateNotificationInFlight.find(mNotification);
+                                        if (inFlight != mLifecycleManager->mLifecycleStateNotificationInFlight.end())
+                                        {
+                                            if (0U < inFlight->second)
+                                            {
+                                                --inFlight->second;
+                                            }
+                                            if (0U == inFlight->second)
+                                            {
+                                                mLifecycleManager->mLifecycleStateNotificationCV.notify_all();
+                                            }
+                                        }
+                                    }
+                                    return;
+                                }
+
+                                notifications = std::move(it->second);
+                                it->second.clear();
+                                mLifecycleManager->mLifecycleStateNotifications.erase(it);
+                                mLifecycleManager->mLifecycleStateNotificationDrainScheduled[mNotification] = false;
+                            }
+
+                            while (!notifications.empty())
+                            {
+                                const auto notification = notifications.front();
+                                notifications.pop_front();
                                 mNotification->OnAppLifecycleStateChanged(notification.appId,
                                     notification.appInstanceId,
                                     notification.oldLifecycleState,
                                     notification.newLifecycleState,
                                     notification.navigationIntent);
                             }
+
+                            {
+                                std::lock_guard<std::mutex> lock(mLifecycleManager->mLifecycleStateNotificationLock);
+                                auto inFlight = mLifecycleManager->mLifecycleStateNotificationInFlight.find(mNotification);
+                                if (inFlight != mLifecycleManager->mLifecycleStateNotificationInFlight.end())
+                                {
+                                    if (0U < inFlight->second)
+                                    {
+                                        --inFlight->second;
+                                    }
+                                    if (0U == inFlight->second)
+                                    {
+                                        mLifecycleManager->mLifecycleStateNotificationCV.notify_all();
+                                    }
+                                }
+                            }
                         }
 
                     private:
+                        LifecycleManagerImplementation* mLifecycleManager;
                         Exchange::ILifecycleManagerState::INotification* mNotification;
-                        std::deque<LifecycleStateNotification> mNotifications;
                 };
 
                 class EXTERNAL LifecycleStateListenerJob : public Core::IDispatch
@@ -402,20 +507,28 @@ namespace WPEFramework
                 bool mEventDispatchScheduled { false };
 	        std::list<Exchange::ILifecycleManager::INotification*> mLifecycleManagerNotification;
 	        std::list<Exchange::ILifecycleManagerState::INotification*> mLifecycleManagerStateNotification;
+                std::map<Exchange::ILifecycleManager::INotification*, std::deque<AppStateNotification>> mAppStateNotifications;
+                std::map<Exchange::ILifecycleManagerState::INotification*, std::deque<LifecycleStateNotification>> mLifecycleStateNotifications;
+                std::map<Exchange::ILifecycleManager::INotification*, bool> mAppStateNotificationDrainScheduled;
+                std::map<Exchange::ILifecycleManagerState::INotification*, bool> mLifecycleStateNotificationDrainScheduled;
+                std::map<Exchange::ILifecycleManager::INotification*, uint32_t> mAppStateNotificationInFlight;
+                std::map<Exchange::ILifecycleManagerState::INotification*, uint32_t> mLifecycleStateNotificationInFlight;
+                std::mutex mAppStateNotificationLock;
+                std::condition_variable mAppStateNotificationCV;
+                std::mutex mLifecycleStateNotificationLock;
+                std::condition_variable mLifecycleStateNotificationCV;
                 std::list<std::shared_ptr<ApplicationContext>> mLoadedApplications;
                 std::map<string, PendingRespawnRequest> mPendingRespawns;
                 PluginHost::IShell* mService;
-	    private: /* internal methods */
+            private: /* internal methods */
                 bool initialize(PluginHost::IShell* service);
                 void terminate();
                 void dispatchEvent(EventNames, const JsonValue &params);
                 void drainEvents();
                 void Dispatch(EventNames event, const JsonValue params);
                 void submitStateChangeNotifications(const JsonObject& data, bool includeAppStateNotifications = true, bool includeLifecycleStateNotifications = true);
-                void handleRuntimeManagerEvent(const JsonObject &data);
-                void notifyOnFailure(const string& appInstanceId, const string& errorCode);
-                void handleStateChangeEvent(const JsonObject &data);
-                bool tryGetPendingRespawn(const string& appInstanceId, PendingRespawnRequest& pendingRespawn);
+                void waitForAppStateNotificationDrain(Exchange::ILifecycleManager::INotification* notification);
+                void waitForLifecycleStateNotificationDrain(Exchange::ILifecycleManagerState::INotification* notification);
                 void handlePendingRespawn(const PendingRespawnRequest& pendingRespawn);
                 void handleWindowManagerEvent(const JsonObject &data);
                 std::shared_ptr<ApplicationContext> getContext(const string& appInstanceId, const string& appId) const;

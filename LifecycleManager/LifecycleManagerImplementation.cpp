@@ -102,9 +102,10 @@ namespace WPEFramework
             auto itr = std::find(mLifecycleManagerNotification.begin(), mLifecycleManagerNotification.end(), notification);
             if (itr != mLifecycleManagerNotification.end())
             {
-                (*itr)->Release();
                 LOGINFO("Unregister notification");
                 mLifecycleManagerNotification.erase(itr);
+                mAppStateNotifications.erase(notification);
+                mAppStateNotificationDrainScheduled.erase(notification);
                 status = Core::ERROR_NONE;
             }
             else
@@ -113,10 +114,34 @@ namespace WPEFramework
             }
         
             mAdminLock.Unlock();
+
+            if (Core::ERROR_NONE == status)
+            {
+                waitForAppStateNotificationDrain(notification);
+                notification->Release();
+            }
         
             return status;
         }
         
+        void LifecycleManagerImplementation::waitForAppStateNotificationDrain(Exchange::ILifecycleManager::INotification* notification)
+        {
+            std::unique_lock<std::mutex> lock(mAppStateNotificationLock);
+            mAppStateNotificationCV.wait(lock, [this, notification]() {
+                auto it = mAppStateNotificationInFlight.find(notification);
+                return (it == mAppStateNotificationInFlight.end()) || (0U == it->second);
+            });
+        }
+
+        void LifecycleManagerImplementation::waitForLifecycleStateNotificationDrain(Exchange::ILifecycleManagerState::INotification* notification)
+        {
+            std::unique_lock<std::mutex> lock(mLifecycleStateNotificationLock);
+            mLifecycleStateNotificationCV.wait(lock, [this, notification]() {
+                auto it = mLifecycleStateNotificationInFlight.find(notification);
+                return (it == mLifecycleStateNotificationInFlight.end()) || (0U == it->second);
+            });
+        }
+
         void LifecycleManagerImplementation::dispatchEvent(EventNames event, const JsonValue &params)
         {
             bool schedule = false;
@@ -165,8 +190,6 @@ namespace WPEFramework
             const uint32_t newLifecycleState = data["newLifecycleState"].Number();
             const string navigationIntent = data["navigationIntent"].String();
 
-            std::map<Exchange::ILifecycleManager::INotification*, std::deque<AppStateNotification>> appStateNotificationsPerListener;
-            std::map<Exchange::ILifecycleManagerState::INotification*, std::deque<LifecycleStateNotification>> lifecycleStateNotificationsPerListener;
             std::vector<Core::ProxyType<Core::IDispatch>> appStateJobs;
             std::vector<Core::ProxyType<Core::IDispatch>> lifecycleStateJobs;
 
@@ -177,12 +200,22 @@ namespace WPEFramework
                 {
                     for (auto* listener : mLifecycleManagerNotification)
                     {
-                        if (nullptr != listener)
+                        if (nullptr == listener)
                         {
-                            appStateNotificationsPerListener[listener].emplace_back(AppStateNotification{
-                                appId,
-                                static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
-                                errorReason});
+                            continue;
+                        }
+
+                        auto& queue = mAppStateNotifications[listener];
+                        queue.emplace_back(AppStateNotification{
+                            appId,
+                            static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                            errorReason});
+
+                        auto scheduled = mAppStateNotificationDrainScheduled.find(listener);
+                        if ((scheduled == mAppStateNotificationDrainScheduled.end()) || (false == scheduled->second))
+                        {
+                            mAppStateNotificationDrainScheduled[listener] = true;
+                            appStateJobs.emplace_back(AppStateNotificationQueueJob::Create(this, listener));
                         }
                     }
                 }
@@ -191,26 +224,26 @@ namespace WPEFramework
                 {
                     for (auto* listener : mLifecycleManagerStateNotification)
                     {
-                        if (nullptr != listener)
+                        if (nullptr == listener)
                         {
-                            lifecycleStateNotificationsPerListener[listener].emplace_back(LifecycleStateNotification{
-                                appId,
-                                appInstanceId,
-                                static_cast<Exchange::ILifecycleManager::LifecycleState>(oldLifecycleState),
-                                static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
-                                navigationIntent});
+                            continue;
+                        }
+
+                        auto& queue = mLifecycleStateNotifications[listener];
+                        queue.emplace_back(LifecycleStateNotification{
+                            appId,
+                            appInstanceId,
+                            static_cast<Exchange::ILifecycleManager::LifecycleState>(oldLifecycleState),
+                            static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                            navigationIntent});
+
+                        auto scheduled = mLifecycleStateNotificationDrainScheduled.find(listener);
+                        if ((scheduled == mLifecycleStateNotificationDrainScheduled.end()) || (false == scheduled->second))
+                        {
+                            mLifecycleStateNotificationDrainScheduled[listener] = true;
+                            lifecycleStateJobs.emplace_back(LifecycleStateNotificationQueueJob::Create(this, listener));
                         }
                     }
-                }
-
-                for (auto& [listener, notifications] : appStateNotificationsPerListener)
-                {
-                    appStateJobs.emplace_back(AppStateNotificationQueueJob::Create(listener, std::move(notifications)));
-                }
-
-                for (auto& [listener, notifications] : lifecycleStateNotificationsPerListener)
-                {
-                    lifecycleStateJobs.emplace_back(LifecycleStateNotificationQueueJob::Create(listener, std::move(notifications)));
                 }
             }
 
@@ -628,9 +661,10 @@ namespace WPEFramework
             auto itr = std::find(mLifecycleManagerStateNotification.begin(), mLifecycleManagerStateNotification.end(), notification);
             if (itr != mLifecycleManagerStateNotification.end())
             {
-                (*itr)->Release();
                 LOGINFO("Unregister notification");
                 mLifecycleManagerStateNotification.erase(itr);
+                mLifecycleStateNotifications.erase(notification);
+                mLifecycleStateNotificationDrainScheduled.erase(notification);
                 status = Core::ERROR_NONE;
             }
             else
@@ -639,6 +673,12 @@ namespace WPEFramework
             }
         
             mAdminLock.Unlock();
+
+            if (Core::ERROR_NONE == status)
+            {
+                waitForLifecycleStateNotificationDrain(notification);
+                notification->Release();
+            }
         
             return status;
         }

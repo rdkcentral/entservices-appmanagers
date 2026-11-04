@@ -20,8 +20,11 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -420,6 +423,16 @@ public:
         lastAppId = appId;
         lastState = newState;
         lastError = errorReason;
+        _callbackCV.notify_all();
+    }
+
+    bool WaitForAppStateChangedCount(uint32_t expectedCount,
+        std::chrono::milliseconds timeout = std::chrono::seconds(5)) const
+    {
+        std::unique_lock<std::mutex> lock(_callbackMutex);
+        return _callbackCV.wait_for(lock, timeout, [this, expectedCount]() {
+            return onAppStateChangedCount.load() >= expectedCount;
+        });
     }
 
     mutable std::atomic<uint32_t> _refCount;
@@ -427,6 +440,8 @@ public:
     std::string lastAppId;
     WPEFramework::Exchange::ILifecycleManager::LifecycleState lastState {};
     std::string lastError;
+    mutable std::mutex _callbackMutex;
+    mutable std::condition_variable _callbackCV;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -479,6 +494,16 @@ public:
         lastOldState = oldState;
         lastNewState = newState;
         lastNavigationIntent = navigationIntent;
+        _callbackCV.notify_all();
+    }
+
+    bool WaitForLifecycleStateChangedCount(uint32_t expectedCount,
+        std::chrono::milliseconds timeout = std::chrono::seconds(5)) const
+    {
+        std::unique_lock<std::mutex> lock(_callbackMutex);
+        return _callbackCV.wait_for(lock, timeout, [this, expectedCount]() {
+            return onStateChangedCount.load() >= expectedCount;
+        });
     }
 
     mutable std::atomic<uint32_t> _refCount;
@@ -490,6 +515,8 @@ public:
     std::string lastNavigationIntent;
     std::vector<std::pair<WPEFramework::Exchange::ILifecycleManager::LifecycleState,
                           WPEFramework::Exchange::ILifecycleManager::LifecycleState>> transitions;
+    mutable std::mutex _callbackMutex;
+    mutable std::condition_variable _callbackCV;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────

@@ -782,8 +782,10 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsLcmNotifications()
         LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED,
         params);
 
-    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
-        "OnAppStateChanged notifications complete within timeout");
+    L0Test::ExpectTrue(tr, notif1->WaitForAppStateChangedCount(1u),
+        "First notification completed OnAppStateChanged callback within timeout");
+    L0Test::ExpectTrue(tr, notif2->WaitForAppStateChangedCount(1u),
+        "Second notification completed OnAppStateChanged callback within timeout");
     L0Test::ExpectTrue(tr, notif1->onAppStateChangedCount.load() >= 1u,
         "First notification received OnAppStateChanged callback");
     L0Test::ExpectTrue(tr, notif2->onAppStateChangedCount.load() >= 1u,
@@ -828,8 +830,10 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsStateNotifications()
         LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED,
         params);
 
-    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
-        "Lifecycle state notifications complete within timeout");
+    L0Test::ExpectTrue(tr, sn1->WaitForLifecycleStateChangedCount(1u),
+        "First state notification completed OnAppLifecycleStateChanged within timeout");
+    L0Test::ExpectTrue(tr, sn2->WaitForLifecycleStateChangedCount(1u),
+        "Second state notification completed OnAppLifecycleStateChanged within timeout");
     L0Test::ExpectTrue(tr, sn1->onStateChangedCount.load() >= 1u,
         "First state notification received OnAppLifecycleStateChanged");
     L0Test::ExpectTrue(tr, sn2->onStateChangedCount.load() >= 1u,
@@ -866,7 +870,8 @@ uint32_t Test_Impl_QueuedLifecycleEventsPreserveOrder()
     LifecycleManagerImplementationTest::queueEvent(impl,
         LifecycleManagerImplementationTest::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, params);
 
-    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(), "Queued lifecycle dispatch completes");
+    L0Test::ExpectTrue(tr, notification->WaitForLifecycleStateChangedCount(2U),
+        "Queued lifecycle dispatch completes before assertion");
     L0Test::ExpectEqU32(tr, notification->onStateChangedCount.load(), 2U,
         "Both lifecycle transitions are delivered");
     if (2U == notification->transitions.size()) {
@@ -908,8 +913,8 @@ uint32_t Test_Impl_DispatchOnFailureCallsLcmNotification()
         LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_ONFAILURE,
         params);
 
-    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
-        "Failure notifications complete within timeout");
+    L0Test::ExpectTrue(tr, notif->WaitForAppStateChangedCount(1u),
+        "OnAppStateChanged completed on ONFAILURE dispatch within timeout");
     L0Test::ExpectTrue(tr, notif->onAppStateChangedCount.load() >= 1u,
         "OnAppStateChanged called on ONFAILURE dispatch");
 
