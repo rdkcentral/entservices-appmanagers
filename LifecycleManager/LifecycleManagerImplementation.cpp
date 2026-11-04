@@ -82,6 +82,7 @@ namespace WPEFramework
             {
                 LOGINFO("Register notification");
                 mLifecycleManagerNotification.push_back(notification);
+                mAppStateNotificationGeneration[notification] = (mAppStateNotificationGeneration.find(notification) == mAppStateNotificationGeneration.end()) ? 1U : (mAppStateNotificationGeneration[notification] + 1U);
                 notification->AddRef();
             }
         
@@ -104,6 +105,7 @@ namespace WPEFramework
             {
                 LOGINFO("Unregister notification");
                 mLifecycleManagerNotification.erase(itr);
+                mAppStateNotificationGeneration[notification] += 1U;
                 mAppStateNotifications.erase(notification);
                 mAppStateNotificationDrainScheduled.erase(notification);
                 status = Core::ERROR_NONE;
@@ -128,6 +130,12 @@ namespace WPEFramework
         {
             std::unique_lock<std::mutex> lock(mAppStateNotificationLock);
             mAppStateNotificationCV.wait(lock, [this, notification]() {
+                auto scheduledIt = mAppStateNotificationDrainScheduled.find(notification);
+                if ((scheduledIt != mAppStateNotificationDrainScheduled.end()) && scheduledIt->second)
+                {
+                    return false;
+                }
+
                 auto it = mAppStateNotificationInFlight.find(notification);
                 if ((it == mAppStateNotificationInFlight.end()) || (0U == it->second))
                 {
@@ -144,6 +152,12 @@ namespace WPEFramework
         {
             std::unique_lock<std::mutex> lock(mLifecycleStateNotificationLock);
             mLifecycleStateNotificationCV.wait(lock, [this, notification]() {
+                auto scheduledIt = mLifecycleStateNotificationDrainScheduled.find(notification);
+                if ((scheduledIt != mLifecycleStateNotificationDrainScheduled.end()) && scheduledIt->second)
+                {
+                    return false;
+                }
+
                 auto it = mLifecycleStateNotificationInFlight.find(notification);
                 if ((it == mLifecycleStateNotificationInFlight.end()) || (0U == it->second))
                 {
@@ -655,6 +669,7 @@ namespace WPEFramework
             {
                 LOGINFO("Register notification");
                 mLifecycleManagerStateNotification.push_back(notification);
+                mLifecycleStateNotificationGeneration[notification] = (mLifecycleStateNotificationGeneration.find(notification) == mLifecycleStateNotificationGeneration.end()) ? 1U : (mLifecycleStateNotificationGeneration[notification] + 1U);
                 notification->AddRef();
             }
         
@@ -677,6 +692,7 @@ namespace WPEFramework
             {
                 LOGINFO("Unregister notification");
                 mLifecycleManagerStateNotification.erase(itr);
+                mLifecycleStateNotificationGeneration[notification] += 1U;
                 mLifecycleStateNotifications.erase(notification);
                 mLifecycleStateNotificationDrainScheduled.erase(notification);
                 status = Core::ERROR_NONE;

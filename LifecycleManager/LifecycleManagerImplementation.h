@@ -174,6 +174,7 @@ namespace WPEFramework
                             Exchange::ILifecycleManager::INotification* notification)
                             : mLifecycleManager(manager)
                             , mNotification(notification)
+                            , mGeneration((manager != nullptr) && (notification != nullptr) ? manager->mAppStateNotificationGeneration[notification] : 0U)
                         {
                             if (mLifecycleManager != nullptr)
                             {
@@ -218,6 +219,11 @@ namespace WPEFramework
                                 return;
                             }
 
+                            if (mLifecycleManager->mAppStateNotificationGeneration[mNotification] != mGeneration)
+                            {
+                                return;
+                            }
+
                             {
                                 std::lock_guard<std::mutex> lock(mLifecycleManager->mAppStateNotificationLock);
                                 ++mLifecycleManager->mAppStateNotificationInFlight[mNotification];
@@ -258,6 +264,11 @@ namespace WPEFramework
 
                             while (!notifications.empty())
                             {
+                                if (mLifecycleManager->mAppStateNotificationGeneration[mNotification] != mGeneration)
+                                {
+                                    break;
+                                }
+
                                 const auto notification = notifications.front();
                                 notifications.pop_front();
                                 mNotification->OnAppStateChanged(notification.appId, notification.newLifecycleState, notification.errorReason);
@@ -304,6 +315,7 @@ namespace WPEFramework
                     private:
                         LifecycleManagerImplementation* mLifecycleManager;
                         Exchange::ILifecycleManager::INotification* mNotification;
+                        const uint32_t mGeneration;
                 };
 
                 struct LifecycleStateNotification
@@ -322,6 +334,7 @@ namespace WPEFramework
                             Exchange::ILifecycleManagerState::INotification* notification)
                             : mLifecycleManager(manager)
                             , mNotification(notification)
+                            , mGeneration((manager != nullptr) && (notification != nullptr) ? manager->mLifecycleStateNotificationGeneration[notification] : 0U)
                         {
                             if (mLifecycleManager != nullptr)
                             {
@@ -366,6 +379,11 @@ namespace WPEFramework
                                 return;
                             }
 
+                            if (mLifecycleManager->mLifecycleStateNotificationGeneration[mNotification] != mGeneration)
+                            {
+                                return;
+                            }
+
                             {
                                 std::lock_guard<std::mutex> lock(mLifecycleManager->mLifecycleStateNotificationLock);
                                 ++mLifecycleManager->mLifecycleStateNotificationInFlight[mNotification];
@@ -406,6 +424,11 @@ namespace WPEFramework
 
                             while (!notifications.empty())
                             {
+                                if (mLifecycleManager->mLifecycleStateNotificationGeneration[mNotification] != mGeneration)
+                                {
+                                    break;
+                                }
+
                                 const auto notification = notifications.front();
                                 notifications.pop_front();
                                 mNotification->OnAppLifecycleStateChanged(notification.appId,
@@ -456,6 +479,7 @@ namespace WPEFramework
                     private:
                         LifecycleManagerImplementation* mLifecycleManager;
                         Exchange::ILifecycleManagerState::INotification* mNotification;
+                        const uint32_t mGeneration;
                 };
 
                 class EXTERNAL LifecycleStateListenerJob : public Core::IDispatch
@@ -576,6 +600,8 @@ namespace WPEFramework
                 std::map<Exchange::ILifecycleManagerState::INotification*, std::deque<LifecycleStateNotification>> mLifecycleStateNotifications;
                 std::map<Exchange::ILifecycleManager::INotification*, bool> mAppStateNotificationDrainScheduled;
                 std::map<Exchange::ILifecycleManagerState::INotification*, bool> mLifecycleStateNotificationDrainScheduled;
+                std::map<Exchange::ILifecycleManager::INotification*, uint32_t> mAppStateNotificationGeneration;
+                std::map<Exchange::ILifecycleManagerState::INotification*, uint32_t> mLifecycleStateNotificationGeneration;
                 std::map<Exchange::ILifecycleManager::INotification*, uint32_t> mAppStateNotificationInFlight;
                 std::map<Exchange::ILifecycleManagerState::INotification*, uint32_t> mLifecycleStateNotificationInFlight;
                 std::map<Exchange::ILifecycleManager::INotification*, std::thread::id> mAppStateNotificationDispatchingThread;

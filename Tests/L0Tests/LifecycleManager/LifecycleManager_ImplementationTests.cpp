@@ -786,6 +786,8 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsLcmNotifications()
         "First notification completed OnAppStateChanged callback within timeout");
     L0Test::ExpectTrue(tr, notif2->WaitForAppStateChangedCount(1u),
         "Second notification completed OnAppStateChanged callback within timeout");
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "Queued app-state jobs complete before fixture teardown");
     L0Test::ExpectTrue(tr, notif1->onAppStateChangedCount.load() >= 1u,
         "First notification received OnAppStateChanged callback");
     L0Test::ExpectTrue(tr, notif2->onAppStateChangedCount.load() >= 1u,
@@ -834,6 +836,8 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsStateNotifications()
         "First state notification completed OnAppLifecycleStateChanged within timeout");
     L0Test::ExpectTrue(tr, sn2->WaitForLifecycleStateChangedCount(1u),
         "Second state notification completed OnAppLifecycleStateChanged within timeout");
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "Queued lifecycle jobs complete before fixture teardown");
     L0Test::ExpectTrue(tr, sn1->onStateChangedCount.load() >= 1u,
         "First state notification received OnAppLifecycleStateChanged");
     L0Test::ExpectTrue(tr, sn2->onStateChangedCount.load() >= 1u,
@@ -917,6 +921,8 @@ uint32_t Test_Impl_DispatchOnFailureCallsLcmNotification()
 
     L0Test::ExpectTrue(tr, notif->WaitForAppStateChangedCount(1u),
         "OnAppStateChanged completed on ONFAILURE dispatch within timeout");
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "Queued failure jobs complete before fixture teardown");
     L0Test::ExpectTrue(tr, notif->onAppStateChangedCount.load() >= 1u,
         "OnAppStateChanged called on ONFAILURE dispatch");
 
