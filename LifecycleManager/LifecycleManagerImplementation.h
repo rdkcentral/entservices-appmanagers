@@ -429,30 +429,29 @@ namespace WPEFramework
                                     if (it == mLifecycleManager->mLifecycleStateNotifications.end())
                                     {
                                         mLifecycleManager->mLifecycleStateNotificationDrainScheduled.erase(mNotification);
-                                    {
-                                        std::lock_guard<std::mutex> lock(mLifecycleManager->mLifecycleStateNotificationLock);
-                                        auto inFlight = mLifecycleManager->mLifecycleStateNotificationInFlight.find(mNotification);
-                                        if (inFlight != mLifecycleManager->mLifecycleStateNotificationInFlight.end())
                                         {
-                                            if (0U < inFlight->second)
+                                            std::lock_guard<std::mutex> lock(mLifecycleManager->mLifecycleStateNotificationLock);
+                                            auto inFlight = mLifecycleManager->mLifecycleStateNotificationInFlight.find(mNotification);
+                                            if (inFlight != mLifecycleManager->mLifecycleStateNotificationInFlight.end())
                                             {
-                                                --inFlight->second;
-                                            }
-                                            if (0U == inFlight->second)
-                                            {
-                                                mLifecycleManager->mLifecycleStateNotificationInFlight.erase(mNotification);
-                                                mLifecycleManager->mLifecycleStateNotificationDispatchingThread.erase(mNotification);
-                                                mLifecycleManager->mLifecycleStateNotificationCV.notify_all();
+                                                if (0U < inFlight->second)
+                                                {
+                                                    --inFlight->second;
+                                                }
+                                                if (0U == inFlight->second)
+                                                {
+                                                    mLifecycleManager->mLifecycleStateNotificationInFlight.erase(mNotification);
+                                                    mLifecycleManager->mLifecycleStateNotificationDispatchingThread.erase(mNotification);
+                                                    mLifecycleManager->mLifecycleStateNotificationCV.notify_all();
+                                                }
                                             }
                                         }
+                                        return;
                                     }
-                                    return;
-                                }
 
-                                        notifications = std::move(it->second);
-                                        it->second.clear();
-                                        mLifecycleManager->mLifecycleStateNotifications.erase(it);
-                                    }
+                                    notifications = std::move(it->second);
+                                    it->second.clear();
+                                    mLifecycleManager->mLifecycleStateNotifications.erase(it);
                                 }
                             }
 
