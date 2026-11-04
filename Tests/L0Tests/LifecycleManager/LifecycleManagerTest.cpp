@@ -75,6 +75,7 @@ extern uint32_t Test_Impl_OnRippleEventIsNoOp();
 extern uint32_t Test_Impl_DispatchAppStateChangedCallsLcmNotifications();
 extern uint32_t Test_Impl_DispatchAppStateChangedCallsStateNotifications();
 extern uint32_t Test_Impl_QueuedLifecycleEventsPreserveOrder();
+extern uint32_t Test_Impl_ReRegisterNotificationUsesFreshQueue();
 extern uint32_t Test_Impl_DispatchOnFailureCallsLcmNotification();
 extern uint32_t Test_Impl_DispatchUnknownEventDoesNotCrash();
 extern uint32_t Test_Impl_GetContextByAppInstanceId();
@@ -214,6 +215,7 @@ int main()
         { "Impl_DispatchAppStateChangedCallsLcmNotifications",      Test_Impl_DispatchAppStateChangedCallsLcmNotifications },
         { "Impl_DispatchAppStateChangedCallsStateNotifications",    Test_Impl_DispatchAppStateChangedCallsStateNotifications },
         { "Impl_QueuedLifecycleEventsPreserveOrder",               Test_Impl_QueuedLifecycleEventsPreserveOrder },
+        { "Impl_ReRegisterNotificationUsesFreshQueue",              Test_Impl_ReRegisterNotificationUsesFreshQueue },
         { "Impl_DispatchOnFailureCallsLcmNotification",             Test_Impl_DispatchOnFailureCallsLcmNotification },
         { "Impl_DispatchUnknownEventDoesNotCrash",                  Test_Impl_DispatchUnknownEventDoesNotCrash },
         { "Impl_GetContextByAppInstanceId",                         Test_Impl_GetContextByAppInstanceId },

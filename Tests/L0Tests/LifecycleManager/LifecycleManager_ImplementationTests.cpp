@@ -893,6 +893,47 @@ uint32_t Test_Impl_QueuedLifecycleEventsPreserveOrder()
     notification->Release();
     return tr.failures;
 }
+
+uint32_t Test_Impl_ReRegisterNotificationUsesFreshQueue()
+{
+    L0Test::TestResult tr;
+    ConcreteLifecycleManagerImpl impl;
+    auto* notification = new L0Test::FakeLcmNotification();
+    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notification));
+
+    WPEFramework::Core::JSON::VariantContainer params;
+    params["appId"] = "com.test.rereg";
+    params["appInstanceId"] = "inst-rereg";
+    params["oldLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::INITIALIZING);
+    params["newLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::ACTIVE);
+    params["navigationIntent"] = "home";
+    params["errorReason"] = "";
+
+    LifecycleManagerImplementationTest::queueEvent(impl,
+        LifecycleManagerImplementationTest::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, params);
+
+    L0Test::ExpectTrue(tr, notification->WaitForAppStateChangedCount(1U),
+        "First registration sends queued state change");
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "First registration drains before unregister");
+
+    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notification));
+    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notification));
+
+    params["oldLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::ACTIVE);
+    params["newLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::PAUSED);
+    LifecycleManagerImplementationTest::queueEvent(impl,
+        LifecycleManagerImplementationTest::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, params);
+
+    L0Test::ExpectTrue(tr, notification->WaitForAppStateChangedCount(2U),
+        "Re-registered listener receives the fresh queue callback");
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "Fresh queue drains before fixture teardown");
+
+    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notification));
+    notification->Release();
+    return tr.failures;
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 uint32_t Test_Impl_DispatchOnFailureCallsLcmNotification()

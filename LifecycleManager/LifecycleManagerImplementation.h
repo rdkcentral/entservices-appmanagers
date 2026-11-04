@@ -219,9 +219,12 @@ namespace WPEFramework
                                 return;
                             }
 
-                            if (mLifecycleManager->mAppStateNotificationGeneration[mNotification] != mGeneration)
                             {
-                                return;
+                                Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
+                                if (mLifecycleManager->mAppStateNotificationGeneration[mNotification] != mGeneration)
+                                {
+                                    return;
+                                }
                             }
 
                             {
@@ -233,10 +236,18 @@ namespace WPEFramework
                             std::deque<AppStateNotification> notifications;
                             {
                                 Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
-                                auto it = mLifecycleManager->mAppStateNotifications.find(mNotification);
-                                if (it == mLifecycleManager->mAppStateNotifications.end())
+                                auto generationIt = mLifecycleManager->mAppStateNotificationGeneration.find(mNotification);
+                                if ((generationIt == mLifecycleManager->mAppStateNotificationGeneration.end()) ||
+                                    (generationIt->second != mGeneration))
                                 {
-                                    mLifecycleManager->mAppStateNotificationDrainScheduled.erase(mNotification);
+                                    // This job is stale; it will fall through to the normal in-flight decrement.
+                                }
+                                else
+                                {
+                                    auto it = mLifecycleManager->mAppStateNotifications.find(mNotification);
+                                    if (it == mLifecycleManager->mAppStateNotifications.end())
+                                    {
+                                        mLifecycleManager->mAppStateNotificationDrainScheduled.erase(mNotification);
                                     {
                                         std::lock_guard<std::mutex> lock(mLifecycleManager->mAppStateNotificationLock);
                                         auto inFlight = mLifecycleManager->mAppStateNotificationInFlight.find(mNotification);
@@ -257,16 +268,21 @@ namespace WPEFramework
                                     return;
                                 }
 
-                                notifications = std::move(it->second);
-                                it->second.clear();
-                                mLifecycleManager->mAppStateNotifications.erase(it);
+                                        notifications = std::move(it->second);
+                                        it->second.clear();
+                                        mLifecycleManager->mAppStateNotifications.erase(it);
+                                    }
+                                }
                             }
 
                             while (!notifications.empty())
                             {
-                                if (mLifecycleManager->mAppStateNotificationGeneration[mNotification] != mGeneration)
                                 {
-                                    break;
+                                    Core::SafeSyncType<Core::CriticalSection> generationLock(mLifecycleManager->mAdminLock);
+                                    if (mLifecycleManager->mAppStateNotificationGeneration[mNotification] != mGeneration)
+                                    {
+                                        break;
+                                    }
                                 }
 
                                 const auto notification = notifications.front();
@@ -277,19 +293,24 @@ namespace WPEFramework
                             {
                                 bool reschedule = false;
                                 Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
-                                auto queueIt = mLifecycleManager->mAppStateNotifications.find(mNotification);
-                                if ((queueIt != mLifecycleManager->mAppStateNotifications.end()) && (!queueIt->second.empty()))
+                                auto generationIt = mLifecycleManager->mAppStateNotificationGeneration.find(mNotification);
+                                if ((generationIt != mLifecycleManager->mAppStateNotificationGeneration.end()) &&
+                                    (generationIt->second == mGeneration))
                                 {
-                                    reschedule = true;
-                                    mLifecycleManager->mAppStateNotificationDrainScheduled[mNotification] = true;
-                                }
-                                else
-                                {
-                                    mLifecycleManager->mAppStateNotificationDrainScheduled[mNotification] = false;
-                                }
-                                if (reschedule)
-                                {
-                                    Core::IWorkerPool::Instance().Submit(AppStateNotificationQueueJob::Create(mLifecycleManager, mNotification));
+                                    auto queueIt = mLifecycleManager->mAppStateNotifications.find(mNotification);
+                                    if ((queueIt != mLifecycleManager->mAppStateNotifications.end()) && (!queueIt->second.empty()))
+                                    {
+                                        reschedule = true;
+                                        mLifecycleManager->mAppStateNotificationDrainScheduled[mNotification] = true;
+                                    }
+                                    else
+                                    {
+                                        mLifecycleManager->mAppStateNotificationDrainScheduled[mNotification] = false;
+                                    }
+                                    if (reschedule)
+                                    {
+                                        Core::IWorkerPool::Instance().Submit(AppStateNotificationQueueJob::Create(mLifecycleManager, mNotification));
+                                    }
                                 }
                             }
 
@@ -379,9 +400,12 @@ namespace WPEFramework
                                 return;
                             }
 
-                            if (mLifecycleManager->mLifecycleStateNotificationGeneration[mNotification] != mGeneration)
                             {
-                                return;
+                                Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
+                                if (mLifecycleManager->mLifecycleStateNotificationGeneration[mNotification] != mGeneration)
+                                {
+                                    return;
+                                }
                             }
 
                             {
@@ -393,10 +417,18 @@ namespace WPEFramework
                             std::deque<LifecycleStateNotification> notifications;
                             {
                                 Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
-                                auto it = mLifecycleManager->mLifecycleStateNotifications.find(mNotification);
-                                if (it == mLifecycleManager->mLifecycleStateNotifications.end())
+                                auto generationIt = mLifecycleManager->mLifecycleStateNotificationGeneration.find(mNotification);
+                                if ((generationIt == mLifecycleManager->mLifecycleStateNotificationGeneration.end()) ||
+                                    (generationIt->second != mGeneration))
                                 {
-                                    mLifecycleManager->mLifecycleStateNotificationDrainScheduled.erase(mNotification);
+                                    // This job is stale; it will fall through to the normal in-flight decrement.
+                                }
+                                else
+                                {
+                                    auto it = mLifecycleManager->mLifecycleStateNotifications.find(mNotification);
+                                    if (it == mLifecycleManager->mLifecycleStateNotifications.end())
+                                    {
+                                        mLifecycleManager->mLifecycleStateNotificationDrainScheduled.erase(mNotification);
                                     {
                                         std::lock_guard<std::mutex> lock(mLifecycleManager->mLifecycleStateNotificationLock);
                                         auto inFlight = mLifecycleManager->mLifecycleStateNotificationInFlight.find(mNotification);
@@ -417,16 +449,21 @@ namespace WPEFramework
                                     return;
                                 }
 
-                                notifications = std::move(it->second);
-                                it->second.clear();
-                                mLifecycleManager->mLifecycleStateNotifications.erase(it);
+                                        notifications = std::move(it->second);
+                                        it->second.clear();
+                                        mLifecycleManager->mLifecycleStateNotifications.erase(it);
+                                    }
+                                }
                             }
 
                             while (!notifications.empty())
                             {
-                                if (mLifecycleManager->mLifecycleStateNotificationGeneration[mNotification] != mGeneration)
                                 {
-                                    break;
+                                    Core::SafeSyncType<Core::CriticalSection> generationLock(mLifecycleManager->mAdminLock);
+                                    if (mLifecycleManager->mLifecycleStateNotificationGeneration[mNotification] != mGeneration)
+                                    {
+                                        break;
+                                    }
                                 }
 
                                 const auto notification = notifications.front();
@@ -441,19 +478,24 @@ namespace WPEFramework
                             {
                                 bool reschedule = false;
                                 Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
-                                auto queueIt = mLifecycleManager->mLifecycleStateNotifications.find(mNotification);
-                                if ((queueIt != mLifecycleManager->mLifecycleStateNotifications.end()) && (!queueIt->second.empty()))
+                                auto generationIt = mLifecycleManager->mLifecycleStateNotificationGeneration.find(mNotification);
+                                if ((generationIt != mLifecycleManager->mLifecycleStateNotificationGeneration.end()) &&
+                                    (generationIt->second == mGeneration))
                                 {
-                                    reschedule = true;
-                                    mLifecycleManager->mLifecycleStateNotificationDrainScheduled[mNotification] = true;
-                                }
-                                else
-                                {
-                                    mLifecycleManager->mLifecycleStateNotificationDrainScheduled[mNotification] = false;
-                                }
-                                if (reschedule)
-                                {
-                                    Core::IWorkerPool::Instance().Submit(LifecycleStateNotificationQueueJob::Create(mLifecycleManager, mNotification));
+                                    auto queueIt = mLifecycleManager->mLifecycleStateNotifications.find(mNotification);
+                                    if ((queueIt != mLifecycleManager->mLifecycleStateNotifications.end()) && (!queueIt->second.empty()))
+                                    {
+                                        reschedule = true;
+                                        mLifecycleManager->mLifecycleStateNotificationDrainScheduled[mNotification] = true;
+                                    }
+                                    else
+                                    {
+                                        mLifecycleManager->mLifecycleStateNotificationDrainScheduled[mNotification] = false;
+                                    }
+                                    if (reschedule)
+                                    {
+                                        Core::IWorkerPool::Instance().Submit(LifecycleStateNotificationQueueJob::Create(mLifecycleManager, mNotification));
+                                    }
                                 }
                             }
 

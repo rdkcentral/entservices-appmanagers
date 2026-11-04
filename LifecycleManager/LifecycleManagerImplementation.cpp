@@ -130,12 +130,6 @@ namespace WPEFramework
         {
             std::unique_lock<std::mutex> lock(mAppStateNotificationLock);
             mAppStateNotificationCV.wait(lock, [this, notification]() {
-                auto scheduledIt = mAppStateNotificationDrainScheduled.find(notification);
-                if ((scheduledIt != mAppStateNotificationDrainScheduled.end()) && scheduledIt->second)
-                {
-                    return false;
-                }
-
                 auto it = mAppStateNotificationInFlight.find(notification);
                 if ((it == mAppStateNotificationInFlight.end()) || (0U == it->second))
                 {
@@ -152,12 +146,6 @@ namespace WPEFramework
         {
             std::unique_lock<std::mutex> lock(mLifecycleStateNotificationLock);
             mLifecycleStateNotificationCV.wait(lock, [this, notification]() {
-                auto scheduledIt = mLifecycleStateNotificationDrainScheduled.find(notification);
-                if ((scheduledIt != mLifecycleStateNotificationDrainScheduled.end()) && scheduledIt->second)
-                {
-                    return false;
-                }
-
                 auto it = mLifecycleStateNotificationInFlight.find(notification);
                 if ((it == mLifecycleStateNotificationInFlight.end()) || (0U == it->second))
                 {
