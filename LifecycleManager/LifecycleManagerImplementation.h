@@ -115,11 +115,11 @@ namespace WPEFramework
                             , mNewLifecycleState(newLifecycleState)
                             , mErrorReason(errorReason)
                         {
-                            if (mLifecycleManagerImplementation != nullptr)
+                            if (nullptr != mLifecycleManagerImplementation)
                             {
                                 mLifecycleManagerImplementation->AddRef();
                             }
-                            if (mNotification != nullptr)
+                            if (nullptr != mNotification)
                             {
                                 mNotification->AddRef();
                             }
