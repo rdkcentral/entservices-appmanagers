@@ -829,6 +829,13 @@ namespace Plugin {
         packagemanager::ConfigMetaData config;      // XXX: cleanup
         packagemanager::NameValues locks;
         const string installedVersion = GetInstalledVersion(packageId);
+        for (auto candidate = mState.lower_bound({packageId, string()});
+            candidate != mState.end() && candidate->first.first == packageId; ++candidate) {
+            if (candidate->first.second != installedVersion && candidate->second.mLockCount) {
+                LOGERR("Cannot lock '%s:%s' while '%s' is still locked", packageId.c_str(), installedVersion.c_str(), candidate->first.second.c_str());
+                return Core::ERROR_ILLEGAL_STATE;
+            }
+        }
         result = LockPackage(packageId, installedVersion, lockReason, lockId, unpackedPath, config, locks);
         if (result == packagemanager::SUCCESS) {
             // Lock Runtime

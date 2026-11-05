@@ -96,11 +96,11 @@ remains unchanged; no separate running-package snapshots are maintained here.
 
 Lock counts follow develop's per-version reference counting: each lock increments
 that version's count, each unlock decrements it, and the final reference releases
-the backend lock. The versionless unlock adapter resolves a single locked version.
-If multiple versions are locked, it returns `ERROR_GENERAL` without releasing any
-version, because the public API cannot identify the holder. Such a case requires
-version/ownership information or an agreed lifecycle restriction; it is not
-resolved by choosing a version according to map order.
+the backend lock. Because the versionless unlock cannot identify a holder, `Lock()`
+returns `ERROR_ILLEGAL_STATE` while a different version of the same package is
+still locked, so at most one version is locked per package and `Unlock()` always
+resolves that version. A relaunch after an upgrade succeeds once the previous
+version's holders have released it.
 
 Uninstall deferral follows develop: the selected installed version's lock count
 controls whether uninstall waits. Installation itself does not enter

@@ -16,6 +16,7 @@ namespace {
 
 using WPEFramework::Core::ERROR_BAD_REQUEST;
 using WPEFramework::Core::ERROR_GENERAL;
+using WPEFramework::Core::ERROR_ILLEGAL_STATE;
 using WPEFramework::Core::ERROR_INVALID_PARAMETER;
 using WPEFramework::Core::ERROR_INVALID_SIGNATURE;
 using WPEFramework::Core::ERROR_NONE;
@@ -169,7 +170,7 @@ uint32_t Test_PM_Impl_InitializeAndDeinitialize()
     return tr.failures;
 }
 
-uint32_t Test_PM_Impl_UnlockRejectsAmbiguousVersions()
+uint32_t Test_PM_Impl_LockRejectsDifferentVersionWhileOlderLocked()
 {
     L0Test::TestResult tr;
     for (const uint32_t oldHolders : {1U, 2U}) {
@@ -194,33 +195,27 @@ uint32_t Test_PM_Impl_UnlockRejectsAmbiguousVersions()
             "Install() remains allowed while the original version is locked");
         L0Test::ExpectEqU32(tr,
             fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
-                lockId, path, config, dependencies), ERROR_NONE, "Lock() the newly installed version");
+                lockId, path, config, dependencies), ERROR_ILLEGAL_STATE,
+            "Lock() of the new version is rejected while the older version is locked");
+        L0Test::ExpectTrue(tr, dependencies == nullptr, "A rejected Lock() returns no dependency iterator");
+
+        for (uint32_t remaining = oldHolders; remaining > 0; --remaining) {
+            L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE,
+                "Versionless Unlock() releases the only locked version");
+        }
+        const auto &calls = packagemanager::IPackageImplDummy::UnlockCalls();
+        const auto released = calls.find({"YouTube", "100.1.24"});
+        L0Test::ExpectTrue(tr, calls.size() == 1 && released != calls.end() && released->second == 1,
+            "Only the original version's backend lock is released, once");
+
+        L0Test::ExpectEqU32(tr,
+            fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+                lockId, path, config, dependencies), ERROR_NONE,
+            "Lock() of the new version succeeds after the older version is released");
         if (dependencies != nullptr) {
             dependencies->Release();
         }
-        std::string errorReason;
-        L0Test::ExpectEqU32(tr, fx.impl->Uninstall("YouTube", errorReason), ERROR_GENERAL,
-            "Uninstall() remains deferred while either version has holders");
-        L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_GENERAL,
-            "Versionless Unlock() rejects multiple locked versions rather than guessing a holder");
-        L0Test::ExpectTrue(tr, packagemanager::IPackageImplDummy::UnlockCalls().empty(),
-            "An ambiguous close releases neither backend lock");
-        bool locked = false;
-        std::string gateway;
-        L0Test::ExpectEqU32(tr, fx.impl->GetLockedInfo("YouTube", path, config, gateway, locked), ERROR_NONE,
-            "The original version remains locked after a rejected close");
-        L0Test::ExpectTrue(tr, locked && path == "/tmp/package-locks/YouTube/100.1.24",
-            "The original holder's mount is retained");
-        for (uint32_t remaining = oldHolders; remaining > 0; --remaining) {
-            L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_GENERAL,
-                "Retry remains ambiguous without a version or ownership identifier");
-        }
-        L0Test::ExpectTrue(tr, packagemanager::IPackageImplDummy::UnlockCalls().empty(),
-            "No version is released by map order");
-        WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
-        L0Test::ExpectEqU32(tr, fx.impl->PackageState("YouTube", state), ERROR_NONE, "PackageState() succeeds after final close");
-        L0Test::ExpectTrue(tr, state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED,
-            "A rejected ambiguous unlock does not apply the pending uninstall");
+        L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "Unlock() releases the new version");
     }
     return tr.failures;
 }
