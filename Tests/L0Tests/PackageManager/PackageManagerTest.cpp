@@ -21,6 +21,7 @@ extern uint32_t Test_PM_Impl_InstallAndUninstallFlowWithNotifications();
 extern uint32_t Test_PM_Impl_InstallNotificationUsesArtifactVersion();
 extern uint32_t Test_PM_Impl_MetadataExtractionFailurePublishesInstallFailure();
 extern uint32_t Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled();
+extern uint32_t Test_PM_Impl_UninstallAfterRejectedUpgradeReportsUninstalled();
 extern uint32_t Test_PM_Impl_GetConfigForInstalledPackage();
 extern uint32_t Test_PM_Impl_UnlockRejectsAmbiguousVersions();
 extern uint32_t Test_PM_Impl_UnlockFailurePreservesReferenceCount();
@@ -74,6 +75,7 @@ int main()
         { "PM_Impl_InstallNotificationUsesArtifactVersion", Test_PM_Impl_InstallNotificationUsesArtifactVersion },
         { "PM_Impl_MetadataExtractionFailurePublishesInstallFailure", Test_PM_Impl_MetadataExtractionFailurePublishesInstallFailure },
         { "PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled", Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled },
+        { "PM_Impl_UninstallAfterRejectedUpgradeReportsUninstalled", Test_PM_Impl_UninstallAfterRejectedUpgradeReportsUninstalled },
         { "PM_Impl_GetConfigForInstalledPackage", Test_PM_Impl_GetConfigForInstalledPackage },
         // Temporarily disabled: capabilities expectation drift in CI environment.
         // { "PM_Impl_LockUnlockAndGetLockedInfo", Test_PM_Impl_LockUnlockAndGetLockedInfo },

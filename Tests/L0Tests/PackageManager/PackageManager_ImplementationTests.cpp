@@ -1243,6 +1243,39 @@ uint32_t Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled()
     return tr.failures;
 }
 
+uint32_t Test_PM_Impl_UninstallAfterRejectedUpgradeReportsUninstalled()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    using InstallState = WPEFramework::Exchange::IPackageInstaller::InstallState;
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason =
+        WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    const std::string packageId = "UpgradeRejectApp";
+
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Install(packageId, nullptr, "/tmp/reject_1.pkg", failReason),
+        ERROR_NONE,
+        "Initial install of UpgradeRejectApp 1.0.0 succeeds");
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Install(packageId, nullptr, "/tmp/reject_2.pkg", failReason),
+        ERROR_GENERAL,
+        "Upgrade to 2.0.0 is rejected");
+
+    std::string errorReason;
+    L0Test::ExpectEqU32(tr, fx.impl->Uninstall(packageId, errorReason), ERROR_NONE,
+        "Uninstall() of 1.0.0 succeeds after the rejected upgrade");
+
+    InstallState state = InstallState::INSTALL_FAILURE;
+    L0Test::ExpectEqU32(tr, fx.impl->PackageState(packageId, state), ERROR_NONE,
+        "PackageState() is queryable after uninstall");
+    L0Test::ExpectTrue(tr, state == InstallState::UNINSTALLED,
+        "PackageState() reports UNINSTALLED, not the historical INSTALL_FAILURE");
+
+    return tr.failures;
+}
+
 uint32_t Test_PM_Impl_GetConfigListForInstalledPackages()
 {
     L0Test::TestResult tr;

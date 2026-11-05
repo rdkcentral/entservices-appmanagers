@@ -743,8 +743,11 @@ namespace Plugin {
                 result = Core::ERROR_NONE;
             }
         } else {
-            LOGERR("Package: %s Not found", packageId.c_str());
-            result = Core::ERROR_INVALID_PARAMETER;
+            const auto known = mState.lower_bound({packageId, string()});
+            if (known == mState.end() || known->first.first != packageId) {
+                LOGERR("Package: %s Not found", packageId.c_str());
+                result = Core::ERROR_INVALID_PARAMETER;
+            }
         }
 
         return result;
@@ -759,20 +762,13 @@ namespace Plugin {
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
         auto it = mState.find({packageId, GetInstalledVersion(packageId)});
-        if (it == mState.end()) {
-            for (auto candidate = mState.lower_bound({packageId, string()});
-                candidate != mState.end() && candidate->first.first == packageId; ++candidate) {
-                if (it == mState.end() ||
-                    candidate->second.installState == InstallState::INSTALLING ||
-                    (it->second.installState == InstallState::UNINSTALLED && candidate->second.installState != InstallState::UNINSTALLED)) {
-                    it = candidate;
-                }
-            }
-        }
+        const auto last = mLastInstallState.find(packageId);
         if (it != mState.end()) {
-            auto &state = it->second;
-            installState = state.installState;
+            installState = it->second.installState;
             LOGDBG("id: '%s' state: %s", packageId.c_str(), getInstallState(installState).c_str());
+        } else if (last != mLastInstallState.end()) {
+            installState = last->second;
+            LOGDBG("id: '%s' last state: %s", packageId.c_str(), getInstallState(installState).c_str());
         } else {
             LOGERR("Package: %s Not found", packageId.c_str());
             result = Core::ERROR_INVALID_PARAMETER;
@@ -1576,6 +1572,10 @@ namespace Plugin {
 
     void PackageManagerImplementation::NotifyInstallStatus(const string& id, const string& version, const State &state)
     {
+        {
+            std::lock_guard<std::recursive_mutex> lock(mtxState);
+            mLastInstallState[id] = state.installState;
+        }
         JsonArray list = JsonArray();
         JsonObject obj;
         obj["packageId"] = id;

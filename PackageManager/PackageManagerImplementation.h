@@ -322,6 +322,7 @@ class PackageManagerImplementation
         DownloadQueue  mDownloadQueue;
         std::recursive_mutex mtxState;
         StateMap  mState;
+        std::map<string, InstallState> mLastInstallState; // last operation state per packageId, guarded by mtxState
         bool cacheInitialized = false;
 
         std::string downloadDir = "/opt/CDL/";
