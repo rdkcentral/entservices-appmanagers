@@ -178,7 +178,8 @@ namespace WPEFramework
                 {
                     if (nullptr != listener)
                     {
-                        Core::IWorkerPool::Instance().Submit(AppStateListenerJob::Create(listener,
+                        Core::IWorkerPool::Instance().Submit(AppStateListenerJob::Create(this,
+                            listener,
                             appId,
                             static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
                             errorReason));
@@ -192,7 +193,8 @@ namespace WPEFramework
                 {
                     if (nullptr != listener)
                     {
-                        Core::IWorkerPool::Instance().Submit(LifecycleStateListenerJob::Create(listener,
+                        Core::IWorkerPool::Instance().Submit(LifecycleStateListenerJob::Create(this,
+                            listener,
                             appId,
                             appInstanceId,
                             static_cast<Exchange::ILifecycleManager::LifecycleState>(oldLifecycleState),
@@ -221,10 +223,6 @@ namespace WPEFramework
              ApplicationContext* context = contextHolder.get();
 
              mAdminLock.Lock();
-        
-             std::list<Exchange::ILifecycleManager::INotification*>::const_iterator index(mLifecycleManagerNotification.begin());
-             std::list<Exchange::ILifecycleManagerState::INotification*>::const_iterator stateNotificationIndex(mLifecycleManagerStateNotification.begin());
-        
              switch(event)
              {
                  case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
@@ -238,7 +236,6 @@ namespace WPEFramework
                      const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
                      const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
                      const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
-                     submitStateChangeNotifications(obj, true, true);
                      if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
                          context->setUnexpectedTermination(false);
                      }
@@ -251,14 +248,21 @@ namespace WPEFramework
                       handleWindowManagerEvent(obj);
                       break;
                  case LIFECYCLE_MANAGER_EVENT_ONFAILURE:
-                      submitStateChangeNotifications(obj, true, false);
                       break;
                  default:
                      LOGWARN("Event[%u] not handled appId=%s appInstanceId=%s", event, appId.c_str(), appInstanceId.c_str());
                      break;
              }
-        
              mAdminLock.Unlock();
+
+             if (LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED == event)
+             {
+                 submitStateChangeNotifications(obj, true, true);
+             }
+             else if (LIFECYCLE_MANAGER_EVENT_ONFAILURE == event)
+             {
+                 submitStateChangeNotifications(obj, true, false);
+             }
 
              if (shouldRespawn)
              {
@@ -775,7 +779,7 @@ namespace WPEFramework
         void LifecycleManagerImplementation::onStateChangeEvent(JsonObject& data)
 	{
             submitStateChangeNotifications(data, true, true);
-        }
+	}
 
         void LifecycleManagerImplementation::handleRuntimeManagerEvent(const JsonObject &data)
         {
