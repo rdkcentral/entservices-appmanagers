@@ -140,10 +140,9 @@ namespace WPEFramework
                     void lifecycleWorker();
                     void processAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState oldState, const Exchange::ILifecycleManager::LifecycleState newState, const string& navigationIntent);
                     void processAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason);
-                    Core::hresult launchRequestedPackage(const string& appId, const string& intent, const string& launchArgs,
-                        WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject);
+                    Core::hresult launchRequestedPackage(const string& appId, const string& intent, const string& launchArgs,std::string& runtimeConfigPayload);
                     Core::hresult restartSuspendedWithRequestedVersion(const string& appId, const string& intent, const string& launchArgs,
-                        WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& suspendedAppInstanceId, const string& requestedVersion);
+                        std::string& runtimeConfigPayload, const string& suspendedAppInstanceId, const string& requestedVersion);
                     bool tryGetPendingRelaunch(const string& suspendedAppInstanceId, PendingRelaunchRequest& pendingRelaunch);
                     static std::string base64Encode(const std::string& in);
                     bool appendLaunchParametersEnv(const std::string& launchArgs, std::string& runtimeConfigPayload, std::string& error) const;

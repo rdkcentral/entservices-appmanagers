@@ -235,7 +235,7 @@ namespace WPEFramework
             string source = "";
             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
 
-            if (!appendLaunchParametersEnv(normalizedLaunchArgs, runtimeConfigPayload, errorReason))
+            if (!appendLaunchParametersEnv(launchArgs, runtimeConfigPayload, errorReason))
             {
                LOGERR("Invalid runtime configuration payload: %s", errorReason.c_str());
                status = Core::ERROR_INVALID_PARAMETER;
@@ -243,9 +243,9 @@ namespace WPEFramework
             else
             {
                LOGINFO("spawnApp called ,state %u",state);
-               status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, normalizedLaunchArgs, appInstanceId, errorReason, success);
+               status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success);
             }
-                            }
+                
             if ((Core::ERROR_NONE == status) && (true == success))
             {
                 LOGINFO("Update App Info");
