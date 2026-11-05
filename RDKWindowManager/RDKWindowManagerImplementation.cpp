@@ -38,7 +38,6 @@ using namespace std;
 using namespace RdkWindowManager;
 using namespace Utils;
 
-extern int gCurrentFramerate;
 static std::atomic<bool> sRunning{true};
 
 #define ANY_KEY                  65536
@@ -92,6 +91,10 @@ static std::mutex gRequestMutex;
 static std::thread shellThread;
 static std::deque<std::shared_ptr<CreateDisplayRequest>> gCreateDisplayRequests;
 static bool gNeedsScreenshot = false;
+// Set by RdkWindowManagerListener::onInvalidate when the compositor reports new
+// content to render, so the shell thread wakes immediately instead of waiting
+// out the full frame timeout.
+static std::atomic<bool> gNeedsRender{false};
 static uint8_t* gScreenshotData = nullptr;
 static uint32_t gScreenshotSize = 0;
 static std::string gScreenshotImageData;
@@ -254,20 +257,15 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                 std::vector<std::shared_ptr<CreateDisplayRequest>> pendingRequests;
                 bool needsScreenshot = false;
 
-                // Wait up to one frame interval so idle rendering stays aligned with the configured framerate.
-                // Fall back to ~60Hz when the configured framerate is invalid or unavailable.
-                int frameTimeoutMs = 16;
-                if (0 < gCurrentFramerate) {
-                    frameTimeoutMs = 1000 / gCurrentFramerate;
-                    if (0 >= frameTimeoutMs) {
-                        frameTimeoutMs = 1;
-                    }
-                }
-
+                // Block until there is actual work to do: a createDisplay request,
+                // a screenshot request, an invalidate-driven render wake-up
+                // (gNeedsRender, set from RdkCompositor's invalidate callback), or
+                // shutdown. No periodic polling timeout - idle rendering only
+                // happens in response to one of these signals.
                 {
                     std::unique_lock<std::mutex> lock(gRequestMutex);
-                    gRequestCV.wait_for(lock, std::chrono::milliseconds(frameTimeoutMs), [] {
-                        return ((false == gCreateDisplayRequests.empty()) || gNeedsScreenshot || (false == sRunning));
+                    gRequestCV.wait(lock, [] {
+                        return ((false == gCreateDisplayRequests.empty()) || gNeedsScreenshot || gNeedsRender || (false == sRunning));
                     });
 
                     isRunning = sRunning;
@@ -283,6 +281,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
 
                     needsScreenshot = gNeedsScreenshot;
                     gNeedsScreenshot = false;
+                    gNeedsRender = false;
                 }
 
                 // Handle shutdown
@@ -593,6 +592,19 @@ void RDKWindowManagerImplementation::RdkWindowManagerListener::onApplicationBlur
     {
         mRDKWindowManagerImpl->dispatchEvent(RDKWindowManagerImplementation::Event::RDK_WINDOW_MANAGER_EVENT_APPLICATION_BLUR, JsonValue(client));
     }
+}
+
+// Westeros reports new content to render for this client. This is not surfaced
+// as a JSON-RPC/COM-RPC notification; it only wakes the shell thread so the next
+// render pass happens immediately instead of waiting out the frame timeout in
+// gRequestCV.
+void RDKWindowManagerImplementation::RdkWindowManagerListener::onInvalidate(const std::string& /*client*/)
+{
+    {
+        std::lock_guard<std::mutex> lock(gRequestMutex);
+        gNeedsRender = true;
+    }
+    gRequestCV.notify_one();
 }
 
 void RDKWindowManagerImplementation::dispatchEvent(Event event, const JsonValue &params)

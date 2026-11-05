@@ -207,6 +207,7 @@ namespace Plugin {
             virtual void onApplicationHidden(const std::string& client);
             virtual void onApplicationFocus(const std::string& client);
             virtual void onApplicationBlur(const std::string& client);
+            virtual void onInvalidate(const std::string& client);
 
           private:
               RDKWindowManagerImplementation *mRDKWindowManagerImpl;
