@@ -106,6 +106,7 @@ namespace WPEFramework
                 LOGINFO("Unregister notification");
                 mLifecycleManagerNotification.erase(itr);
                 mAppStateNotificationGeneration[notification] += 1U;
+                mAppStateNotificationGeneration.erase(notification);
                 mAppStateNotifications.erase(notification);
                 mAppStateNotificationDrainScheduled.erase(notification);
                 status = Core::ERROR_NONE;
@@ -681,6 +682,7 @@ namespace WPEFramework
                 LOGINFO("Unregister notification");
                 mLifecycleManagerStateNotification.erase(itr);
                 mLifecycleStateNotificationGeneration[notification] += 1U;
+                mLifecycleStateNotificationGeneration.erase(notification);
                 mLifecycleStateNotifications.erase(notification);
                 mLifecycleStateNotificationDrainScheduled.erase(notification);
                 status = Core::ERROR_NONE;
