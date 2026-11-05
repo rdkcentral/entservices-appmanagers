@@ -95,8 +95,16 @@ namespace packagemanager
         // been installed once, so a subsequent Install() call for it can simulate
         // the backend rejecting an upgrade while the prior artifact stays intact.
         mutable bool mUpgradeRejectAppInstalledOnce = false;
+        std::string mInventoryCurrentVersion;
+        bool mFailUnlockOnce = false;
+
+        static std::map<ConfigMetadataKey, uint32_t>& UnlockCalls() {
+            static std::map<ConfigMetadataKey, uint32_t> calls;
+            return calls;
+        }
 
         virtual Result Initialize(const std::string &configStr, ConfigMetadataArray &aConfigMetadata) { 
+            mFailUnlockOnce = configStr.find("unlock-fail-once") != std::string::npos;
             ConfigMetaData configMetadata {};
             configMetadata.dial = true; 
             configMetadata.wanLanAccess = true;
@@ -115,6 +123,26 @@ namespace packagemanager
                 configMetadata.md5Hash = "dummy-md5-youtube-100124";
             
             ConfigMetadataKey key {"YouTube", "100.1.24"};
+
+            if (configStr.find("inventory-current-") != std::string::npos) {
+                mInventoryCurrentVersion = configStr.find("inventory-current-10") != std::string::npos ? "10.0.0" : "9.0.0";
+                if (configStr.find("inventory-current-missing") != std::string::npos) {
+                    mInventoryCurrentVersion = "missing";
+                } else if (configStr.find("inventory-current-unknown") != std::string::npos) {
+                    mInventoryCurrentVersion = "11.0.0";
+                }
+                for (const std::string &inventoryVersion : {std::string("10.0.0"), std::string("9.0.0")}) {
+                    configMetadata.appPath = "/opt/YouTube/" + inventoryVersion;
+                    configMetadata.runtimeType = "test";
+                    aConfigMetadata.insert({{"YouTube", inventoryVersion}, configMetadata});
+                    auto runtimeMetadata = configMetadata;
+                    runtimeMetadata.appPath = "/opt/TestRuntime/" + inventoryVersion;
+                    runtimeMetadata.runtimeType.clear();
+                    runtimeMetadata.mimeType = "runtime/test";
+                    aConfigMetadata.insert({{"TestRuntime", inventoryVersion}, runtimeMetadata});
+                }
+                return SUCCESS;
+            }
 
             aConfigMetadata.insert({key, configMetadata});
             
@@ -172,7 +200,14 @@ namespace packagemanager
             configMetadata.runtimePath = "/tmp/runtime-locks/" + version;
             return SUCCESS;
         }
-        virtual Result Unlock(const std::string &packageId, const std::string &version) { return SUCCESS; }
+        virtual Result Unlock(const std::string &packageId, const std::string &version) {
+            ++UnlockCalls()[{packageId, version}];
+            if (mFailUnlockOnce && version == "200.0.0") {
+                mFailUnlockOnce = false;
+                return FAILED;
+            }
+            return SUCCESS;
+        }
 
         // XXX: Below THREE functions will be removed after RDK-M is updated, so don't need to time the changes in RDK-M
         virtual Result GetLockInfo(const std::string &packageId, const std::string &version, std::string &unpackedPath, bool &locked) { return SUCCESS; }
@@ -199,6 +234,11 @@ namespace packagemanager
 
         // Only the package seeded by Initialize() is considered installed.
         virtual Result GetInstalledPackageMetadata(const std::string &packageId, const std::string &version, std::string &metadata) {
+            if (!mInventoryCurrentVersion.empty()) {
+                metadata = mInventoryCurrentVersion == "missing" ? "{}" :
+                    "{\"packageId\":\"" + packageId + "\",\"version\":\"" + mInventoryCurrentVersion + "\"}";
+                return SUCCESS;
+            }
             if (packageId == "YouTube") {
                 metadata = "{\"packageId\":\"" + packageId + "\",\"version\":\"" + version + "\"}";
                 return SUCCESS;

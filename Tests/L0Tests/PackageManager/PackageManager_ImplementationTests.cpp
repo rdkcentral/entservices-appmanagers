@@ -116,11 +116,15 @@ struct ImplFixture {
     L0Test::ServiceMock service;
     WPEFramework::Plugin::PackageManagerImplementation* impl;
 
-    ImplFixture()
+    explicit ImplFixture(const std::string &configLine = "{\"downloadDir\":\"/tmp/\"}")
         : storage()
         , subSystem()
         , telemetry()
-        , service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry))
+        , service([this, &configLine]() {
+            L0Test::ServiceMock::Config config(&storage, &subSystem, &telemetry);
+            config.configLine = configLine;
+            return config;
+        }())
         , impl(WPEFramework::Core::Service<WPEFramework::Plugin::PackageManagerImplementation>::Create<
             WPEFramework::Plugin::PackageManagerImplementation>())
     {
@@ -162,6 +166,237 @@ uint32_t Test_PM_Impl_InitializeAndDeinitialize()
     const auto result = fx.Initialize();
     L0Test::ExpectEqU32(tr, result, ERROR_NONE, "Initialize() returns ERROR_NONE with valid service and storage manager");
 
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_InitializeUsesAuthoritativeVersion()
+{
+    L0Test::TestResult tr;
+    using InstallState = WPEFramework::Exchange::IPackageInstaller::InstallState;
+    for (const std::string &currentVersion : {std::string("10.0.0"), std::string("9.0.0")}) {
+        const std::string scenario = currentVersion == "10.0.0" ? "inventory-current-10" : "inventory-current-9";
+        ImplFixture fx("{\"downloadDir\":\"/tmp/\",\"testInventory\":\"" + scenario + "\"}");
+        L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() accepts the duplicate-inventory scenario");
+        WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
+        L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "Authoritative inventory initializes the cache");
+        if (packages != nullptr) {
+            uint32_t installedCount = 0;
+            uint32_t historicalCount = 0;
+            WPEFramework::Exchange::IPackageInstaller::Package package;
+            while (packages->Next(package)) {
+                if (package.packageId == "YouTube") {
+                    if (package.version == currentVersion) {
+                        L0Test::ExpectTrue(tr, package.state == InstallState::INSTALLED,
+                            "The backend's current artifact is INSTALLED regardless of version ordering");
+                        ++installedCount;
+                    } else {
+                        L0Test::ExpectTrue(tr, package.state == InstallState::UNINSTALLED,
+                            "Other reported versions are UNINSTALLED");
+                        ++historicalCount;
+                    }
+                }
+            }
+            L0Test::ExpectEqU32(tr, installedCount, 1, "Exactly one current app version is reported");
+            L0Test::ExpectEqU32(tr, historicalCount, 1, "The other app version remains tracked");
+            packages->Release();
+        }
+        std::string config;
+        L0Test::ExpectEqU32(tr, fx.impl->Config("YouTube", config), ERROR_NONE, "Versionless Config() succeeds");
+        JsonObject payload;
+        L0Test::ExpectTrue(tr, payload.FromString(config), "Config() returns valid JSON");
+        L0Test::ExpectEqStr(tr, payload["appPath"].String(), "/opt/YouTube/" + currentVersion,
+            "Config() uses the backend's current artifact");
+
+        uint32_t lockId = 0;
+        std::string unpackedPath;
+        WPEFramework::Exchange::IPackageHandler::ILockIterator* dependencies = nullptr;
+        L0Test::ExpectEqU32(tr,
+            fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+                lockId, unpackedPath, config, dependencies), ERROR_NONE, "Versionless Lock() succeeds");
+        L0Test::ExpectEqStr(tr, unpackedPath, "/tmp/package-locks/YouTube/" + currentVersion,
+            "Lock() selects the backend's current artifact");
+        bool runtimeFound = false;
+        if (dependencies != nullptr) {
+            WPEFramework::Exchange::IPackageHandler::AdditionalLock dependency;
+            while (dependencies->Next(dependency)) {
+                if (dependency.packageId == "TestRuntime") {
+                    runtimeFound = true;
+                    L0Test::ExpectEqStr(tr, dependency.version, currentVersion,
+                        "Runtime mapping also uses the backend's authoritative version");
+                }
+            }
+            dependencies->Release();
+        }
+        L0Test::ExpectTrue(tr, runtimeFound, "The installed runtime dependency is reported");
+        L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "Unlock() succeeds");
+    }
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_InitializeRejectsAmbiguousInventory()
+{
+    L0Test::TestResult tr;
+    for (const std::string &scenario : {std::string("inventory-current-missing"), std::string("inventory-current-unknown")}) {
+        ImplFixture fx("{\"downloadDir\":\"/tmp/\",\"testInventory\":\"" + scenario + "\"}");
+        L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() accepts the configuration asynchronously");
+        WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
+        L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), WPEFramework::Core::ERROR_UNAVAILABLE,
+            "The cache remains unavailable rather than guessing an installed version");
+        if (packages != nullptr) {
+            packages->Release();
+        }
+    }
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_UnlockRetainsAllVersionsUntilLastHolder()
+{
+    L0Test::TestResult tr;
+    for (const uint32_t oldHolders : {1U, 2U}) {
+        packagemanager::IPackageImplDummy::UnlockCalls().clear();
+        ImplFixture fx;
+        L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+        uint32_t lockId = 0;
+        std::string path;
+        std::string config;
+        WPEFramework::Exchange::IPackageHandler::ILockIterator* dependencies = nullptr;
+        for (uint32_t holder = 0; holder < oldHolders; ++holder) {
+            L0Test::ExpectEqU32(tr,
+                fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+                    lockId, path, config, dependencies), ERROR_NONE, "Lock() the original version");
+            if (dependencies != nullptr) {
+                dependencies->Release();
+                dependencies = nullptr;
+            }
+        }
+        WPEFramework::Exchange::IPackageInstaller::FailReason reason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+        L0Test::ExpectEqU32(tr, fx.impl->Install("YouTube", nullptr, "/tmp/youtube_200.pkg", reason), ERROR_NONE,
+            "Install() remains allowed while the original version is locked");
+        L0Test::ExpectEqU32(tr,
+            fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+                lockId, path, config, dependencies), ERROR_NONE, "Lock() the newly installed version");
+        if (dependencies != nullptr) {
+            dependencies->Release();
+        }
+        std::string errorReason;
+        L0Test::ExpectEqU32(tr, fx.impl->Uninstall("YouTube", errorReason), ERROR_GENERAL,
+            "Uninstall() remains deferred while either version has holders");
+        L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE,
+            "The new-version holder can close before old-version holders");
+        L0Test::ExpectTrue(tr, packagemanager::IPackageImplDummy::UnlockCalls().empty(),
+            "Neither version's backend lock is released by an ambiguous early close");
+        bool locked = false;
+        std::string gateway;
+        L0Test::ExpectEqU32(tr, fx.impl->GetLockedInfo("YouTube", path, config, gateway, locked), ERROR_NONE,
+            "The original version remains locked after the new holder closes");
+        L0Test::ExpectTrue(tr, locked && path == "/tmp/package-locks/YouTube/100.1.24",
+            "The original holder's mount is retained");
+        for (uint32_t remaining = oldHolders; remaining > 0; --remaining) {
+            L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "Close an original-version holder");
+            if (remaining > 1) {
+                L0Test::ExpectTrue(tr, packagemanager::IPackageImplDummy::UnlockCalls().empty(),
+                    "Repeated old-version holders also postpone all backend releases");
+            }
+        }
+        const auto &calls = packagemanager::IPackageImplDummy::UnlockCalls();
+        const auto oldCall = calls.find({"YouTube", "100.1.24"});
+        const auto newCall = calls.find({"YouTube", "200.0.0"});
+        L0Test::ExpectTrue(tr, oldCall != calls.end() && oldCall->second == 1,
+            "The original backend lock is released exactly once at aggregate zero");
+        L0Test::ExpectTrue(tr, newCall != calls.end() && newCall->second == 1,
+            "The new backend lock is released exactly once at aggregate zero");
+        WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+        L0Test::ExpectEqU32(tr, fx.impl->PackageState("YouTube", state), ERROR_NONE, "PackageState() succeeds after final close");
+        L0Test::ExpectTrue(tr, state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
+            "The pending uninstall runs only after all version holders close");
+        L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_GENERAL, "An extra close does not release locks twice");
+    }
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_UnlockRetriesOnlyRemainingReferences()
+{
+    L0Test::TestResult tr;
+    packagemanager::IPackageImplDummy::UnlockCalls().clear();
+    ImplFixture fx("{\"downloadDir\":\"/tmp/\",\"testUnlock\":\"unlock-fail-once\"}");
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+    uint32_t lockId = 0;
+    std::string path;
+    std::string config;
+    WPEFramework::Exchange::IPackageHandler::ILockIterator* dependencies = nullptr;
+    WPEFramework::Exchange::IPackageInstaller::FailReason reason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    for (const std::string &locator : {std::string(), std::string("/tmp/youtube_200.pkg")}) {
+        if (!locator.empty()) {
+            L0Test::ExpectEqU32(tr, fx.impl->Install("YouTube", nullptr, locator, reason), ERROR_NONE, "Install() the replacement");
+        }
+        L0Test::ExpectEqU32(tr,
+            fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+                lockId, path, config, dependencies), ERROR_NONE, "Lock() each version");
+        if (dependencies != nullptr) {
+            dependencies->Release();
+            dependencies = nullptr;
+        }
+    }
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "First close retains both versions");
+    L0Test::ExpectTrue(tr, packagemanager::IPackageImplDummy::UnlockCalls().empty(), "First close makes no backend calls");
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_GENERAL, "Final close reports the injected release failure");
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+            lockId, path, config, dependencies), ERROR_NONE, "A new holder can acquire a lock before cleanup is retried");
+    if (dependencies != nullptr) {
+        dependencies->Release();
+    }
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "Retry closes only the failed holder's reference");
+    const auto pending = packagemanager::IPackageImplDummy::UnlockCalls().find({"YouTube", "200.0.0"});
+    L0Test::ExpectTrue(tr, pending != packagemanager::IPackageImplDummy::UnlockCalls().end() && pending->second == 1,
+        "Cleanup retry does not release the new holder's backend lock");
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "The new holder's close finishes the remaining backend release");
+    const auto &calls = packagemanager::IPackageImplDummy::UnlockCalls();
+    const auto oldCall = calls.find({"YouTube", "100.1.24"});
+    const auto newCall = calls.find({"YouTube", "200.0.0"});
+    L0Test::ExpectTrue(tr, oldCall != calls.end() && oldCall->second == 1, "Retry does not release the old version again");
+    L0Test::ExpectTrue(tr, newCall != calls.end() && newCall->second == 2, "Only the failed release is retried");
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_UnlockRetainsRuntimeAcquisitions()
+{
+    L0Test::TestResult tr;
+    packagemanager::IPackageImplDummy::UnlockCalls().clear();
+    ImplFixture fx("{\"downloadDir\":\"/tmp/\",\"testInventory\":\"inventory-current-9\"}");
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds with a runtime dependency");
+    uint32_t lockId = 0;
+    std::string path;
+    std::string config;
+    WPEFramework::Exchange::IPackageHandler::ILockIterator* dependencies = nullptr;
+    for (uint32_t acquisition = 0; acquisition < 3; ++acquisition) {
+        if (acquisition == 1) {
+            WPEFramework::Exchange::IPackageInstaller::FailReason reason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+            L0Test::ExpectEqU32(tr, fx.impl->Install("TestRuntime", nullptr, "/tmp/runtime_update.pkg", reason), ERROR_NONE,
+                "Update the runtime while the original dependency is locked");
+        }
+        if (acquisition == 2) {
+            L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "An early close retains dependency mounts");
+            L0Test::ExpectTrue(tr, packagemanager::IPackageImplDummy::UnlockCalls().empty(), "No dependencies are released early");
+        }
+        L0Test::ExpectEqU32(tr,
+            fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+                lockId, path, config, dependencies), ERROR_NONE, "Acquire another app lock with its current runtime");
+        if (dependencies != nullptr) {
+            dependencies->Release();
+            dependencies = nullptr;
+        }
+    }
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "Close one remaining holder");
+    L0Test::ExpectTrue(tr, packagemanager::IPackageImplDummy::UnlockCalls().empty(), "New locks extend the retention group");
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "Last close drains all acquired references");
+#ifdef USE_LIBPACKAGE_RALF
+    const auto &calls = packagemanager::IPackageImplDummy::UnlockCalls();
+    const auto oldRuntime = calls.find({"TestRuntime", "9.0.0"});
+    const auto newRuntime = calls.find({"TestRuntime", "1.0.0"});
+    L0Test::ExpectTrue(tr, oldRuntime != calls.end() && oldRuntime->second == 1, "Release the runtime captured by the first acquisition");
+    L0Test::ExpectTrue(tr, newRuntime != calls.end() && newRuntime->second == 1, "Release the runtime captured by later acquisitions");
+#endif
     return tr.failures;
 }
 

@@ -94,9 +94,23 @@ the installed version. Launch locks the current installed version, while unlock
 releases the applicable version-specific lock. Running-widget pathway handling
 remains unchanged; no separate running-package snapshots are maintained here.
 
+Because `Unlock(packageId)` does not identify a holder or version, all acquired
+version locks and their captured runtime dependencies are retained until the
+aggregate public-holder count for that package ID reaches zero. Close order
+does not select a version to release. New acquisitions extend this retention
+group. If final cleanup fails, the failed close remains counted and a retry
+continues only the remaining references, without releasing a newer holder early.
+
 Uninstall deferral remains unchanged: uninstall waits for outstanding locks, and
 an install conflicting with a pending uninstall is rejected. Installation itself
 does not enter `INSTALLATION_BLOCKED` or queue a retry for unlock.
+
+At initialization, duplicate inventory versions are resolved using
+`GetInstalledPackageMetadata(packageId, "", metadata)`, which must report the
+current artifact's `version` or `versionString`. Version ordering is not used,
+so downgrades remain valid. The selected app and runtime records use the same
+backend-derived version. If the current version is missing or absent from the
+inventory, cache initialization does not report readiness rather than guessing.
 
 ---
 

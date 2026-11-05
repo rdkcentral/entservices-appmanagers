@@ -83,6 +83,16 @@ class PackageManagerImplementation
         typedef std::pair<string, string> StateKey;
         typedef std::map<StateKey, State> StateMap;
 
+        struct LockReference {
+            StateKey package;
+            std::list<Exchange::IPackageHandler::AdditionalLock> dependencies;
+        };
+
+        struct LockGroup {
+            uint32_t activeCount = 0;
+            std::list<LockReference> references;
+        };
+
         class Configuration : public Core::JSON::Container {
             public:
                 Configuration()
@@ -220,20 +230,9 @@ class PackageManagerImplementation
         Core::hresult UnlockPackage(const string &packageId, const string &version);
         Core::hresult processBlockedPackage(const string &packageId);
 
-        Core::hresult Install(const string &packageId, const packagemanager::NameValues &keyValues, const string &fileLocator, const string &version, bool hadInstalledArtifact, State& state);
-
-        void InitializeState();
-        void downloader(int n);
-        void NotifyDownloadStatus(const string& id, const string& locator, const DownloadReason status);
-        void NotifyInstallStatus(const string& id, const string& version, const State &state);
-        // Publishes INSTALL_FAILURE for an attempted version without mutating the cached state.
-        void NotifyInstallFailure(const string& id, const string& version, State state, FailReason reason);
-        // Caller must hold mtxState.
-        StateMap::iterator FindLockedState(const string &packageId);
-
         void setState(const string &packageId, const string &version, InstallState newState) {
             std::lock_guard<std::recursive_mutex> lock(mtxState);
-            auto it = mState.find({packageId, version});
+            auto it = mState.find( { packageId, version} );
             if (it != mState.end()) {
                 it->second.installState = newState;
                 LOGDBG("Setting InstallState %s for %s:%s", getInstallState(newState).c_str(), packageId.c_str(), version.c_str());
@@ -252,12 +251,24 @@ class PackageManagerImplementation
 
         inline string GetBlockedVersion(const string& id) {
             for (auto const& [key, state] : mState) {
-                if ((id.compare(key.first) == 0) && state.installState == InstallState::UNINSTALL_BLOCKED) {
+                if ((id.compare(key.first) == 0) &&
+                    state.installState == InstallState::UNINSTALL_BLOCKED) {
                     return key.second;
                 }
             }
             return "";
         }
+
+        Core::hresult Install(const string &packageId, const packagemanager::NameValues &keyValues, const string &fileLocator, const string &version, bool hadInstalledArtifact, State& state);
+
+        void InitializeState();
+        void downloader(int n);
+        void NotifyDownloadStatus(const string& id, const string& locator, const DownloadReason status);
+        void NotifyInstallStatus(const string& id, const string& version, const State &state);
+        // Publishes INSTALL_FAILURE for an attempted version without mutating the cached state.
+        void NotifyInstallFailure(const string& id, const string& version, State state, FailReason reason);
+        // Caller must hold mtxState.
+        StateMap::iterator FindLockedState(const string &packageId);
 
         DownloadInfoPtr getNext();
         int nextRetryDuration(int n) {
@@ -324,6 +335,7 @@ class PackageManagerImplementation
         DownloadQueue  mDownloadQueue;
         std::recursive_mutex mtxState;
         StateMap  mState;
+        std::map<string, LockGroup> mLockGroups;
         bool cacheInitialized = false;
 
         std::string downloadDir = "/opt/CDL/";

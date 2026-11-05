@@ -22,6 +22,11 @@ extern uint32_t Test_PM_Impl_InstallNotificationUsesArtifactVersion();
 extern uint32_t Test_PM_Impl_MetadataExtractionFailurePublishesInstallFailure();
 extern uint32_t Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled();
 extern uint32_t Test_PM_Impl_GetConfigForInstalledPackage();
+extern uint32_t Test_PM_Impl_InitializeUsesAuthoritativeVersion();
+extern uint32_t Test_PM_Impl_InitializeRejectsAmbiguousInventory();
+extern uint32_t Test_PM_Impl_UnlockRetainsAllVersionsUntilLastHolder();
+extern uint32_t Test_PM_Impl_UnlockRetriesOnlyRemainingReferences();
+extern uint32_t Test_PM_Impl_UnlockRetainsRuntimeAcquisitions();
 extern uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo();
 extern uint32_t Test_PM_Impl_DownloadAndStorageInfoPaths();
 extern uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths();
@@ -56,6 +61,11 @@ int main()
         { "PM_Shell_InformationReturnsEmptyString", Test_PM_Shell_InformationReturnsEmptyString },
         { "PM_Shell_DownloadPathThroughPluginAggregate", Test_PM_Shell_DownloadPathThroughPluginAggregate },
         { "PM_Impl_InitializeAndDeinitialize", Test_PM_Impl_InitializeAndDeinitialize },
+        { "PM_Impl_InitializeUsesAuthoritativeVersion", Test_PM_Impl_InitializeUsesAuthoritativeVersion },
+        { "PM_Impl_InitializeRejectsAmbiguousInventory", Test_PM_Impl_InitializeRejectsAmbiguousInventory },
+        { "PM_Impl_UnlockRetainsAllVersionsUntilLastHolder", Test_PM_Impl_UnlockRetainsAllVersionsUntilLastHolder },
+        { "PM_Impl_UnlockRetriesOnlyRemainingReferences", Test_PM_Impl_UnlockRetriesOnlyRemainingReferences },
+        { "PM_Impl_UnlockRetainsRuntimeAcquisitions", Test_PM_Impl_UnlockRetainsRuntimeAcquisitions },
         { "PM_Impl_DownloaderRegisterUnregister", Test_PM_Impl_DownloaderRegisterUnregister },
         { "PM_Impl_InstallerRegisterUnregister", Test_PM_Impl_InstallerRegisterUnregister },
         { "PM_Impl_UnregisterUnknownNotification", Test_PM_Impl_UnregisterUnknownNotification },

@@ -26,6 +26,7 @@
 #include <cstring>
 #include <filesystem>
 #include <mutex>
+#include <set>
 #include <sys/statvfs.h>
 #include <utility>
 #include <vector>
@@ -924,6 +925,9 @@ namespace Plugin {
                 }
                 runtimeConfigPayload = state.runtimeConfigPayload;
                 appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
+                auto &group = mLockGroups[packageId];
+                group.references.push_back({{packageId, version}, state.additionalLocks});
+                ++group.activeCount;
                 string appPath;
                 string runtimePath;
                 getRuntimeConfigString(state.runtimeConfigPayload, "appPath", appPath);
@@ -1104,51 +1108,62 @@ namespace Plugin {
         CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        string version;
+        auto groupIt = mLockGroups.find(packageId);
+        if (groupIt == mLockGroups.end()) {
+            LOGERR("No public lock for package: %s", packageId.c_str());
+            const auto known = mState.lower_bound({packageId, string()});
+            return known != mState.end() && known->first.first == packageId
+                ? Core::ERROR_GENERAL : Core::ERROR_BAD_REQUEST;
+        }
+        auto &group = groupIt->second;
+        if (group.activeCount) {
+            --group.activeCount;
+        }
+        if (group.activeCount == 0) {
+            std::set<string> releasedPackages;
+            while (!group.references.empty()) {
+                auto &reference = group.references.front();
+                if (!reference.package.first.empty()) {
+                    const StateKey key = reference.package;
+                    result = UnlockPackage(key.first, key.second);
+                    const auto state = mState.find(key);
+                    if (result == Core::ERROR_NONE || (state != mState.end() && state->second.mLockCount == 0)) {
+                        releasedPackages.insert(key.first);
+                        reference.package = StateKey();
+                    }
+                    if (result != Core::ERROR_NONE) {
+                        break;
+                    }
+                }
 #ifdef USE_LIBPACKAGE_RALF
-        string rtPackageId;
-        string rtVersion;
-#endif
-        {
-            std::lock_guard<std::recursive_mutex> lock(mtxState);
-            auto it = FindLockedState(packageId);
-            if (it == mState.end()) {
-                LOGERR("Package: %s Not found", packageId.c_str());
-                const auto known = mState.lower_bound({packageId, string()});
-                result = known != mState.end() && known->first.first == packageId
-                    ? Core::ERROR_GENERAL : Core::ERROR_BAD_REQUEST;
-            } else {
-                version = it->second.version;
-#ifdef USE_LIBPACKAGE_RALF
-                if (!it->second.additionalLocks.empty()) {
-                    rtPackageId = it->second.additionalLocks.front().packageId;
-                    rtVersion = it->second.additionalLocks.front().version;
+                while (!reference.dependencies.empty()) {
+                    const auto dependency = reference.dependencies.front();
+                    result = UnlockPackage(dependency.packageId, dependency.version);
+                    const auto state = mState.find({dependency.packageId, dependency.version});
+                    if (result == Core::ERROR_NONE || (state != mState.end() && state->second.mLockCount == 0)) {
+                        releasedPackages.insert(dependency.packageId);
+                        reference.dependencies.pop_front();
+                    }
+                    if (result != Core::ERROR_NONE) {
+                        break;
+                    }
+                }
+                if (result != Core::ERROR_NONE) {
+                    break;
                 }
 #endif
+                group.references.pop_front();
             }
-        }
-
-        if (result == Core::ERROR_NONE) {
-            result = UnlockPackage(packageId, version);
             if (result == Core::ERROR_NONE) {
-                processBlockedPackage(packageId);
+                mLockGroups.erase(groupIt);
+                releasedPackages.insert(packageId);
+            } else {
+                ++group.activeCount;
+            }
+            for (const auto &releasedPackage : releasedPackages) {
+                processBlockedPackage(releasedPackage);
             }
         }
-
-#ifdef USE_LIBPACKAGE_RALF
-        if (result == Core::ERROR_NONE && !rtPackageId.empty()) {
-            Core::hresult runtimeResult = Core::ERROR_BAD_REQUEST;
-            if (!rtVersion.empty()) {
-                LOGDBG("Unlocking runtime %s:%s", rtPackageId.c_str(), rtVersion.c_str() );
-                runtimeResult = UnlockPackage(rtPackageId, rtVersion);
-            }
-            if (runtimeResult == Core::ERROR_NONE) {
-                processBlockedPackage(rtPackageId);
-            } else if (result == Core::ERROR_NONE) {
-                result = runtimeResult;
-            }
-        }
-#endif
 
         if (Core::ERROR_NONE == result)
         {
@@ -1303,15 +1318,39 @@ namespace Plugin {
         packagemanager::Result pmResult = packageImpl->Initialize(configStr, aConfigMetadata);
         LOGDBG("aConfigMetadata.count:%zu pmResult=%d", aConfigMetadata.size(), pmResult);
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        // Select the installed version per packageId while retaining version records.
+        if (pmResult != packagemanager::SUCCESS) {
+            LOGERR("Package backend initialization failed: %d", pmResult);
+            return;
+        }
         std::map<string, packagemanager::ConfigMetadataArray::const_iterator> currentEntries;
+        std::set<string> ambiguousPackages;
         for (auto it = aConfigMetadata.cbegin(); it != aConfigMetadata.cend(); ++it) {
             auto inserted = currentEntries.insert({ it->first.first, it });
             if (!inserted.second) {
-                LOGWARN("Multiple versions reported for packageId: %s; keeping version: %s",
-                    it->first.first.c_str(), it->first.second.c_str());
-                inserted.first->second = it;
+                ambiguousPackages.insert(it->first.first);
             }
+        }
+
+        for (const auto &packageId : ambiguousPackages) {
+            string metadata;
+            JsonObject installedMetadata;
+            if (packageImpl->GetInstalledPackageMetadata(packageId, string(), metadata) != packagemanager::SUCCESS ||
+                !installedMetadata.FromString(metadata)) {
+                LOGERR("Cannot resolve installed artifact for packageId: %s", packageId.c_str());
+                return;
+            }
+            string version;
+            if (installedMetadata.HasLabel("version") && installedMetadata["version"].Content() == JsonValue::type::STRING) {
+                version = installedMetadata["version"].String();
+            } else if (installedMetadata.HasLabel("versionString") && installedMetadata["versionString"].Content() == JsonValue::type::STRING) {
+                version = installedMetadata["versionString"].String();
+            }
+            const auto current = aConfigMetadata.find({packageId, version});
+            if (version.empty() || current == aConfigMetadata.end()) {
+                LOGERR("Installed artifact metadata does not identify a reported version for packageId: %s", packageId.c_str());
+                return;
+            }
+            currentEntries[packageId] = current;
         }
 
         packagemanager::ConfigMetadataArray currentConfigMetadata;
