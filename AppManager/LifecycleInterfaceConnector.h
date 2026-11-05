@@ -69,7 +69,7 @@ namespace WPEFramework
                 std::string intent;
                 std::string launchArgs;
                 std::string requestedVersion;
-                WPEFramework::Exchange::RuntimeConfig runtimeConfigObject;
+                std::string runtimeConfigPayload;
             };
 
             class NotificationHandler : public Exchange::ILifecycleManagerState::INotification {
