@@ -690,44 +690,6 @@ uint32_t Test_DobbySpecGenerator_GenerateWithValidConfig()
     L0Test::ExpectTrue(tr, !spec.empty(),
                        "generate() produces non-empty JSON spec");
 
-    rtCfg.envVariables.push_back("APPLICATION_LAUNCH_METHOD=Local");
-    rtCfg.envVariables.push_back("APPLICATION_LAUNCH_METHOD=Suspend");
-    rtCfg.capabilities = R"(spec={"env":["APPLICATION_LAUNCH_METHOD=Local"\,"PACKAGE_ONLY=a=b"]})";
-    L0Test::ExpectTrue(tr, WPEFramework::Plugin::DobbySpecGenerator::startsSuspended(rtCfg),
-                       "last caller launch method selects suspended startup");
-    L0Test::ExpectTrue(tr, gen.generate(appCfg, rtCfg, spec),
-                       "generate() accepts package defaults and caller launch mode");
-    Json::Value generated;
-    Json::Reader reader;
-    L0Test::ExpectTrue(tr, reader.parse(spec, generated), "generated spec is valid JSON");
-    uint32_t launchMethodCount = 0;
-    bool suspendedFound = false;
-    bool packageOnlyFound = false;
-    for (const auto& entry : generated["env"])
-    {
-        const std::string value = entry.asString();
-        if (0 == value.find("APPLICATION_LAUNCH_METHOD=")) ++launchMethodCount;
-        if ("APPLICATION_LAUNCH_METHOD=Suspend" == value) suspendedFound = true;
-        if ("PACKAGE_ONLY=a=b" == value) packageOnlyFound = true;
-    }
-    L0Test::ExpectTrue(tr, 1u == launchMethodCount && suspendedFound,
-                       "exactly one caller Suspend survives package Local default");
-    L0Test::ExpectTrue(tr, packageOnlyFound, "unrelated package environment defaults survive");
-
-    rtCfg.capabilities = R"(additionalconfig={"env":["APPLICATION_LAUNCH_METHOD=Local"]})";
-    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::DobbySpecGenerator::startsSuspended(rtCfg),
-                       "additionalconfig Local overrides caller Suspend for startup");
-    rtCfg.capabilities = R"(additionalconfig={"env":["APPLICATION_LAUNCH_METHOD=Suspend"\,"EXTRA=a=b"]})";
-    L0Test::ExpectTrue(tr, WPEFramework::Plugin::DobbySpecGenerator::startsSuspended(rtCfg),
-                       "escaped additionalconfig environment selects Suspend startup");
-    rtCfg.capabilities.clear();
-    rtCfg.envVariables = { "APPLICATION_LAUNCH_METHOD=DIAL" };
-    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::DobbySpecGenerator::startsSuspended(rtCfg),
-                       "DIAL is not a suspended startup");
-    L0Test::ExpectTrue(tr, gen.generate(appCfg, rtCfg, spec), "generate() accepts DIAL launch method");
-    L0Test::ExpectTrue(tr, std::string::npos != spec.find("APPLICATION_LAUNCH_METHOD=DIAL"),
-                       "DIAL launch method is preserved");
-
     return tr.failures;
 }
 

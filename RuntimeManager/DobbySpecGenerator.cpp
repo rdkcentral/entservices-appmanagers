@@ -30,7 +30,6 @@
 #include <sstream>
 #include <bitset>
 #include <set>
-#include <map>
 #include <algorithm>
 #include <cctype>
 #include <sys/sysinfo.h>
@@ -43,32 +42,6 @@ namespace WPEFramework
 {
 namespace Plugin
 {
-bool DobbySpecGenerator::startsSuspended(const RuntimeConfiguration& runtimeConfig)
-{
-    Json::Value environment(Json::arrayValue);
-    for (const auto& value : runtimeConfig.envVariables) environment.append(value);
-    std::vector<std::pair<std::string, std::string>> capabilities;
-    parseCapabilities(runtimeConfig.capabilities, capabilities);
-    for (const auto& capability : capabilities)
-    {
-        if ("additionalconfig" != capability.first) continue;
-        Json::Value overlay;
-        Json::Reader reader;
-        if (reader.parse(capability.second, overlay) && overlay["env"].isArray())
-            environment = overlay["env"];
-        break;
-    }
-    bool suspended = false;
-    const std::string prefix = "APPLICATION_LAUNCH_METHOD=";
-    for (const auto& value : environment)
-    {
-        if (!value.isString()) continue;
-        const std::string entry = value.asString();
-        if (0 == entry.compare(0, prefix.size(), prefix))
-            suspended = entry == prefix + "Suspend";
-    }
-    return suspended;
-}
 
 namespace 
 {
@@ -444,28 +417,6 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
         }
     }
 
-    if (spec["env"].isArray())
-    {
-        std::map<std::string, Json::ArrayIndex> lastDefinition;
-        for (Json::ArrayIndex index = 0; index < spec["env"].size(); ++index)
-        {
-            const auto& entry = spec["env"][index];
-            if (entry.isString())
-            {
-                const std::string value = entry.asString();
-                lastDefinition[value.substr(0, value.find('='))] = index;
-            }
-        }
-        Json::Value environment(Json::arrayValue);
-        for (Json::ArrayIndex index = 0; index < spec["env"].size(); ++index)
-        {
-            const auto& entry = spec["env"][index];
-            if (!entry.isString() || lastDefinition[entry.asString().substr(0, entry.asString().find('='))] == index)
-                environment.append(entry);
-        }
-        spec["env"] = environment;
-    }
-
     resultSpec = writer.write(spec);
 #ifdef RDK_APPMANAGERS_DEBUG
     LOGINFO("spec: '%s'\n", resultSpec.c_str());
@@ -726,8 +677,8 @@ bool DobbySpecGenerator::shouldEnableGpu(const ApplicationConfiguration& config)
 // Non-overwriting deep merge: adds keys from 'defaults' that are absent in
 // 'base'. Existing keys in 'base' (including those set by additionalconfig)
 // are never replaced. Sub-objects are recursed into.
-// Exception: mounts/plugins arrays are appended; env adds only variable names
-// that the caller has not already supplied.
+// Exception: 'env' and 'mounts' arrays are always appended — items from
+// 'defaults' are added to the end of the existing arrays.
 void DobbySpecGenerator::fillMissingJson(Json::Value& base, const Json::Value& defaults)
 {
     if (!defaults.isObject() || !base.isObject())
@@ -745,30 +696,9 @@ void DobbySpecGenerator::fillMissingJson(Json::Value& base, const Json::Value& d
         else if (base[key].isArray() && defaults[key].isArray() &&
                  (key == "env" || key == "mounts" || key == "plugins"))
         {
+            // Append items from defaults array to existing base array.
             for (const auto& item : defaults[key])
-            {
-                if (key == "env" && item.isString())
-                {
-                    const std::string value = item.asString();
-                    const std::string name = value.substr(0, value.find('='));
-                    bool alreadyDefined = false;
-                    for (const auto& existing : base[key])
-                    {
-                        if (existing.isString())
-                        {
-                            const std::string existingValue = existing.asString();
-                            if (existingValue.substr(0, existingValue.find('=')) == name)
-                            {
-                                alreadyDefined = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (alreadyDefined)
-                        continue;
-                }
                 base[key].append(item);
-            }
         }
         else if (base[key].isObject() && defaults[key].isObject())
         {

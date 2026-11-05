@@ -82,7 +82,7 @@ void WindowManagerConnector::releasePlugin()
     mWindowManager = nullptr;
 }
 
-bool WindowManagerConnector::createDisplay(const string& appInstanceId , const string& displayName , const uint32_t& userId, const uint32_t& groupId, const string& capabilities, const string& appId, bool startSuspended)
+bool WindowManagerConnector::createDisplay(const string& appInstanceId , const string& displayName , const uint32_t& userId, const uint32_t& groupId, const string& capabilities)
 {
     if(mPluginInitialized == false)
     {
@@ -94,12 +94,7 @@ bool WindowManagerConnector::createDisplay(const string& appInstanceId , const s
     bool virtualDisplay=false;
     bool topmost=false, focus=false;
 
-    std::string wmCapabilities = buildWindowManagerCapabilities(capabilities);
-    if (startSuspended)
-    {
-        if (!wmCapabilities.empty()) wmCapabilities += ',';
-        wmCapabilities += "start-suspended";
-    }
+    const std::string wmCapabilities = buildWindowManagerCapabilities(capabilities);
     LOGINFO("Creating display [%s] for application [%s], wmCapabilities [%s] \n", displayName.c_str(), appInstanceId.c_str(), wmCapabilities.c_str());
 
     Core::hresult result = mWindowManager->CreateDisplay(appInstanceId, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, userId, groupId, topmost, focus, wmCapabilities);
@@ -107,15 +102,6 @@ bool WindowManagerConnector::createDisplay(const string& appInstanceId , const s
     {
         LOGERR("Failed to create display for application [%s] error [%d] \n",appInstanceId.c_str(), result);
         return false;
-    }
-    if (!appId.empty())
-    {
-        const Core::hresult aliasResult = mWindowManager->SetAlias(appInstanceId, appId);
-        if (Core::ERROR_NONE != aliasResult)
-        {
-            LOGERR("Failed to set display alias before launch for appId=%s status=%u", appId.c_str(), aliasResult);
-            return false;
-        }
     }
     return true;
 }
