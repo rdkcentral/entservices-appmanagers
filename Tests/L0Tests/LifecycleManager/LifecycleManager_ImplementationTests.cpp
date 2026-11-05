@@ -782,6 +782,8 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsLcmNotifications()
         LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED,
         params);
 
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "Queued APPSTATECHANGED jobs finish before assertions");
     L0Test::ExpectTrue(tr, notif1->onAppStateChangedCount.load() >= 1u,
         "First notification received OnAppStateChanged callback");
     L0Test::ExpectTrue(tr, notif2->onAppStateChangedCount.load() >= 1u,
@@ -826,6 +828,8 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsStateNotifications()
         LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED,
         params);
 
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "Queued APPSTATECHANGED lifecycle jobs finish before assertions");
     L0Test::ExpectTrue(tr, sn1->onStateChangedCount.load() >= 1u,
         "First state notification received OnAppLifecycleStateChanged");
     L0Test::ExpectTrue(tr, sn2->onStateChangedCount.load() >= 1u,
@@ -904,6 +908,8 @@ uint32_t Test_Impl_DispatchOnFailureCallsLcmNotification()
         LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_ONFAILURE,
         params);
 
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "Queued ONFAILURE jobs finish before assertions");
     L0Test::ExpectTrue(tr, notif->onAppStateChangedCount.load() >= 1u,
         "OnAppStateChanged called on ONFAILURE dispatch");
 

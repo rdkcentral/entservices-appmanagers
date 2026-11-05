@@ -795,6 +795,8 @@ namespace WPEFramework
         void LifecycleManagerImplementation::onStateChangeEvent(JsonObject& data)
 	{
             dispatchEvent(LifecycleManagerImplementation::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, data);
+	}
+
         void LifecycleManagerImplementation::handleRuntimeManagerEvent(const JsonObject &data)
         {
             string eventName = data["name"];
