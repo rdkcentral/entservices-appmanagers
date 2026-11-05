@@ -1810,11 +1810,11 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
 /* Test Case for lock/getLockedInfo failure branches using ComRpc
  *
  * Set up and initialize required COM-RPC resources
- * Verify Lock() and GetLockedInfo() return ERROR_BAD_REQUEST for unknown package
+ * Verify Lock() and GetLockedInfo() return ERROR_INVALID_PARAMETER for unknown package
  * Deinitialize COM-RPC resources
  */
 
-TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcBadRequest) {
+TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcFailure) {
 
     initforComRpc();
 
@@ -1825,7 +1825,7 @@ TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcBadRequest) {
     string runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkghandlerInterface->Lock("UnknownApp",
                                         Exchange::IPackageHandler::LockReason::LAUNCH,
                                         lockId,
@@ -1835,7 +1835,7 @@ TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcBadRequest) {
 
     bool locked = false;
     string gatewayMetadataPath;
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkghandlerInterface->GetLockedInfo("UnknownApp",
                                                  unpackedPath,
                                                  runtimeConfig,

@@ -1173,10 +1173,27 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
 
     if ((Core::ERROR_NONE == status) && (false == loaded))
     {
+        bool lockReleaseFailed = false;
+
+        /* A lock left behind by a failed release must be dropped before any new lock is taken. */
+        if (0 != mPackageLocksPendingRelease.count(appId))
+        {
+            if ((nullptr != mPackageManagerHandlerObject) && (Core::ERROR_NONE == mPackageManagerHandlerObject->Unlock(appId)))
+            {
+                mPackageLocksPendingRelease.erase(appId);
+            }
+            else
+            {
+                LOGERR("Pending package lock release failed for appId %s, not acquiring a new lock", appId.c_str());
+                lockReleaseFailed = true;
+                status = Core::ERROR_GENERAL;
+            }
+        }
+
         /* Lock() selects the installed version itself, so resolve the version around the lock instead of using one captured before the request was queued. */
         constexpr int maxLockAttempts = 3;
         bool lockVerified = false;
-        for (int attempt = 0; (attempt < maxLockAttempts) && !lockVerified; ++attempt)
+        for (int attempt = 0; (attempt < maxLockAttempts) && !lockVerified && !lockReleaseFailed; ++attempt)
         {
             installed = false;
             packageData.version.clear();
@@ -1221,7 +1238,14 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
             else
             {
                 LOGWARN("Installed version of appId %s changed while locking (listed '%s', now '%s'), retrying", appId.c_str(), packageData.version.c_str(), lockedVersion.c_str());
-                mPackageManagerHandlerObject->Unlock(appId);
+                status = mPackageManagerHandlerObject->Unlock(appId);
+                if (Core::ERROR_NONE != status)
+                {
+                    /* The reference is still held; remember it and stop locking until it is released. */
+                    LOGERR("Failed to release package lock for appId %s status %d", appId.c_str(), static_cast<int>(status));
+                    mPackageLocksPendingRelease.insert(appId);
+                    lockReleaseFailed = true;
+                }
                 status = Core::ERROR_GENERAL;
             }
         }
@@ -1243,6 +1267,12 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                 appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_INVALID);
                 status = Core::ERROR_GENERAL;
             }
+        }
+        else if (lockReleaseFailed)
+        {
+            appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+            packageData.version.clear();
+            status = Core::ERROR_GENERAL;
         }
         else if (status == Core::ERROR_NONE)
         {
