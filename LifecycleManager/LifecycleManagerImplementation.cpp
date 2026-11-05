@@ -164,43 +164,58 @@ namespace WPEFramework
             const uint32_t newLifecycleState = data["newLifecycleState"].Number();
             const string navigationIntent = data["navigationIntent"].String();
 
-            std::list<Exchange::ILifecycleManager::INotification*> appStateListeners;
-            std::list<Exchange::ILifecycleManagerState::INotification*> stateChangeListeners;
+            std::list<Core::ProxyType<Core::IDispatch>> appStateJobs;
+            std::list<Core::ProxyType<Core::IDispatch>> lifecycleStateJobs;
+
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
-                appStateListeners = mLifecycleManagerNotification;
-                stateChangeListeners = mLifecycleManagerStateNotification;
-            }
 
-            if (includeAppStateNotifications)
-            {
-                for (auto* listener : appStateListeners)
+                if (includeAppStateNotifications)
                 {
-                    if (nullptr != listener)
+                    for (auto* listener : mLifecycleManagerNotification)
                     {
-                        Core::IWorkerPool::Instance().Submit(AppStateListenerJob::Create(this,
-                            listener,
-                            appId,
-                            static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
-                            errorReason));
+                        if (nullptr != listener)
+                        {
+                            appStateJobs.push_back(AppStateListenerJob::Create(this,
+                                listener,
+                                appId,
+                                static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                                errorReason));
+                        }
+                    }
+                }
+
+                if (includeLifecycleStateNotifications)
+                {
+                    for (auto* listener : mLifecycleManagerStateNotification)
+                    {
+                        if (nullptr != listener)
+                        {
+                            lifecycleStateJobs.push_back(LifecycleStateListenerJob::Create(this,
+                                listener,
+                                appId,
+                                appInstanceId,
+                                static_cast<Exchange::ILifecycleManager::LifecycleState>(oldLifecycleState),
+                                static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                                navigationIntent));
+                        }
                     }
                 }
             }
 
-            if (includeLifecycleStateNotifications)
+            for (auto& job : appStateJobs)
             {
-                for (auto* listener : stateChangeListeners)
+                if (job.IsValid())
                 {
-                    if (nullptr != listener)
-                    {
-                        Core::IWorkerPool::Instance().Submit(LifecycleStateListenerJob::Create(this,
-                            listener,
-                            appId,
-                            appInstanceId,
-                            static_cast<Exchange::ILifecycleManager::LifecycleState>(oldLifecycleState),
-                            static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
-                            navigationIntent));
-                    }
+                    Core::IWorkerPool::Instance().Submit(job);
+                }
+            }
+
+            for (auto& job : lifecycleStateJobs)
+            {
+                if (job.IsValid())
+                {
+                    Core::IWorkerPool::Instance().Submit(job);
                 }
             }
         }
@@ -236,6 +251,7 @@ namespace WPEFramework
                      const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
                      const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
                      const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
+                     obj["navigationIntent"] = effectiveNavigationIntent;
                      if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
                          context->setUnexpectedTermination(false);
                      }
@@ -778,9 +794,7 @@ namespace WPEFramework
 
         void LifecycleManagerImplementation::onStateChangeEvent(JsonObject& data)
 	{
-            submitStateChangeNotifications(data, true, true);
-	}
-
+            dispatchEvent(LifecycleManagerImplementation::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, data);
         void LifecycleManagerImplementation::handleRuntimeManagerEvent(const JsonObject &data)
         {
             string eventName = data["name"];

@@ -115,6 +115,10 @@ namespace WPEFramework
                             , mNewLifecycleState(newLifecycleState)
                             , mErrorReason(errorReason)
                         {
+                            if (mLifecycleManagerImplementation != nullptr)
+                            {
+                                mLifecycleManagerImplementation->AddRef();
+                            }
                             if (mNotification != nullptr)
                             {
                                 mNotification->AddRef();
@@ -130,6 +134,10 @@ namespace WPEFramework
                             if (mNotification != nullptr)
                             {
                                 mNotification->Release();
+                            }
+                            if (mLifecycleManagerImplementation != nullptr)
+                            {
+                                mLifecycleManagerImplementation->Release();
                             }
                         }
 
@@ -193,6 +201,10 @@ namespace WPEFramework
                             , mNewLifecycleState(newLifecycleState)
                             , mNavigationIntent(navigationIntent)
                         {
+                            if (mLifecycleManagerImplementation != nullptr)
+                            {
+                                mLifecycleManagerImplementation->AddRef();
+                            }
                             if (mNotification != nullptr)
                             {
                                 mNotification->AddRef();
@@ -208,6 +220,10 @@ namespace WPEFramework
                             if (mNotification != nullptr)
                             {
                                 mNotification->Release();
+                            }
+                            if (mLifecycleManagerImplementation != nullptr)
+                            {
+                                mLifecycleManagerImplementation->Release();
                             }
                         }
 
