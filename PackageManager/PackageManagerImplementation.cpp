@@ -456,7 +456,8 @@ namespace Plugin {
         }
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        auto it = FindCurrentState(packageId);
+        const string installedVersion = GetInstalledVersion(packageId);
+        auto it = mState.find({packageId, installedVersion});
         State tempState;
         bool found = it != mState.end();
         State &state = found ? it->second : tempState;
@@ -513,7 +514,7 @@ namespace Plugin {
             result = Install(packageId, keyValues, fileLocator, attemptedVersion, targetInstalled, installState);
 
             if (result == Core::ERROR_NONE && found && it->first != key && hadInstalledArtifact) {
-                state.installState = InstallState::UNINSTALLED;
+                setState(packageId, it->first.second, InstallState::UNINSTALLED);
             }
             failReason = installState.failReason;
 
@@ -545,7 +546,7 @@ namespace Plugin {
         CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        auto it = FindCurrentState(packageId);
+        auto it = mState.find({packageId, GetInstalledVersion(packageId)});
         if (it != mState.end()) {
             auto &state = it->second;
             const string &version = state.version;
@@ -677,7 +678,7 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_GENERAL;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
-        StateMap::iterator it = FindCurrentState(packageId);
+        StateMap::iterator it = mState.find({packageId, GetInstalledVersion(packageId)});
         if (it != mState.end()) {
             auto &state = it->second;
             if (state.installState == InstallState::INSTALLED) {
@@ -700,7 +701,17 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
-        auto it = FindCurrentState(packageId);
+        auto it = mState.find({packageId, GetInstalledVersion(packageId)});
+        if (it == mState.end()) {
+            for (auto candidate = mState.lower_bound({packageId, string()});
+                candidate != mState.end() && candidate->first.first == packageId; ++candidate) {
+                if (it == mState.end() ||
+                    candidate->second.installState == InstallState::INSTALLING ||
+                    (it->second.installState == InstallState::UNINSTALLED && candidate->second.installState != InstallState::UNINSTALLED)) {
+                    it = candidate;
+                }
+            }
+        }
         if (it != mState.end()) {
             auto &state = it->second;
             installState = state.installState;
@@ -767,7 +778,7 @@ namespace Plugin {
         result = LockPackage(packageId, lockReason, lockId, unpackedPath, config, locks);
         if (result == packagemanager::SUCCESS) {
             // Lock Runtime
-            auto it = FindCurrentState(packageId);
+            auto it = mState.find({packageId, GetInstalledVersion(packageId)});
             if (it != mState.end()) {
                 auto &state = it->second;
                 const string &version = state.version;
@@ -776,8 +787,8 @@ namespace Plugin {
                 string runtimeId, runtimeVersion;
                 bool runtimeLocked = false;
                 const string &rtPackageId = state.runtimeApp.first;
-                string rtVersion;
-                if (!rtPackageId.empty() && !GetCurrentVersion(rtPackageId, rtVersion)) {
+                string rtVersion = GetInstalledVersion(rtPackageId);
+                if (!rtPackageId.empty() && rtVersion.empty()) {
                     LOGERR("Runtime package state not found for %s", rtPackageId.c_str());
                     result = Core::ERROR_BAD_REQUEST;
                 }
@@ -878,7 +889,7 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        auto it = FindCurrentState(packageId);
+        auto it = mState.find({packageId, GetInstalledVersion(packageId)});
         if (it != mState.end()) {
             auto &state = it->second;
             const string &version = state.version;
@@ -1046,7 +1057,9 @@ namespace Plugin {
             auto it = FindLockedState(packageId);
             if (it == mState.end()) {
                 LOGERR("Package: %s Not found", packageId.c_str());
-                result = FindCurrentState(packageId) != mState.end() ? Core::ERROR_GENERAL : Core::ERROR_BAD_REQUEST;
+                const auto known = mState.lower_bound({packageId, string()});
+                result = known != mState.end() && known->first.first == packageId
+                    ? Core::ERROR_GENERAL : Core::ERROR_BAD_REQUEST;
             } else {
                 version = it->second.version;
 #ifdef USE_LIBPACKAGE_RALF
@@ -1134,7 +1147,8 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        auto it = FindCurrentState(packageId);
+        const string blockedVersion = GetBlockedVersion(packageId);
+        auto it = mState.find({packageId, blockedVersion});
         if (it == mState.end()) {
             return result;
         }
@@ -1167,7 +1181,7 @@ namespace Plugin {
         std::lock_guard<std::recursive_mutex> lock(mtxState);
         auto it = FindLockedState(packageId);
         if (it == mState.end()) {
-            it = FindCurrentState(packageId);
+            it = mState.find({packageId, GetInstalledVersion(packageId)});
         }
         if (it != mState.end()) {
             auto &state = it->second;
@@ -1545,23 +1559,6 @@ namespace Plugin {
         NotifyInstallStatus(id, version, state);
     }
 
-    PackageManagerImplementation::StateMap::iterator PackageManagerImplementation::FindCurrentState(const string &packageId)
-    {
-        auto fallback = mState.end();
-        for (auto it = mState.lower_bound({packageId, string()}); it != mState.end() && it->first.first == packageId; ++it) {
-            if (it->second.installState == InstallState::INSTALLED) {
-                return it;
-            }
-            if (fallback == mState.end() ||
-                it->second.installState == InstallState::UNINSTALL_BLOCKED ||
-                it->second.installState == InstallState::INSTALLING ||
-                (fallback->second.installState == InstallState::UNINSTALLED && it->second.installState != InstallState::UNINSTALLED)) {
-                fallback = it;
-            }
-        }
-        return fallback;
-    }
-
     PackageManagerImplementation::StateMap::iterator PackageManagerImplementation::FindLockedState(const string &packageId)
     {
         auto locked = mState.end();
@@ -1574,16 +1571,6 @@ namespace Plugin {
             }
         }
         return locked;
-    }
-
-    bool PackageManagerImplementation::GetCurrentVersion(const string &packageId, string &version)
-    {
-        const auto it = FindCurrentState(packageId);
-        if (it == mState.end() || it->second.version.empty()) {
-            return false;
-        }
-        version = it->second.version;
-        return true;
     }
 
     void PackageManagerImplementation::NotifyInstallStatus(const string& id, const string& version, const State &state)
@@ -1636,7 +1623,8 @@ namespace Plugin {
         string version;
         {
             std::lock_guard<std::recursive_mutex> lock(mtxState);
-            if (!GetCurrentVersion(packageId, version)) {
+            version = GetInstalledVersion(packageId);
+            if (version.empty()) {
                 LOGERR("Package: %s has no current version in cache", packageId.c_str());
                 return result;
             }

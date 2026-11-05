@@ -225,9 +225,35 @@ class PackageManagerImplementation
         // Publishes INSTALL_FAILURE for an attempted version without mutating the cached state.
         void NotifyInstallFailure(const string& id, const string& version, State state, FailReason reason);
         // Caller must hold mtxState.
-        StateMap::iterator FindCurrentState(const string &packageId);
         StateMap::iterator FindLockedState(const string &packageId);
-        bool GetCurrentVersion(const string &packageId, string &version);
+
+        void setState(const string &packageId, const string &version, InstallState newState) {
+            std::lock_guard<std::recursive_mutex> lock(mtxState);
+            auto it = mState.find({packageId, version});
+            if (it != mState.end()) {
+                it->second.installState = newState;
+                LOGDBG("Setting InstallState %s for %s:%s", getInstallState(newState).c_str(), packageId.c_str(), version.c_str());
+            }
+        }
+
+        inline string GetInstalledVersion(const string& id) {
+            for (auto const& [key, state] : mState) {
+                if ((id.compare(key.first) == 0) &&
+                    (state.installState == InstallState::INSTALLED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
+                    return key.second;
+                }
+            }
+            return "";
+        }
+
+        inline string GetBlockedVersion(const string& id) {
+            for (auto const& [key, state] : mState) {
+                if ((id.compare(key.first) == 0) && state.installState == InstallState::UNINSTALL_BLOCKED) {
+                    return key.second;
+                }
+            }
+            return "";
+        }
 
         DownloadInfoPtr getNext();
         int nextRetryDuration(int n) {

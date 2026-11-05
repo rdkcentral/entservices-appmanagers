@@ -1176,6 +1176,13 @@ uint32_t Test_PM_Impl_GetConfigForInstalledPackage()
         ERROR_GENERAL,
         "GetConfigForInstalledPackage() returns ERROR_GENERAL for non-existent package");
 
+    std::string errorReason;
+    L0Test::ExpectEqU32(tr, fx.impl->Uninstall("YouTube", errorReason), ERROR_NONE,
+        "Uninstall() succeeds before querying a historical version");
+    config.clear();
+    L0Test::ExpectEqU32(tr, fx.impl->GetConfigForInstalledPackage("YouTube", config), ERROR_GENERAL,
+        "Installed metadata queries do not fall back to an UNINSTALLED version");
+
     return tr.failures;
 }
 
