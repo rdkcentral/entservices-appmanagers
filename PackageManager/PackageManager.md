@@ -85,6 +85,19 @@ stateDiagram-v2
     DOWNLOADING --> UNINSTALLED: Download Failed
 ```
 
+Installation derives the version from the package artifact and does not wait for
+running-package locks. Package states are keyed internally by `(packageId, version)`
+while public APIs remain versionless. After a successful upgrade, the previously
+installed version is marked `UNINSTALLED` and the new version is `INSTALLED`.
+`ListPackages()` retains the version records; installed-app queries include only
+the installed version. Launch locks the current installed version, while unlock
+releases the applicable version-specific lock. Running-widget pathway handling
+remains unchanged; no separate running-package snapshots are maintained here.
+
+Uninstall deferral remains unchanged: uninstall waits for outstanding locks, and
+an install conflicting with a pending uninstall is rejected. Installation itself
+does not enter `INSTALLATION_BLOCKED` or queue a retry for unlock.
+
 ---
 
 ## 3. Code Organization (Folder & File-Level)

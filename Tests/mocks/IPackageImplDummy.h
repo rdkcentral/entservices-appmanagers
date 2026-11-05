@@ -97,7 +97,7 @@ namespace packagemanager
         mutable bool mUpgradeRejectAppInstalledOnce = false;
 
         virtual Result Initialize(const std::string &configStr, ConfigMetadataArray &aConfigMetadata) { 
-            ConfigMetaData configMetadata;
+            ConfigMetaData configMetadata {};
             configMetadata.dial = true; 
             configMetadata.wanLanAccess = true;
             configMetadata.thunder = true;
@@ -145,6 +145,7 @@ namespace packagemanager
                 }
             }
 
+            configMetadata = {};
             configMetadata.dial = true;
             configMetadata.wanLanAccess = true;
             configMetadata.thunder = true;
@@ -164,7 +165,13 @@ namespace packagemanager
         }
         virtual Result Uninstall(const std::string &packageId) { return SUCCESS; }
 
-        virtual Result Lock(const std::string &packageId, const std::string &version, std::string &unpackedPath, ConfigMetaData &configMetadata, NameValues &additionalLocks) { return SUCCESS; }
+        virtual Result Lock(const std::string &packageId, const std::string &version, std::string &unpackedPath, ConfigMetaData &configMetadata, NameValues &additionalLocks) {
+            configMetadata = {};
+            unpackedPath = "/tmp/package-locks/" + packageId + "/" + version;
+            configMetadata.appPath = unpackedPath;
+            configMetadata.runtimePath = "/tmp/runtime-locks/" + version;
+            return SUCCESS;
+        }
         virtual Result Unlock(const std::string &packageId, const std::string &version) { return SUCCESS; }
 
         // XXX: Below THREE functions will be removed after RDK-M is updated, so don't need to time the changes in RDK-M
@@ -177,7 +184,11 @@ namespace packagemanager
                 return VERSION_MISMATCH;
             }
             if (packageId == "YouTube") {
-                version = (fileLocator.find("youtube_200") != std::string::npos) ? "200.0.0" : "100.1.24";
+                if (fileLocator.find("youtube_300") != std::string::npos) {
+                    version = "300.0.0";
+                } else {
+                    version = (fileLocator.find("youtube_200") != std::string::npos) ? "200.0.0" : "100.1.24";
+                }
             } else if (packageId == "UpgradeRejectApp") {
                 version = (fileLocator.find("reject_2") != std::string::npos) ? "2.0.0" : "1.0.0";
             } else {

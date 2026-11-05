@@ -537,6 +537,17 @@ uint32_t Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure()
     L0Test::ExpectEqU32(tr, fx.impl->Unregister(notif), ERROR_NONE, "Installer Unregister() returns ERROR_NONE");
     notif->Release();
 
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Install("YouTube", nullptr, "/tmp/youtube_current.pkg", failReason), ERROR_GENERAL,
+        "Same-version reinstall returns ERROR_GENERAL when storage creation fails");
+    WPEFramework::Exchange::IPackageInstaller::InstallState reinstallState =
+        WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    L0Test::ExpectEqU32(tr, fx.impl->PackageState("YouTube", reinstallState), ERROR_NONE,
+        "PackageState() is available after a failed same-version reinstall");
+    L0Test::ExpectTrue(tr,
+        reinstallState == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE,
+        "Rollback of a same-version reinstall is not incorrectly reported as INSTALLED");
+
     return tr.failures;
 }
 
@@ -809,74 +820,85 @@ uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath()
     return tr.failures;
 }
 
-uint32_t Test_PM_Impl_InstallBlockedWhileLocked()
+uint32_t Test_PM_Impl_InstallMultipleVersions()
 {
     L0Test::TestResult tr;
-    ImplFixture fx;
-    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
-
-    uint32_t lockId = 0;
-    std::string unpackedPath;
-    std::string runtimeConfig;
-    WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
-
-    L0Test::ExpectEqU32(tr,
-        fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
-            lockId, unpackedPath, runtimeConfig, appMetadata),
-        ERROR_NONE,
-        "Lock() existing package before install");
-
-    if (appMetadata != nullptr) {
-        appMetadata->Release();
-        appMetadata = nullptr;
-    }
-
-    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
-    const auto blockedInstall = fx.impl->Install("YouTube", nullptr, "/tmp/youtube_200.pkg", failReason);
-    L0Test::ExpectEqU32(tr,
-        blockedInstall,
-        ERROR_GENERAL,
-        "Install() is deferred with ERROR_GENERAL while the package is locked");
-
-    WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
-    L0Test::ExpectEqU32(tr,
-        fx.impl->PackageState("YouTube", state),
-        ERROR_NONE,
-        "PackageState() is queryable while the install is deferred");
-    L0Test::ExpectTrue(tr,
-        state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLATION_BLOCKED,
-        "Install() attempt transitions state to INSTALLATION_BLOCKED while locked");
-
-    L0Test::ExpectEqU32(tr,
-        fx.impl->Unlock("YouTube"),
-        ERROR_NONE,
-        "Unlock() applies the deferred install attempt");
-
-    L0Test::ExpectEqU32(tr,
-        fx.impl->PackageState("YouTube", state),
-        ERROR_NONE,
-        "PackageState() remains queryable after unlock");
-    L0Test::ExpectTrue(tr,
-        state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED,
-        "Package reaches INSTALLED after unlock applies the deferred install attempt");
-
-    WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
-    L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "ListPackages() succeeds after deferred install is applied");
-    L0Test::ExpectTrue(tr, nullptr != packages, "ListPackages() returns an iterator after deferred install is applied");
-    if (nullptr != packages) {
-        WPEFramework::Exchange::IPackageInstaller::Package package;
-        bool foundNewVersion = false;
-        while (packages->Next(package)) {
-            if (package.packageId == "YouTube" && package.version == "200.0.0") {
-                foundNewVersion = true;
-                break;
+    using InstallState = WPEFramework::Exchange::IPackageInstaller::InstallState;
+    for (const bool running : {false, true}) {
+        ImplFixture fx;
+        L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+        auto* notif = new FakeInstallerNotification();
+        L0Test::ExpectEqU32(tr, fx.impl->Register(notif), ERROR_NONE, "Installer Register() succeeds");
+        uint32_t lockId = 0;
+        std::string unpackedPath;
+        std::string runtimeConfig;
+        WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+        if (running) {
+            L0Test::ExpectEqU32(tr,
+                fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+                    lockId, unpackedPath, runtimeConfig, appMetadata), ERROR_NONE,
+                "Lock() the initial version before upgrading a running app");
+            if (appMetadata != nullptr) {
+                appMetadata->Release();
+                appMetadata = nullptr;
             }
         }
-        L0Test::ExpectTrue(tr, foundNewVersion,
-            "Deferred install applied after unlock installs the version that was actually requested (not the old one)");
-        packages->Release();
-    }
 
+        WPEFramework::Exchange::IPackageInstaller::FailReason failReason =
+            WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+        const std::string versions[] = {"200.0.0", "300.0.0"};
+        const std::string locators[] = {"/tmp/youtube_200.pkg", "/tmp/youtube_300.pkg"};
+        for (size_t index = 0; index < 2; ++index) {
+            L0Test::ExpectEqU32(tr, fx.impl->Install("YouTube", nullptr, locators[index], failReason), ERROR_NONE,
+                "Install() a new version without installation blocking");
+            WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
+            L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "ListPackages() succeeds after upgrade");
+            L0Test::ExpectTrue(tr, packages != nullptr, "ListPackages() returns version records");
+            if (packages != nullptr) {
+                uint32_t installedCount = 0;
+                uint32_t uninstalledCount = 0;
+                WPEFramework::Exchange::IPackageInstaller::Package package;
+                while (packages->Next(package)) {
+                    if (package.packageId == "YouTube") {
+                        if (package.state == InstallState::INSTALLED) {
+                            ++installedCount;
+                            L0Test::ExpectEqStr(tr, package.version, versions[index], "Only the requested version is installed");
+                        } else {
+                            L0Test::ExpectTrue(tr, package.state == InstallState::UNINSTALLED,
+                                "Previous version records are UNINSTALLED");
+                            ++uninstalledCount;
+                        }
+                    }
+                }
+                L0Test::ExpectEqU32(tr, installedCount, 1, "Exactly one version is INSTALLED");
+                L0Test::ExpectEqU32(tr, uninstalledCount, index + 1, "All previous versions remain tracked");
+                packages->Release();
+            }
+            std::string metadata;
+            L0Test::ExpectEqU32(tr, fx.impl->GetConfigForInstalledPackage("YouTube", metadata), ERROR_NONE,
+                "Installed metadata is queryable after upgrade");
+            JsonObject config;
+            L0Test::ExpectTrue(tr, config.FromString(metadata), "Installed metadata is valid JSON");
+            L0Test::ExpectEqStr(tr, config["version"].String(), versions[index], "Installed metadata uses the latest version");
+        }
+        if (running) {
+            L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "Unload releases the original version's lock");
+        }
+        L0Test::ExpectEqU32(tr,
+            fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+                lockId, unpackedPath, runtimeConfig, appMetadata), ERROR_NONE, "Launch selects the installed version");
+        L0Test::ExpectEqStr(tr, unpackedPath, "/tmp/package-locks/YouTube/300.0.0", "Launch uses the latest version");
+        if (appMetadata != nullptr) {
+            appMetadata->Release();
+        }
+        L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "Unlock() succeeds after launch");
+        for (const auto &status : notif->installStatuses) {
+            L0Test::ExpectTrue(tr, status.find("INSTALLATION_BLOCKED") == std::string::npos,
+                "Install() never reports INSTALLATION_BLOCKED");
+        }
+        L0Test::ExpectEqU32(tr, fx.impl->Unregister(notif), ERROR_NONE, "Installer Unregister() succeeds");
+        notif->Release();
+    }
     return tr.failures;
 }
 
@@ -920,16 +942,13 @@ uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock()
 
     WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
     L0Test::ExpectEqU32(tr,
-        fx.impl->Install("YouTube", nullptr, "/tmp/youtube_200.pkg", failReason),
-        ERROR_GENERAL,
-        "Install() is rejected while a locked package has a pending uninstall");
-    L0Test::ExpectEqU32(tr,
-        fx.impl->PackageState("YouTube", state),
-        ERROR_NONE,
-        "PackageState() remains queryable after rejecting install with pending uninstall");
+        fx.impl->Install("YouTube", nullptr, "/tmp/youtube_200.pkg", failReason), ERROR_GENERAL,
+        "Install() remains rejected when it conflicts with a pending uninstall");
+    L0Test::ExpectEqU32(tr, fx.impl->PackageState("YouTube", state), ERROR_NONE,
+        "PackageState() remains queryable after the conflicting install");
     L0Test::ExpectTrue(tr,
         state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED,
-        "Rejected install preserves the pending uninstall state");
+        "A conflicting install preserves the pending uninstall");
 
     L0Test::ExpectEqU32(tr,
         fx.impl->Unlock("YouTube"),
@@ -1061,7 +1080,6 @@ uint32_t Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled()
         notif->lastInstallStatus.find("\"failReason\":\"PACKAGE_MISMATCH_FAILURE\"") != std::string::npos,
         "Rejected upgrade notification includes the failReason");
 
-    // Deferred upgrade rejected after unlock.
     uint32_t lockId = 0;
     std::string unpackedPath;
     WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
@@ -1069,7 +1087,7 @@ uint32_t Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled()
         fx.impl->Lock(packageId, WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
             lockId, unpackedPath, runtimeConfig, appMetadata),
         ERROR_NONE,
-        "Lock() succeeds before deferred upgrade");
+        "Lock() succeeds before a rejected upgrade");
     if (appMetadata != nullptr) {
         appMetadata->Release();
         appMetadata = nullptr;
@@ -1078,22 +1096,24 @@ uint32_t Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled()
     L0Test::ExpectEqU32(tr,
         fx.impl->Install(packageId, nullptr, "/tmp/reject_2.pkg", failReason),
         ERROR_GENERAL,
-        "Upgrade is deferred while locked");
-
-    notif->lastInstallStatus.clear();
-    L0Test::ExpectEqU32(tr, fx.impl->Unlock(packageId), ERROR_NONE,
-        "Unlock() succeeds even though the deferred upgrade is rejected");
+        "Upgrade is attempted and rejected immediately while locked");
 
     L0Test::ExpectEqU32(tr, fx.impl->PackageState(packageId, state), ERROR_NONE,
-        "PackageState() is queryable after deferred rejection");
+        "PackageState() is queryable after rejection while locked");
     L0Test::ExpectTrue(tr, state == InstallState::INSTALLED,
-        "Deferred rejection keeps the prior installation INSTALLED");
+        "Rejection while locked keeps the prior installation INSTALLED");
     L0Test::ExpectTrue(tr,
         notif->lastInstallStatus.find("\"state\":\"INSTALL_FAILURE\"") != std::string::npos,
-        "Deferred rejection publishes INSTALL_FAILURE");
+        "Rejection while locked immediately publishes INSTALL_FAILURE");
     L0Test::ExpectTrue(tr,
         notif->lastInstallStatus.find("\"version\":\"2.0.0\"") != std::string::npos,
-        "Deferred rejection notification identifies the attempted version");
+        "Rejection while locked identifies the attempted version");
+
+    const uint32_t notificationCount = notif->installStatusCount.load();
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock(packageId), ERROR_NONE,
+        "Unlock() releases the original version after a rejected upgrade");
+    L0Test::ExpectEqU32(tr, notif->installStatusCount.load(), notificationCount,
+        "Unlock() does not retry the rejected upgrade");
 
     L0Test::ExpectEqU32(tr, fx.impl->Unregister(notif), ERROR_NONE, "Installer Unregister() returns ERROR_NONE");
     notif->Release();

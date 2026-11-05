@@ -404,6 +404,10 @@ uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
     pendingPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLING;
     installer.installedPackages.push_back(installedPkg);
     installer.installedPackages.push_back(pendingPkg);
+    auto previousPkg = installedPkg;
+    previousPkg.version = "1.0.0";
+    previousPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    installer.installedPackages.push_back(previousPkg);
 
     L0Test::AppManagerServiceMock::Config cfg(&installer);
     cfg.packageHandler = &handler;
@@ -433,6 +437,8 @@ uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
     L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE, "GetInstalledApps() succeeds when package list is available");
     L0Test::ExpectTrue(tr, apps.find("app.good") != std::string::npos, "GetInstalledApps() includes installed app ids in output");
     L0Test::ExpectTrue(tr, apps.find("app.pending") == std::string::npos, "GetInstalledApps() excludes non-installed entries");
+    L0Test::ExpectTrue(tr, apps.find("1.0.0") == std::string::npos, "GetInstalledApps() excludes replaced versions of the same app");
+    L0Test::ExpectTrue(tr, apps.find("1.2.3") != std::string::npos, "GetInstalledApps() reports the current installed version");
 
     impl->Release();
     return tr.failures;

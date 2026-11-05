@@ -76,17 +76,9 @@ class PackageManagerImplementation
             string runtimeType;                             // blank for runtime package
             string packageType;                              // OCI package type (e.g. "runtime", "application")
             std::pair<std::string, std::string> runtimeApp; // runtime package id & version
-
-            // Install() request deferred while locked (app running); applied once
-            // unlocked (see processBlockedPackage()). Empty fileLocator means none pending.
-            string pendingFileLocator;
-            string pendingVersion;
-            packagemanager::NameValues pendingKeyValues;
         };
 
-        // Package Manager now treats packageId as the sole external identifier;
-        // only one (current) version per packageId is tracked internally.
-        typedef std::string StateKey;
+        typedef std::pair<string, string> StateKey;
         typedef std::map<StateKey, State> StateMap;
 
         class Configuration : public Core::JSON::Container {
@@ -233,7 +225,9 @@ class PackageManagerImplementation
         // Publishes INSTALL_FAILURE for an attempted version without mutating the cached state.
         void NotifyInstallFailure(const string& id, const string& version, State state, FailReason reason);
         // Caller must hold mtxState.
-        bool GetCurrentVersion(const string &packageId, string &version) const;
+        StateMap::iterator FindCurrentState(const string &packageId);
+        StateMap::iterator FindLockedState(const string &packageId);
+        bool GetCurrentVersion(const string &packageId, string &version);
 
         DownloadInfoPtr getNext();
         int nextRetryDuration(int n) {
