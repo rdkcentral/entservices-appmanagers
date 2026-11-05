@@ -72,7 +72,6 @@ class PackageManagerImplementation
             string digest;
             string gatewayMetadataPath;
             string unpackedPath;
-            string version;                                  // preserves the installed package's version internally
             FailReason failReason = Exchange::IPackageInstaller::FailReason::NONE;
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
             string runtimeType;                             // blank for runtime package
@@ -80,18 +79,8 @@ class PackageManagerImplementation
             std::pair<std::string, std::string> runtimeApp; // runtime package id & version
         };
 
-        typedef std::pair<string, string> StateKey;
+        typedef std::pair<std::string, std::string> StateKey;
         typedef std::map<StateKey, State> StateMap;
-
-        struct LockReference {
-            StateKey package;
-            std::list<Exchange::IPackageHandler::AdditionalLock> dependencies;
-        };
-
-        struct LockGroup {
-            uint32_t activeCount = 0;
-            std::list<LockReference> references;
-        };
 
         class Configuration : public Core::JSON::Container {
             public:
@@ -225,10 +214,10 @@ class PackageManagerImplementation
         bool getRuntimeConfigUnsigned(const string &runtimeConfigPayload, const string &key, uint64_t &value);
         bool updateRuntimeConfigString(string &runtimeConfigPayload, const string &key, const string &value);
         Core::hresult LockRuntime(State &state, string &unpackedPath);
-        Core::hresult LockPackage(const string &packageId, const Exchange::IPackageHandler::LockReason &lockReason,
+        Core::hresult LockPackage(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
             uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks);
         Core::hresult UnlockPackage(const string &packageId, const string &version);
-        Core::hresult processBlockedPackage(const string &packageId);
+        Core::hresult processBlockedPackage(const string &packageId, const string &version);
 
         void setState(const string &packageId, const string &version, InstallState newState) {
             std::lock_guard<std::recursive_mutex> lock(mtxState);
@@ -259,14 +248,12 @@ class PackageManagerImplementation
             return "";
         }
 
-        Core::hresult Install(const string &packageId, const packagemanager::NameValues &keyValues, const string &fileLocator, const string &version, bool hadInstalledArtifact, State& state);
+        Core::hresult Install(const string &packageId, const string &version, const packagemanager::NameValues &keyValues, const string &fileLocator, State& state);
 
         void InitializeState();
         void downloader(int n);
         void NotifyDownloadStatus(const string& id, const string& locator, const DownloadReason status);
         void NotifyInstallStatus(const string& id, const string& version, const State &state);
-        // Publishes INSTALL_FAILURE for an attempted version without mutating the cached state.
-        void NotifyInstallFailure(const string& id, const string& version, State state, FailReason reason);
         // Caller must hold mtxState.
         StateMap::iterator FindLockedState(const string &packageId);
 
@@ -335,7 +322,6 @@ class PackageManagerImplementation
         DownloadQueue  mDownloadQueue;
         std::recursive_mutex mtxState;
         StateMap  mState;
-        std::map<string, LockGroup> mLockGroups;
         bool cacheInitialized = false;
 
         std::string downloadDir = "/opt/CDL/";
