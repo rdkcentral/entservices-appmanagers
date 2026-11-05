@@ -174,7 +174,6 @@ namespace WPEFramework
                             Exchange::ILifecycleManager::INotification* notification)
                             : mLifecycleManager(manager)
                             , mNotification(notification)
-                            , mGeneration((manager != nullptr) && (notification != nullptr) ? manager->mAppStateNotificationGeneration[notification] : 0U)
                         {
                             if (mLifecycleManager != nullptr)
                             {
@@ -221,7 +220,7 @@ namespace WPEFramework
 
                             {
                                 Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
-                                if (mLifecycleManager->mAppStateNotificationGeneration[mNotification] != mGeneration)
+                                if (std::find(mLifecycleManager->mLifecycleManagerNotification.begin(), mLifecycleManager->mLifecycleManagerNotification.end(), mNotification) == mLifecycleManager->mLifecycleManagerNotification.end())
                                 {
                                     return;
                                 }
@@ -236,11 +235,9 @@ namespace WPEFramework
                             std::deque<AppStateNotification> notifications;
                             {
                                 Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
-                                auto generationIt = mLifecycleManager->mAppStateNotificationGeneration.find(mNotification);
-                                if ((generationIt == mLifecycleManager->mAppStateNotificationGeneration.end()) ||
-                                    (generationIt->second != mGeneration))
+                                if (std::find(mLifecycleManager->mLifecycleManagerNotification.begin(), mLifecycleManager->mLifecycleManagerNotification.end(), mNotification) == mLifecycleManager->mLifecycleManagerNotification.end())
                                 {
-                                    // This job is stale; it will fall through to the normal in-flight decrement.
+                                    // Listener was removed; this stale job exits without touching the queue.
                                 }
                                 else
                                 {
@@ -248,38 +245,37 @@ namespace WPEFramework
                                     if (it == mLifecycleManager->mAppStateNotifications.end())
                                     {
                                         mLifecycleManager->mAppStateNotificationDrainScheduled.erase(mNotification);
-                                    {
-                                        std::lock_guard<std::mutex> lock(mLifecycleManager->mAppStateNotificationLock);
-                                        auto inFlight = mLifecycleManager->mAppStateNotificationInFlight.find(mNotification);
-                                        if (inFlight != mLifecycleManager->mAppStateNotificationInFlight.end())
                                         {
-                                            if (0U < inFlight->second)
+                                            std::lock_guard<std::mutex> lock(mLifecycleManager->mAppStateNotificationLock);
+                                            auto inFlight = mLifecycleManager->mAppStateNotificationInFlight.find(mNotification);
+                                            if (inFlight != mLifecycleManager->mAppStateNotificationInFlight.end())
                                             {
-                                                --inFlight->second;
-                                            }
-                                            if (0U == inFlight->second)
-                                            {
-                                                mLifecycleManager->mAppStateNotificationInFlight.erase(mNotification);
-                                                mLifecycleManager->mAppStateNotificationDispatchingThread.erase(mNotification);
-                                                mLifecycleManager->mAppStateNotificationCV.notify_all();
+                                                if (0U < inFlight->second)
+                                                {
+                                                    --inFlight->second;
+                                                }
+                                                if (0U == inFlight->second)
+                                                {
+                                                    mLifecycleManager->mAppStateNotificationInFlight.erase(mNotification);
+                                                    mLifecycleManager->mAppStateNotificationDispatchingThread.erase(mNotification);
+                                                    mLifecycleManager->mAppStateNotificationCV.notify_all();
+                                                }
                                             }
                                         }
+                                        return;
                                     }
-                                    return;
-                                }
 
-                                        notifications = std::move(it->second);
-                                        it->second.clear();
-                                        mLifecycleManager->mAppStateNotifications.erase(it);
-                                    }
+                                    notifications = std::move(it->second);
+                                    it->second.clear();
+                                    mLifecycleManager->mAppStateNotifications.erase(it);
                                 }
                             }
 
                             while (!notifications.empty())
                             {
                                 {
-                                    Core::SafeSyncType<Core::CriticalSection> generationLock(mLifecycleManager->mAdminLock);
-                                    if (mLifecycleManager->mAppStateNotificationGeneration[mNotification] != mGeneration)
+                                    Core::SafeSyncType<Core::CriticalSection> activeListenerLock(mLifecycleManager->mAdminLock);
+                                    if (std::find(mLifecycleManager->mLifecycleManagerNotification.begin(), mLifecycleManager->mLifecycleManagerNotification.end(), mNotification) == mLifecycleManager->mLifecycleManagerNotification.end())
                                     {
                                         break;
                                     }
@@ -293,9 +289,7 @@ namespace WPEFramework
                             {
                                 bool reschedule = false;
                                 Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
-                                auto generationIt = mLifecycleManager->mAppStateNotificationGeneration.find(mNotification);
-                                if ((generationIt != mLifecycleManager->mAppStateNotificationGeneration.end()) &&
-                                    (generationIt->second == mGeneration))
+                                if (std::find(mLifecycleManager->mLifecycleManagerNotification.begin(), mLifecycleManager->mLifecycleManagerNotification.end(), mNotification) != mLifecycleManager->mLifecycleManagerNotification.end())
                                 {
                                     auto queueIt = mLifecycleManager->mAppStateNotifications.find(mNotification);
                                     if ((queueIt != mLifecycleManager->mAppStateNotifications.end()) && (!queueIt->second.empty()))
@@ -336,7 +330,6 @@ namespace WPEFramework
                     private:
                         LifecycleManagerImplementation* mLifecycleManager;
                         Exchange::ILifecycleManager::INotification* mNotification;
-                        const uint32_t mGeneration;
                 };
 
                 struct LifecycleStateNotification
@@ -355,7 +348,6 @@ namespace WPEFramework
                             Exchange::ILifecycleManagerState::INotification* notification)
                             : mLifecycleManager(manager)
                             , mNotification(notification)
-                            , mGeneration((manager != nullptr) && (notification != nullptr) ? manager->mLifecycleStateNotificationGeneration[notification] : 0U)
                         {
                             if (mLifecycleManager != nullptr)
                             {
@@ -402,7 +394,7 @@ namespace WPEFramework
 
                             {
                                 Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
-                                if (mLifecycleManager->mLifecycleStateNotificationGeneration[mNotification] != mGeneration)
+                                if (std::find(mLifecycleManager->mLifecycleManagerStateNotification.begin(), mLifecycleManager->mLifecycleManagerStateNotification.end(), mNotification) == mLifecycleManager->mLifecycleManagerStateNotification.end())
                                 {
                                     return;
                                 }
@@ -417,11 +409,9 @@ namespace WPEFramework
                             std::deque<LifecycleStateNotification> notifications;
                             {
                                 Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
-                                auto generationIt = mLifecycleManager->mLifecycleStateNotificationGeneration.find(mNotification);
-                                if ((generationIt == mLifecycleManager->mLifecycleStateNotificationGeneration.end()) ||
-                                    (generationIt->second != mGeneration))
+                                if (std::find(mLifecycleManager->mLifecycleManagerStateNotification.begin(), mLifecycleManager->mLifecycleManagerStateNotification.end(), mNotification) == mLifecycleManager->mLifecycleManagerStateNotification.end())
                                 {
-                                    // This job is stale; it will fall through to the normal in-flight decrement.
+                                    // Listener was removed; this stale job exits without touching the queue.
                                 }
                                 else
                                 {
@@ -458,8 +448,8 @@ namespace WPEFramework
                             while (!notifications.empty())
                             {
                                 {
-                                    Core::SafeSyncType<Core::CriticalSection> generationLock(mLifecycleManager->mAdminLock);
-                                    if (mLifecycleManager->mLifecycleStateNotificationGeneration[mNotification] != mGeneration)
+                                    Core::SafeSyncType<Core::CriticalSection> activeListenerLock(mLifecycleManager->mAdminLock);
+                                    if (std::find(mLifecycleManager->mLifecycleManagerStateNotification.begin(), mLifecycleManager->mLifecycleManagerStateNotification.end(), mNotification) == mLifecycleManager->mLifecycleManagerStateNotification.end())
                                     {
                                         break;
                                     }
@@ -477,9 +467,7 @@ namespace WPEFramework
                             {
                                 bool reschedule = false;
                                 Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManager->mAdminLock);
-                                auto generationIt = mLifecycleManager->mLifecycleStateNotificationGeneration.find(mNotification);
-                                if ((generationIt != mLifecycleManager->mLifecycleStateNotificationGeneration.end()) &&
-                                    (generationIt->second == mGeneration))
+                                if (std::find(mLifecycleManager->mLifecycleManagerStateNotification.begin(), mLifecycleManager->mLifecycleManagerStateNotification.end(), mNotification) != mLifecycleManager->mLifecycleManagerStateNotification.end())
                                 {
                                     auto queueIt = mLifecycleManager->mLifecycleStateNotifications.find(mNotification);
                                     if ((queueIt != mLifecycleManager->mLifecycleStateNotifications.end()) && (!queueIt->second.empty()))
@@ -520,7 +508,6 @@ namespace WPEFramework
                     private:
                         LifecycleManagerImplementation* mLifecycleManager;
                         Exchange::ILifecycleManagerState::INotification* mNotification;
-                        const uint32_t mGeneration;
                 };
 
                 class EXTERNAL LifecycleStateListenerJob : public Core::IDispatch
@@ -641,8 +628,6 @@ namespace WPEFramework
                 std::map<Exchange::ILifecycleManagerState::INotification*, std::deque<LifecycleStateNotification>> mLifecycleStateNotifications;
                 std::map<Exchange::ILifecycleManager::INotification*, bool> mAppStateNotificationDrainScheduled;
                 std::map<Exchange::ILifecycleManagerState::INotification*, bool> mLifecycleStateNotificationDrainScheduled;
-                std::map<Exchange::ILifecycleManager::INotification*, uint32_t> mAppStateNotificationGeneration;
-                std::map<Exchange::ILifecycleManagerState::INotification*, uint32_t> mLifecycleStateNotificationGeneration;
                 std::map<Exchange::ILifecycleManager::INotification*, uint32_t> mAppStateNotificationInFlight;
                 std::map<Exchange::ILifecycleManagerState::INotification*, uint32_t> mLifecycleStateNotificationInFlight;
                 std::map<Exchange::ILifecycleManager::INotification*, std::thread::id> mAppStateNotificationDispatchingThread;
