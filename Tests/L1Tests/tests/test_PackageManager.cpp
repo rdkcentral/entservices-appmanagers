@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 #include <cstdio>
+#include <cstring>
 #include <mutex>
 #include <chrono>
 #include <condition_variable>
@@ -38,6 +39,7 @@
 #include "ThunderPortability.h"
 #include "WorkerPoolImplementation.h"
 #include "FactoriesImplementation.h"
+#include "WrapsMock.h"
 
 #define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, getpid(), gettid(), ##__VA_ARGS__); fflush(stderr);
 #define TIMEOUT   (500)
@@ -1128,9 +1130,23 @@ TEST_F(PackageManagerTest, getStorageInformationusingJsonRpc) {
 
     initforJsonRpc();
 
+    // GetStorageInformation() inspects the packages partition, which does not exist on the test host.
+    NiceMock<WrapsImplMock> wrapsImplMock;
+    ON_CALL(wrapsImplMock, statvfs(::testing::_, ::testing::_))
+        .WillByDefault([](const char*, struct statvfs* buf) {
+            memset(buf, 0, sizeof(*buf));
+            buf->f_frsize = 4096;
+            buf->f_bavail = 1024;
+            return 0;
+        });
+    ON_CALL(wrapsImplMock, nftw(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(0));
+    Wraps::setImpl(&wrapsImplMock);
+
     // TC-26: Get Storage Details using JsonRpc
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("getStorageInformation"), _T("{\"quotaKB\": 1024, \"usedKB\": 568}"), mJsonRpcResponse));
 
+    Wraps::setImpl(nullptr);
 	deinitforJsonRpc();
 }
 
@@ -1146,12 +1162,28 @@ TEST_F(PackageManagerTest, getStorageInformationusingComRpc) {
 
     initforComRpc();
 
+    // GetStorageInformation() inspects the packages partition, which does not exist on the test host.
+    NiceMock<WrapsImplMock> wrapsImplMock;
+    ON_CALL(wrapsImplMock, statvfs(::testing::_, ::testing::_))
+        .WillByDefault([](const char*, struct statvfs* buf) {
+            memset(buf, 0, sizeof(*buf));
+            buf->f_frsize = 4096;
+            buf->f_bavail = 1024;
+            return 0;
+        });
+    ON_CALL(wrapsImplMock, nftw(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(0));
+    Wraps::setImpl(&wrapsImplMock);
+
     uint32_t quotaKB = 1024;
     uint32_t usedKB = 568;
 
     // TC-27: Get Storage Details using ComRpc
     EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->GetStorageInformation(quotaKB, usedKB));
+    EXPECT_EQ(4096U, quotaKB);
+    EXPECT_EQ(0U, usedKB);
 
+    Wraps::setImpl(nullptr);
 	deinitforComRpc();
 }
 
