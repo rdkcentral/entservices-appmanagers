@@ -196,6 +196,8 @@ namespace packagemanager
 
     private:
         PackageSpecifierRuntimeMap packageSpecifierRuntimeMap;
+
+    public:
         static std::shared_ptr<packagemanager::IPackageImplDummy> instance() {
                 return std::make_shared<packagemanager::IPackageImplDummy>();
         }
