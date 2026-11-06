@@ -18,15 +18,9 @@
 * limitations under the License.
 **/
 
-#include <algorithm>
-#include <cerrno>
 #include <chrono>
 #include <cinttypes> // Required for PRIu64
-#include <cstdint>
-#include <cstring>
 #include <filesystem>
-#include <mutex>
-#include <sys/statvfs.h>
 #include <utility>
 #include <vector>
 
@@ -39,33 +33,8 @@
 /* Until we don't get it from Package configuration, use size as 1MB */
 #define STORAGE_MAX_SIZE 1024
 
-#define PACKAGES_STORAGE_PATH "/media/apps/sky/packages"
-
 namespace WPEFramework {
 namespace Plugin {
-
-    std::mutex PackageManagerImplementation::mDirSizeLock;
-    uint64_t PackageManagerImplementation::mDirSizeBytes = 0;
-
-    int PackageManagerImplementation::getSize(const char*, const struct stat* sb, int typeflag, struct FTW*)
-    {
-        if ((FTW_NS != typeflag) && (FTW_DNR != typeflag) && (nullptr != sb)) {
-            // st_blocks is always in 512-byte units, matching `du -sk`.
-            mDirSizeBytes += static_cast<uint64_t>(sb->st_blocks) * 512;
-        }
-        return 0;
-    }
-
-    bool PackageManagerImplementation::getDirectorySizeInBytes(const std::string& path, uint64_t& sizeBytes)
-    {
-        std::lock_guard<std::mutex> lock(mDirSizeLock);
-        mDirSizeBytes = 0;
-        if (0 != nftw(path.c_str(), getSize, 64, FTW_PHYS | FTW_MOUNT)) {
-            return false;
-        }
-        sizeBytes = mDirSizeBytes;
-        return true;
-    }
 
     RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::PackageManagerTelemetryReporting, "packageManagerBootstrapTime")
 
@@ -170,6 +139,7 @@ namespace Plugin {
             PackageManagerImplementation::Configuration config;
             config.FromString(service->ConfigLine());
             downloadDir = config.downloadDir;
+            enablePackageSpecifierRuntimes = config.enablePackageSpecifierRuntimes.Value();
 
             // Remove trailing slashes (unless path is just "/")
             while (!downloadDir.empty() && 1 < downloadDir.size() && '/' == downloadDir.back()) {
@@ -436,34 +406,8 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::GetStorageInformation(uint32_t &quotaKB, uint32_t &usedKB)
     {
-        Core::hresult result = Core::ERROR_GENERAL;
-        struct statvfs fsStat;
-        uint64_t usedBytes = 0;
-
-        quotaKB = 0;
-        usedKB = 0;
-
-        const string storagePath = PACKAGES_STORAGE_PATH;
-
-        memset(&fsStat, 0, sizeof(fsStat));
-        if (0 != statvfs(storagePath.c_str(), &fsStat)) {
-            LOGERR("statvfs failed for '%s' errno=%d reason=%s", storagePath.c_str(), errno, strerror(errno));
-        } else if (!getDirectorySizeInBytes(storagePath, usedBytes)) {
-            LOGERR("Failed to get size of '%s' errno=%d reason=%s", storagePath.c_str(), errno, strerror(errno));
-        } else {
-            /* f_frsize is the unit of f_bavail, fall back to f_bsize when the filesystem does not report it */
-            const uint64_t blockSize = (0 != fsStat.f_frsize) ? static_cast<uint64_t>(fsStat.f_frsize) : static_cast<uint64_t>(fsStat.f_bsize);
-            const uint64_t usedKBytes = usedBytes / 1024;
-            const uint64_t availableKB = (static_cast<uint64_t>(fsStat.f_bavail) * blockSize) / 1024;
-
-            /* quota = what the directory holds now plus how much more the partition lets it grow */
-            usedKB = static_cast<uint32_t>(std::min<uint64_t>(usedKBytes, UINT32_MAX));
-            quotaKB = static_cast<uint32_t>(std::min<uint64_t>(usedKBytes + availableKB, UINT32_MAX));
-
-            LOGDBG("path='%s' quotaKB=%u usedKB=%u", storagePath.c_str(), quotaKB, usedKB);
-            result = Core::ERROR_NONE;
-        }
-
+        Core::hresult result = Core::ERROR_NONE;
+        LOGDBG();
         return result;
     }
 
@@ -1610,5 +1554,60 @@ Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(co
 
     return result;
 }
+
+Core::hresult PackageManagerImplementation::GetPackageSpecifierRuntimes(
+    Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator *&runtimes)
+{
+    runtimes = nullptr;
+    if (!enablePackageSpecifierRuntimes)
+    {
+        return Core::ERROR_NOT_SUPPORTED;
+    }
+
+    CHECK_CACHE()
+    packagemanager::PackageSpecifierRuntimeMap runtimeMap;
+    std::vector<Exchange::IAppPackageConnector::PackageSpecifierRuntime> runtimeList;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
+        const packagemanager::Result pmResult = packageImpl->GetPackageSpecifierRuntimes(runtimeMap);
+        if (pmResult != packagemanager::SUCCESS)
+        {
+            return Core::ERROR_GENERAL;
+        }
+        for (const auto &runtime : runtimeMap)
+        {
+            Exchange::IAppPackageConnector::PackageSpecifierRuntime entry;
+            entry.packageSpecifier = runtime.first;
+            entry.packageId = runtime.second;
+            runtimeList.emplace_back(std::move(entry));
+        }
+    }
+    LOGINFO("Retrieved %zu package specifier runtimes", runtimeList.size());
+
+    runtimes = Core::Service<RPC::IteratorType<
+        Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator>>::Create<Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator>(runtimeList);
+    return (runtimes != nullptr) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
+}
+
+Core::hresult PackageManagerImplementation::SetPackageSpecifier(
+    const string &packageSpecifier, const string &packageId)
+{
+    if (!enablePackageSpecifierRuntimes)
+    {
+        return Core::ERROR_NOT_SUPPORTED;
+    }
+
+    CHECK_CACHE()
+
+    std::lock_guard<std::recursive_mutex> lock(mtxState);
+    const string installedVersion = GetInstalledVersion(packageId);
+    if (installedVersion.empty())
+    {
+        return Core::ERROR_UNKNOWN_KEY;
+    }
+    const packagemanager::Result pmResult = packageImpl->SetPackageSpecifierRuntime(packageSpecifier, packageId);
+    return (pmResult == packagemanager::SUCCESS) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
+}
 } // namespace Plugin
 } // namespace WPEFramework
+
