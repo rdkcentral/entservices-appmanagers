@@ -113,7 +113,13 @@ namespace Thunder
 #endif
                 } RuntimeAppInfo;
 
-                class EXTERNAL Job : public Core::IDispatch
+#if defined(THUNDER_VERSION) && (THUNDER_VERSION <= 4)
+                using ThunderDispatcher = Core::IDispatchType<void>;
+#else
+                using ThunderDispatcher = Core::IDispatch;
+#endif
+
+                class EXTERNAL Job : public ThunderDispatcher
                 {
                     protected:
                     Job(RuntimeManagerImplementation *mRuntimeManagerImpl, RuntimeEventType event, JsonValue &params)
@@ -142,11 +148,7 @@ namespace Thunder
                     public:
                         static Core::ProxyType<Core::IDispatch> Create(RuntimeManagerImplementation *mRuntimeManagerImpl, RuntimeEventType event, JsonValue params)
                         {
-#ifndef  USE_THUNDER_R4
-                            return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(mRuntimeManagerImpl, event, params)));
-#else
-                            return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(mRuntimeManagerImpl, event, params)));
-#endif
+                            return (Core::ProxyType<ThunderDispatcher>(Core::ProxyType<Job>::Create(mRuntimeManagerImpl, event, params)));
                         }
 
                         virtual void Dispatch()

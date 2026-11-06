@@ -22,7 +22,7 @@
 #include <core/core.h>
 #include <plugins/plugins.h>
 
-#ifdef USE_THUNDER_R4
+#if defined(THUNDER_VERSION) && (THUNDER_VERSION <= 4)
 #define EVENT_SUBSCRIBE(__A__, __B__, __C__, __D__) \
     { \
         auto ret = plugin->Subscribe(__A__, __B__, __C__); \

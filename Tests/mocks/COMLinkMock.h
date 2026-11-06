@@ -24,7 +24,7 @@
 
 #include "Module.h"
 
-#ifndef USE_THUNDER_R4
+#if !(defined(THUNDER_VERSION) && (THUNDER_VERSION <= 4))
 class COMLinkMock : public Thunder::PluginHost::IShell::ICOMLink {
 public:
     virtual ~COMLinkMock() = default;
@@ -46,5 +46,5 @@ public:
     MOCK_METHOD(Thunder::RPC::IRemoteConnection*, RemoteConnection, (const uint32_t), (override));
     MOCK_METHOD(void*, Instantiate, (const Thunder::RPC::Object&, const uint32_t, uint32_t&), (override));
 };
-#endif /* ! USE_THUNDER_R4 */
+#endif
 #endif //RDKSERVICES_TESTS_MOCKS_COMLINKMOCK_H_

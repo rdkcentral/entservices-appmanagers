@@ -39,11 +39,6 @@
 #define THUNDER_DISABLE_DEPRECATED_WARNING
 #endif
 
-// Thunder/Thunder configuration
-#ifndef USE_THUNDER_R4
-#define USE_THUNDER_R4 1
-#endif
-
 #ifndef DISABLE_SECURITY_TOKEN
 #define DISABLE_SECURITY_TOKEN 1
 #endif

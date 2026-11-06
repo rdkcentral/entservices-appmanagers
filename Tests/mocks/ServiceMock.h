@@ -40,7 +40,7 @@ public:
     MOCK_METHOD(string, VolatilePath, (), (const, override));
     MOCK_METHOD(string, DataPath, (), (const, override));
     MOCK_METHOD(state, State, (), (const, override));
-#ifdef USE_THUNDER_R4
+#if defined(THUNDER_VERSION) && (THUNDER_VERSION <= 4)
     MOCK_METHOD(Thunder::Core::hresult, Activate, (const reason), (override));
     MOCK_METHOD(Thunder::Core::hresult, Deactivate, (const reason), (override));
     MOCK_METHOD(Thunder::Core::hresult, Unavailable, (const reason), (override));

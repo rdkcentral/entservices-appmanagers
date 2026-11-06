@@ -113,7 +113,7 @@ protected:
 
         ON_CALL(comlinkMock, RemoteConnection(_)).WillByDefault(Return(nullptr));
 
-#ifdef USE_THUNDER_R4
+#if defined(THUNDER_VERSION) && (THUNDER_VERSION <= 4)
         ON_CALL(comlinkMock, Instantiate(_, _, _))
             .WillByDefault(Invoke(
                 [this](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {

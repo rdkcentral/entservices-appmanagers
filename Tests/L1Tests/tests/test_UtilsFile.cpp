@@ -34,11 +34,11 @@ TEST(UtilsFileTest, createFolder_createFile_moveFile_verifyFile)
 {
     Core::Directory dir(_T("/tmp/UtilsFileTest"));
 
-#ifdef USE_THUNDER_R4
+#if defined(THUNDER_VERSION) && (THUNDER_VERSION <= 4)
     EXPECT_TRUE(dir.Destroy());
 #else
     EXPECT_TRUE(dir.Destroy(false));
-#endif /*USE_THUNDER_R4 */
+#endif
     ASSERT_TRUE(dir.CreatePath());
 
     Core::File file(string(_T("/tmp/UtilsFileTest/file")));

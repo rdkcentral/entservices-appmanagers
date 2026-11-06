@@ -161,7 +161,13 @@ namespace Plugin {
         };
 #endif
 
-        class EXTERNAL Job : public Core::IDispatch {
+    #if defined(THUNDER_VERSION) && (THUNDER_VERSION <= 4)
+        using ThunderDispatcher = Core::IDispatchType<void>;
+    #else
+        using ThunderDispatcher = Core::IDispatch;
+    #endif
+
+        class EXTERNAL Job : public ThunderDispatcher {
         protected:
                  explicit Job(AppManagerImplementation *appManagerImplementation)
                 : mAppManagerImplementation(appManagerImplementation)
@@ -183,11 +189,7 @@ namespace Plugin {
 
        public:
             static Core::ProxyType<Core::IDispatch> Create(AppManagerImplementation *appManagerImplementation) {
-#ifndef USE_THUNDER_R4
-                return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(appManagerImplementation)));
-#else
-                return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(appManagerImplementation)));
-#endif
+                return (Core::ProxyType<ThunderDispatcher>(Core::ProxyType<Job>::Create(appManagerImplementation)));
             }
 
             virtual void Dispatch() {
