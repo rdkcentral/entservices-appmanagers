@@ -521,8 +521,11 @@ namespace Plugin {
         if ((metadataResult != packagemanager::SUCCESS) ||
             attemptedPackageId != packageId || version.empty()) {
             LOGERR("Failed to get valid artifact metadata for packageId: %s", packageId.c_str());
-            failReason = FailReason::INVALID_METADATA_FAILURE;
-            packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_INVALID_METADATA_FAILURE;
+            const bool idMismatch = (metadataResult == packagemanager::SUCCESS) && !version.empty() && (attemptedPackageId != packageId);
+            failReason = idMismatch ? FailReason::PACKAGE_MISMATCH_FAILURE : FailReason::INVALID_METADATA_FAILURE;
+            packageFailureErrorCode = idMismatch
+                ? PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE
+                : PackageManagerImplementation::PackageFailureErrorCode::ERROR_INVALID_METADATA_FAILURE;
             recordAndPublishTelemetryData(TELEMETRY_MARKER_INSTALL_ERROR,
                 packageId, requestTime, packageFailureErrorCode);
             State failure;
@@ -829,13 +832,6 @@ namespace Plugin {
         packagemanager::ConfigMetaData config;      // XXX: cleanup
         packagemanager::NameValues locks;
         const string installedVersion = GetInstalledVersion(packageId);
-        for (auto candidate = mState.lower_bound({packageId, string()});
-            candidate != mState.end() && candidate->first.first == packageId; ++candidate) {
-            if (candidate->first.second != installedVersion && candidate->second.mLockCount) {
-                LOGERR("Cannot lock '%s:%s' while '%s' is still locked", packageId.c_str(), installedVersion.c_str(), candidate->first.second.c_str());
-                return Core::ERROR_ILLEGAL_STATE;
-            }
-        }
         result = LockPackage(packageId, installedVersion, lockReason, lockId, unpackedPath, config, locks);
         if (result == packagemanager::SUCCESS) {
             // Lock Runtime
@@ -1102,22 +1098,13 @@ namespace Plugin {
         CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        auto locked = mState.end();
-        for (auto candidate = mState.lower_bound({packageId, string()});
-            candidate != mState.end() && candidate->first.first == packageId; ++candidate) {
-            if (candidate->second.mLockCount) {
-                if (locked != mState.end()) {
-                    LOGERR("Cannot resolve versionless unlock: multiple versions are locked for packageId: %s", packageId.c_str());
-                    return Core::ERROR_GENERAL;
-                }
-                locked = candidate;
-            }
-        }
+        // Without a version, release the stale (upgraded-away) version first, else the only locked one.
+        auto locked = FindLockedState(packageId);
         if (locked == mState.end()) {
             LOGERR("No lock for package: %s", packageId.c_str());
             const auto known = mState.lower_bound({packageId, string()});
             return known != mState.end() && known->first.first == packageId
-                ? Core::ERROR_GENERAL : Core::ERROR_BAD_REQUEST;
+                ? Core::ERROR_GENERAL : Core::ERROR_INVALID_PARAMETER;
         }
         const string version = locked->first.second;
 #ifdef USE_LIBPACKAGE_RALF

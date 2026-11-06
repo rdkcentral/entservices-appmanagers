@@ -96,11 +96,9 @@ remains unchanged; no separate running-package snapshots are maintained here.
 
 Lock counts follow develop's per-version reference counting: each lock increments
 that version's count, each unlock decrements it, and the final reference releases
-the backend lock. Because the versionless unlock cannot identify a holder, `Lock()`
-returns `ERROR_ILLEGAL_STATE` while a different version of the same package is
-still locked, so at most one version is locked per package and `Unlock()` always
-resolves that version. A relaunch after an upgrade succeeds once the previous
-version's holders have released it.
+the backend lock. The versionless unlock adapter releases the version that was
+upgraded away from first (the one a running app still holds), otherwise the only
+locked version. Locking is not restricted by other versions' locks, as in develop.
 
 Uninstall deferral follows develop: the selected installed version's lock count
 controls whether uninstall waits. Installation itself does not enter

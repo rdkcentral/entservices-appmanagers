@@ -2196,7 +2196,7 @@ TEST_F(PackageManagerTest, lockTwiceUnlockTwiceLockCountBranchusingComRpc) {
 /* Test Case for unlock unknown package branch using ComRpc
  *
  * Set up and initialize COM-RPC resources
- * Verify Unlock() returns ERROR_BAD_REQUEST for an unknown package
+ * Verify Unlock() returns ERROR_INVALID_PARAMETER for an unknown package
  * Deinitialize COM-RPC resources
  */
 
@@ -2206,7 +2206,7 @@ TEST_F(PackageManagerTest, unlockUnknownPackageusingComRpcBadRequest) {
 
     waitforSignal(TIMEOUT_FOR_INIT);
 
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkghandlerInterface->Unlock("UnknownApp"));
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, pkghandlerInterface->Unlock("UnknownApp"));
 
     deinitforComRpc();
 }

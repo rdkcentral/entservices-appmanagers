@@ -23,7 +23,7 @@ extern uint32_t Test_PM_Impl_MetadataExtractionFailurePublishesInstallFailure();
 extern uint32_t Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled();
 extern uint32_t Test_PM_Impl_UninstallAfterRejectedUpgradeReportsUninstalled();
 extern uint32_t Test_PM_Impl_GetConfigForInstalledPackage();
-extern uint32_t Test_PM_Impl_LockRejectsDifferentVersionWhileOlderLocked();
+extern uint32_t Test_PM_Impl_UnlockReleasesUpgradedAwayVersionFirst();
 extern uint32_t Test_PM_Impl_UnlockFailurePreservesReferenceCount();
 extern uint32_t Test_PM_Impl_UnlockUsesDevelopReferenceCounts();
 extern uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo();
@@ -60,7 +60,7 @@ int main()
         { "PM_Shell_InformationReturnsEmptyString", Test_PM_Shell_InformationReturnsEmptyString },
         { "PM_Shell_DownloadPathThroughPluginAggregate", Test_PM_Shell_DownloadPathThroughPluginAggregate },
         { "PM_Impl_InitializeAndDeinitialize", Test_PM_Impl_InitializeAndDeinitialize },
-        { "PM_Impl_LockRejectsDifferentVersionWhileOlderLocked", Test_PM_Impl_LockRejectsDifferentVersionWhileOlderLocked },
+        { "PM_Impl_UnlockReleasesUpgradedAwayVersionFirst", Test_PM_Impl_UnlockReleasesUpgradedAwayVersionFirst },
         { "PM_Impl_UnlockFailurePreservesReferenceCount", Test_PM_Impl_UnlockFailurePreservesReferenceCount },
         { "PM_Impl_UnlockUsesDevelopReferenceCounts", Test_PM_Impl_UnlockUsesDevelopReferenceCounts },
         { "PM_Impl_DownloaderRegisterUnregister", Test_PM_Impl_DownloaderRegisterUnregister },

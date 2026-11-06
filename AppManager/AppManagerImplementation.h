@@ -39,7 +39,6 @@
 #include "LifecycleInterfaceConnector.h"
 #include <interfaces/IPackageManager.h>
 #include <map>
-#include <set>
 #include <deque>
 #include <memory>
 #include "AppManagerTypes.h"
@@ -277,7 +276,6 @@ namespace Plugin {
         std::mutex mAppManagerLock;
         std::condition_variable mAppRequestListCV;
         std::list<std::shared_ptr<AppManagerRequest>> mAppRequestList;
-        std::set<std::string> mPackageLocksPendingRelease; /* appIds whose package lock could not be released; guarded by mAdminLock */
     #ifdef APP_MANAGER_RESOURCE_MONITOR
         std::mutex mPendingPreloadLock;
         std::map<std::string, std::shared_ptr<AppLaunchRequestParam>> mPendingPreloads;

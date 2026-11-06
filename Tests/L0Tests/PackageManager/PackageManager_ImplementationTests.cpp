@@ -16,7 +16,6 @@ namespace {
 
 using WPEFramework::Core::ERROR_BAD_REQUEST;
 using WPEFramework::Core::ERROR_GENERAL;
-using WPEFramework::Core::ERROR_ILLEGAL_STATE;
 using WPEFramework::Core::ERROR_INVALID_PARAMETER;
 using WPEFramework::Core::ERROR_INVALID_SIGNATURE;
 using WPEFramework::Core::ERROR_NONE;
@@ -170,53 +169,43 @@ uint32_t Test_PM_Impl_InitializeAndDeinitialize()
     return tr.failures;
 }
 
-uint32_t Test_PM_Impl_LockRejectsDifferentVersionWhileOlderLocked()
+uint32_t Test_PM_Impl_UnlockReleasesUpgradedAwayVersionFirst()
 {
     L0Test::TestResult tr;
-    for (const uint32_t oldHolders : {1U, 2U}) {
-        packagemanager::IPackageImplDummy::UnlockCalls().clear();
-        ImplFixture fx;
-        L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
-        uint32_t lockId = 0;
-        std::string path;
-        std::string config;
-        WPEFramework::Exchange::IPackageHandler::ILockIterator* dependencies = nullptr;
-        for (uint32_t holder = 0; holder < oldHolders; ++holder) {
-            L0Test::ExpectEqU32(tr,
-                fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
-                    lockId, path, config, dependencies), ERROR_NONE, "Lock() the original version");
-            if (dependencies != nullptr) {
-                dependencies->Release();
-                dependencies = nullptr;
-            }
-        }
-        WPEFramework::Exchange::IPackageInstaller::FailReason reason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
-        L0Test::ExpectEqU32(tr, fx.impl->Install("YouTube", nullptr, "/tmp/youtube_200.pkg", reason), ERROR_NONE,
-            "Install() remains allowed while the original version is locked");
-        L0Test::ExpectEqU32(tr,
-            fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
-                lockId, path, config, dependencies), ERROR_ILLEGAL_STATE,
-            "Lock() of the new version is rejected while the older version is locked");
-        L0Test::ExpectTrue(tr, dependencies == nullptr, "A rejected Lock() returns no dependency iterator");
-
-        for (uint32_t remaining = oldHolders; remaining > 0; --remaining) {
-            L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE,
-                "Versionless Unlock() releases the only locked version");
-        }
-        const auto &calls = packagemanager::IPackageImplDummy::UnlockCalls();
-        const auto released = calls.find({"YouTube", "100.1.24"});
-        L0Test::ExpectTrue(tr, calls.size() == 1 && released != calls.end() && released->second == 1,
-            "Only the original version's backend lock is released, once");
-
-        L0Test::ExpectEqU32(tr,
-            fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
-                lockId, path, config, dependencies), ERROR_NONE,
-            "Lock() of the new version succeeds after the older version is released");
-        if (dependencies != nullptr) {
-            dependencies->Release();
-        }
-        L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "Unlock() releases the new version");
+    packagemanager::IPackageImplDummy::UnlockCalls().clear();
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+    uint32_t lockId = 0;
+    std::string path;
+    std::string config;
+    WPEFramework::Exchange::IPackageHandler::ILockIterator* dependencies = nullptr;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+            lockId, path, config, dependencies), ERROR_NONE, "Lock() the original version");
+    if (dependencies != nullptr) {
+        dependencies->Release();
+        dependencies = nullptr;
     }
+    WPEFramework::Exchange::IPackageInstaller::FailReason reason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    L0Test::ExpectEqU32(tr, fx.impl->Install("YouTube", nullptr, "/tmp/youtube_200.pkg", reason), ERROR_NONE,
+        "Install() remains allowed while the original version is locked");
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+            lockId, path, config, dependencies), ERROR_NONE, "Lock() the newly installed version, as in develop");
+    if (dependencies != nullptr) {
+        dependencies->Release();
+    }
+
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "First Unlock() releases a locked version");
+    const auto &calls = packagemanager::IPackageImplDummy::UnlockCalls();
+    const auto stale = calls.find({"YouTube", "100.1.24"});
+    L0Test::ExpectTrue(tr, calls.size() == 1 && stale != calls.end() && stale->second == 1,
+        "The upgraded-away version is released before the installed one");
+
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "Second Unlock() releases the installed version");
+    const auto current = calls.find({"YouTube", "200.0.0"});
+    L0Test::ExpectTrue(tr, current != calls.end() && current->second == 1,
+        "The installed version's backend lock is then released");
     return tr.failures;
 }
 
@@ -1010,6 +999,14 @@ uint32_t Test_PM_Impl_InstallMultipleVersions()
             L0Test::ExpectEqStr(tr, config["version"].String(), versions[index], "Installed metadata uses the latest version");
         }
         if (running) {
+            bool lockedWhileRunning = false;
+            std::string runningPath;
+            std::string runningConfig;
+            std::string runningGateway;
+            L0Test::ExpectEqU32(tr, fx.impl->GetLockedInfo("YouTube", runningPath, runningConfig, runningGateway, lockedWhileRunning), ERROR_NONE,
+                "GetLockedInfo() succeeds while the original version is running");
+            L0Test::ExpectTrue(tr, lockedWhileRunning && runningPath == "/tmp/package-locks/YouTube/100.1.24",
+                "The running app stays on the original version after upgrades");
             L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE, "Unload releases the original version's lock");
         }
         L0Test::ExpectEqU32(tr,
