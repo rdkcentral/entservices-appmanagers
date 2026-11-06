@@ -906,7 +906,8 @@ namespace Plugin {
                 } else {
                     unpackedPath = state.unpackedPath;
                 }
-                if (!updateRuntimeConfigString(state.runtimeConfigPayload, "unpackedPath", state.unpackedPath)) {
+                if (!updateRuntimeConfigString(state.runtimeConfigPayload, "unpackedPath", state.unpackedPath) ||
+                    !updateRuntimeConfigString(state.runtimeConfigPayload, "packageVersion", version)) {
                     if (runtimeLocked) {
                         UnlockPackage(rtPackageId, rtVersion);
                     }

@@ -1211,15 +1211,14 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                             *lockAcquired = true;
                         }
 
-                        /* Lock() picks the installed version itself; record that one, not the version captured before the request was queued. */
-                        std::vector<WPEFramework::Exchange::IPackageInstaller::Package> lockedPackageList;
+                        /* Lock() selects the version itself and reports it in the payload; record that one, not the version captured before queuing. */
+                        Utils::RuntimeConfigPayload lockedConfig;
                         std::string lockedVersion;
-                        bool lockedInstalled = false;
-                        if (Core::ERROR_NONE == fetchAppPackageList(lockedPackageList))
-                        {
-                            checkInstallDetails(appId, lockedInstalled, lockedVersion, lockedPackageList);
-                        }
-                        if (lockedInstalled)
+                        std::string payloadError;
+                        bool versionPresent = false;
+                        if (lockedConfig.Parse(packageData.configMetadata, payloadError) &&
+                            lockedConfig.GetString("packageVersion", lockedVersion, versionPresent, payloadError) &&
+                            versionPresent && !lockedVersion.empty())
                         {
                             if (lockedVersion != packageData.version)
                             {
@@ -1229,7 +1228,7 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                         }
                         else
                         {
-                            LOGWARN("Could not confirm the locked version for appId %s, keeping '%s'", appId.c_str(), packageData.version.c_str());
+                            LOGWARN("Lock result for appId %s carries no packageVersion, keeping '%s'", appId.c_str(), packageData.version.c_str());
                         }
                         LOGINFO("Fetching package entry updated for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
                                  appId.c_str(), packageData.version.c_str(), packageData.lockId, packageData.unpackedPath.c_str(), packageData.appMetadata.c_str());

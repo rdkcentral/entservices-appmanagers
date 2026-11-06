@@ -1013,6 +1013,17 @@ uint32_t Test_PM_Impl_InstallMultipleVersions()
             fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
                 lockId, unpackedPath, runtimeConfig, appMetadata), ERROR_NONE, "Launch selects the installed version");
         L0Test::ExpectEqStr(tr, unpackedPath, "/tmp/package-locks/YouTube/300.0.0", "Launch uses the latest version");
+        {
+            WPEFramework::Plugin::Utils::RuntimeConfigPayload lockedPayload;
+            std::string lockedVersion;
+            std::string payloadError;
+            bool versionPresent = false;
+            L0Test::ExpectTrue(tr,
+                lockedPayload.Parse(runtimeConfig, payloadError) &&
+                lockedPayload.GetString("packageVersion", lockedVersion, versionPresent, payloadError) && versionPresent,
+                "Lock() payload reports the locked packageVersion");
+            L0Test::ExpectEqStr(tr, lockedVersion, "300.0.0", "Lock() payload identifies the version it locked");
+        }
         if (appMetadata != nullptr) {
             appMetadata->Release();
         }
