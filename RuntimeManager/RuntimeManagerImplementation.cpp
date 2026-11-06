@@ -611,6 +611,9 @@ namespace WPEFramework
             ApplicationConfiguration config;
             config.mAppId = appId;
             config.mAppInstanceId = appInstanceId;
+            std::vector<std::pair<std::string, std::string>> parsedCaps;
+            DobbySpecGenerator::parseCapabilities(runtimeConfigObject.capabilities, parsedCaps);
+            const bool isDaemonApp = DobbySpecGenerator::hasCapability(parsedCaps, "daemon-app");
             bool displayResult = false;
             bool notifyParamCheckFailure = false;
             std::string errorCode = "";
@@ -710,7 +713,8 @@ namespace WPEFramework
             }
 
             /* Creating Display — no lock needed, operates on local/connector state */
-            if (nullptr != mWindowManagerConnector)
+            // Daemons have no app-owned display, so their container Wayland socket stays empty.
+            if (false == isDaemonApp && nullptr != mWindowManagerConnector)
             {
 
                 mWindowManagerConnector->getDisplayInfo(appInstanceId, xdgRuntimeDir, waylandDisplay);
@@ -725,7 +729,7 @@ namespace WPEFramework
                     LOGINFO("Display [%s] created successfully", waylandDisplay.c_str());
                 }
             }
-            else
+            else if (false == isDaemonApp)
             {
                 LOGERR("WindowManagerConnector is null");
                 status = Core::ERROR_GENERAL;
@@ -744,13 +748,12 @@ namespace WPEFramework
 #endif
 #ifdef ENABLE_RIALTO
             bool rialtoSetupFailed = false;
-            if (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty())
+            // A headless daemon can use Rialto without first creating an app display.
+            if (isDaemonApp || (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty()))
             {
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             const bool requiresRialto = true;
 #else
-            std::vector<std::pair<std::string, std::string>> parsedCaps;
-            DobbySpecGenerator::parseCapabilities(runtimeConfigObject.capabilities, parsedCaps);
             const bool appRequiresRialto = DobbySpecGenerator::hasCapability(parsedCaps, "rialto");
             const int rialtoOverride = (nullptr != mAIConfiguration) ? mAIConfiguration->getRialtoOverride() : -1;
             const bool requiresRialto = (rialtoOverride >= 0) ? (rialtoOverride > 0) : appRequiresRialto;
@@ -759,6 +762,11 @@ namespace WPEFramework
             {
                 LOGINFO("[RIALTO] Entering Rialto session setup for appId='%s' appInstanceId='%s'",
                         appId.c_str(), appInstanceId.c_str());
+                std::string rialtoDisplaySocket = westerosSocket;
+// #ifdef ENABLE_DAEMON_APP_SOCKET_SUPPORT
+                // Rialto's server configuration to use the player display. TODO make it generic.
+                rialtoDisplaySocket = isDaemonApp ? "/tmp/westeros-asplayer-0" : westerosSocket;
+// #endif
                 if (!mRialtoConnector->initialize())
                 {
                     LOGERR("[RIALTO] Rialto initialization failed for appId='%s', aborting session setup", appId.c_str());
@@ -774,7 +782,7 @@ namespace WPEFramework
                 rialtoSocket = "rlto-" + appInstanceId;
                 LOGINFO("[RIALTO] RALF enabled: rialtoSocket updated to '%s'", rialtoSocket.c_str());
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-                if (mRialtoConnector->createAppSession(appInstanceId, westerosSocket, rialtoSocket))
+                if (mRialtoConnector->createAppSession(appInstanceId, rialtoDisplaySocket, rialtoSocket))
                 {
                     LOGINFO("[RIALTO] createAppSession succeeded, waiting for ACTIVE state (timeout=%d ms)",
                             RIALTO_TIMEOUT_MILLIS);
@@ -808,7 +816,8 @@ namespace WPEFramework
 #endif // ENABLE_RIALTO
 
             LOGINFO("legacyContainer: %s", legacyContainer ? "true" : "false");
-            if (xdgRuntimeDir.empty() || waylandDisplay.empty() || !displayResult)
+            // Daemon apps don't require a display, but if they do have one, it must be valid. Non-daemon apps must have a valid display.
+            if (false == isDaemonApp && (xdgRuntimeDir.empty() || waylandDisplay.empty() || !displayResult))
             {
                 LOGERR("Missing required environment variables: XDG_RUNTIME_DIR=%s, WAYLAND_DISPLAY=%s createDisplay %s",
                        xdgRuntimeDir.empty() ? "NOT FOUND" : xdgRuntimeDir.c_str(),

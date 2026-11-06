@@ -309,7 +309,10 @@ namespace WPEFramework
                                 AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
                                     a.setAppInstanceId(capturedInstanceId);
                                     a.setAppIntent(intent);
-                                    a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                                    if (AppManagerTypes::APPLICATION_TYPE_SYSTEM != a.getPackageInfoMutable().type)
+                                    {
+                                        a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                                    }
                                     a.setTargetAppState(targetState);
                                 });
                             }
@@ -388,7 +391,10 @@ namespace WPEFramework
                             AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
                                 a.setAppInstanceId(capturedInstanceId);
 								a.setAppIntent(intent);
-                                a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                                if (AppManagerTypes::APPLICATION_TYPE_SYSTEM != a.getPackageInfoMutable().type)
+                                {
+                                    a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                                }
                                 a.setTargetAppState(targetState);
                             });
                         }
