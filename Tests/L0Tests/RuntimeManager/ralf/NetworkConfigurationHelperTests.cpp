@@ -189,8 +189,8 @@ uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_NetworkC
     manifestRootNode[ralf::CONFIGURATION][ralf::NETWORK_CONFIG_URN] = Json::Value(Json::objectValue);
 
     const bool status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
-    L0Test::ExpectTrue(tr, !status,
-                       "updateNetworkConfigurationNode() returns false when network configuration is not an array");
+    L0Test::ExpectTrue(tr, status,
+                       "updateNetworkConfigurationNode() returns true when network configuration is invalid and no valid DIAL config is present");
 
     return tr.failures;
 }
@@ -722,6 +722,162 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
                        "loopback host access must not be emitted as interContainer rules");
 
     unsetenv(ralf::THUNDER_ACCESS_ENV_KEY);
+    return tr.failures;
+}
+
+uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    Json::Value dialConfig(Json::objectValue);
+    dialConfig["type"] = "dial";
+    dialConfig["port"] = 56889;
+    manifestRootNode[ralf::CONFIGURATION][ralf::DIAL_CONFIG_URN] = dialConfig;
+
+    const bool status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
+    L0Test::ExpectTrue(tr, status,
+                       "updateNetworkConfigurationNode() returns true when only DIAL config is present");
+
+    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
+    const Json::Value& containerToHost = networkingData[PORT_FORWARDING][CONTAINER_TO_HOST];
+    L0Test::ExpectTrue(tr, containerToHost.isArray() && 1u == containerToHost.size(),
+                       "DIAL config adds the expected containerToHost port-forward rule");
+
+    if (containerToHost.isArray() && 1u == containerToHost.size())
+    {
+        L0Test::ExpectEqU32(tr, containerToHost[0][ralf::PORT].asUInt(), 56889u,
+                            "DIAL REST port is exposed through containerToHost");
+        L0Test::ExpectEqStr(tr, containerToHost[0][ralf::PROTOCOL].asString(), "tcp",
+                            "DIAL loopback forwarding preserves the TCP protocol");
+    }
+
+    L0Test::ExpectTrue(tr, networkingData[PORT_FORWARDING][LOCALHOST_MASQUERADE].asBool(),
+                       "DIAL loopback port forwarding enables localhost masquerade");
+
+    return tr.failures;
+}
+
+uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeEnabled()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST] = Json::Value(Json::arrayValue);
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST].append(Json::Value(Json::objectValue));
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][0][ralf::PORT] = 56889u;
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][0][ralf::PROTOCOL] = "tcp";
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][0][ralf::NAME] = "dial-rest-port";
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST].append(Json::Value(Json::objectValue));
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][1][ralf::PORT] = 9999u;
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][1][ralf::PROTOCOL] = "tcp";
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][1][ralf::NAME] = "unrelated-port";
+    networkingData[PORT_FORWARDING][LOCALHOST_MASQUERADE] = true;
+
+    Json::Value manifestRootNode(Json::objectValue);
+    Json::Value dialConfig(Json::objectValue);
+    dialConfig["type"] = "dial";
+    dialConfig["port"] = 56889;
+    manifestRootNode[ralf::CONFIGURATION][ralf::DIAL_CONFIG_URN] = dialConfig;
+
+    const bool status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
+    L0Test::ExpectTrue(tr, status,
+                       "updateNetworkConfigurationNode() returns true when an existing DIAL port is already routed");
+
+    const Json::Value& containerToHost = networkingData[PORT_FORWARDING][CONTAINER_TO_HOST];
+    L0Test::ExpectTrue(tr, containerToHost.isArray() && 2u == containerToHost.size(),
+                       "Existing TCP/56889 rule is preserved and unrelated rules remain");
+
+    if (containerToHost.isArray())
+    {
+        uint32_t dialMatches = 0u;
+        uint32_t unrelatedMatches = 0u;
+        for (const auto& rule : containerToHost)
+        {
+            if (rule.isObject() && rule.isMember(ralf::PORT) && rule[ralf::PORT].isUInt() &&
+                56889u == rule[ralf::PORT].asUInt() && rule.isMember(ralf::PROTOCOL) &&
+                std::string("tcp") == rule[ralf::PROTOCOL].asString())
+            {
+                ++dialMatches;
+            }
+            if (rule.isObject() && rule.isMember(ralf::PORT) && rule[ralf::PORT].isUInt() &&
+                9999u == rule[ralf::PORT].asUInt())
+            {
+                ++unrelatedMatches;
+            }
+        }
+        L0Test::ExpectEqU32(tr, dialMatches, 1u,
+                            "Exactly one TCP/56889 rule remains after DIAL deduplication");
+        L0Test::ExpectEqU32(tr, unrelatedMatches, 1u,
+                            "Unrelated forwarded rules are preserved when DIAL is already present");
+    }
+
+    L0Test::ExpectTrue(tr, networkingData[PORT_FORWARDING][LOCALHOST_MASQUERADE].asBool(),
+                       "Masquerade remains enabled when an existing TCP/56889 DIAL rule is already present");
+
+    return tr.failures;
+}
+
+uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeDisabled()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST] = Json::Value(Json::arrayValue);
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST].append(Json::Value(Json::objectValue));
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][0][ralf::PORT] = 56889u;
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][0][ralf::PROTOCOL] = "tcp";
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][0][ralf::NAME] = "dial-rest-port";
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST].append(Json::Value(Json::objectValue));
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][1][ralf::PORT] = 5000u;
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][1][ralf::PROTOCOL] = "udp";
+    networkingData[PORT_FORWARDING][CONTAINER_TO_HOST][1][ralf::NAME] = "unrelated-udp";
+    networkingData[PORT_FORWARDING][LOCALHOST_MASQUERADE] = false;
+
+    Json::Value manifestRootNode(Json::objectValue);
+    Json::Value dialConfig(Json::objectValue);
+    dialConfig["type"] = "dial";
+    dialConfig["port"] = 56889;
+    manifestRootNode[ralf::CONFIGURATION][ralf::DIAL_CONFIG_URN] = dialConfig;
+
+    const bool status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
+    L0Test::ExpectTrue(tr, status,
+                       "updateNetworkConfigurationNode() returns true when a DIAL rule exists and masquerade is disabled");
+
+    const Json::Value& containerToHost = networkingData[PORT_FORWARDING][CONTAINER_TO_HOST];
+    L0Test::ExpectTrue(tr, containerToHost.isArray() && 2u == containerToHost.size(),
+                       "A single TCP/56889 DIAL rule remains and unrelated forwarded rules are preserved");
+
+    if (containerToHost.isArray())
+    {
+        uint32_t dialMatches = 0u;
+        uint32_t unrelatedMatches = 0u;
+        for (const auto& rule : containerToHost)
+        {
+            if (rule.isObject() && rule.isMember(ralf::PORT) && rule[ralf::PORT].isUInt() &&
+                56889u == rule[ralf::PORT].asUInt() && rule.isMember(ralf::PROTOCOL) &&
+                std::string("tcp") == rule[ralf::PROTOCOL].asString())
+            {
+                ++dialMatches;
+            }
+            if (rule.isObject() && rule.isMember(ralf::PORT) && rule[ralf::PORT].isUInt() &&
+                5000u == rule[ralf::PORT].asUInt())
+            {
+                ++unrelatedMatches;
+            }
+        }
+        L0Test::ExpectEqU32(tr, dialMatches, 1u,
+                            "Exactly one TCP/56889 rule remains after enabling DIAL masquerade");
+        L0Test::ExpectEqU32(tr, unrelatedMatches, 1u,
+                            "Unrelated forwarding rules remain when DIAL masquerade is enabled");
+    }
+
+    L0Test::ExpectTrue(tr, networkingData[PORT_FORWARDING][LOCALHOST_MASQUERADE].asBool(),
+                       "localhost masquerade is enabled when a DIAL TCP/56889 rule exists but was disabled");
+
     return tr.failures;
 }
 
