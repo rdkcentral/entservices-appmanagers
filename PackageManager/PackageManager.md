@@ -85,6 +85,32 @@ stateDiagram-v2
     DOWNLOADING --> UNINSTALLED: Download Failed
 ```
 
+Installation derives the version from the package artifact and does not wait for
+running-package locks. Package states are keyed internally by `(packageId, version)`
+while public APIs remain versionless. After a successful upgrade, the previously
+installed version is marked `UNINSTALLED` and the new version is `INSTALLED`.
+`ListPackages()` retains the version records; installed-app queries include only
+the installed version. Launch locks the current installed version, while unlock
+releases the applicable version-specific lock. Running-widget pathway handling
+remains unchanged; no separate running-package snapshots are maintained here.
+
+Lock counts follow develop's per-version reference counting: each lock increments
+that version's count, each unlock decrements it, and the final reference releases
+the backend lock. The versionless unlock adapter releases the version that was
+upgraded away from first (the one a running app still holds), otherwise the only
+locked version. Locking is not restricted by other versions' locks, as in develop.
+
+Uninstall deferral follows develop: the selected installed version's lock count
+controls whether uninstall waits. Installation itself does not enter
+`INSTALLATION_BLOCKED` or queue a retry for unlock.
+
+Initialization and installation failure handling follow the supplied develop
+implementation. Backend inventory entries are cached as installed without an
+additional current-artifact selection policy. The attempted version is marked
+`INSTALL_FAILURE` on backend rejection; the previous version is retired only
+after overall installation success. This API adaptation does not add separate
+initialization or post-commit rollback policies.
+
 ---
 
 ## 3. Code Organization (Folder & File-Level)
@@ -158,23 +184,23 @@ Core::hresult Delete(const string& fileLocator);
 Core::hresult Progress(const string& downloadId, ProgressInfo& progress);
 
 // IPackageInstaller
-Core::hresult Install(const string& packageId, const string& version,
+Core::hresult Install(const string& packageId,
                       IKeyValueIterator* additionalMetadata,
                       const string& fileLocator, FailReason& failReason);
 Core::hresult Uninstall(const string& packageId, string& errorReason);
 Core::hresult ListPackages(IPackageIterator*& packages);
-Core::hresult Config(const string& packageId, const string& version,
+Core::hresult Config(const string& packageId,
                      string& runtimeConfigPayload);
-Core::hresult PackageState(const string& packageId, const string& version,
+Core::hresult PackageState(const string& packageId,
                            InstallState& state);
 
 // IPackageHandler
-Core::hresult Lock(const string& packageId, const string& version,
-                   LockReason lockReason, uint32_t& lockId,
+Core::hresult Lock(const string& packageId, LockReason lockReason, 
+                   uint32_t& lockId,
                    string& unpackedPath, string& runtimeConfigPayload,
                    ILockIterator*& appMetadata);
-Core::hresult Unlock(const string& packageId, const string& version);
-Core::hresult GetLockedInfo(const string& packageId, const string& version,
+Core::hresult Unlock(const string& packageId);
+Core::hresult GetLockedInfo(const string& packageId,
                             string& unpackedPath, string& runtimeConfigPayload,
                             string& gatewayMetadataPath, bool& locked);
 ```
@@ -253,14 +279,14 @@ interface IPackageInstaller {
         void OnAppInstallationStatus(const string& jsonResponse);
     };
 
-    hresult Install(const string& packageId, const string& version,
+    hresult Install(const string& packageId,
                     IKeyValueIterator* metadata, const string& fileLocator,
                     FailReason& failReason);
     hresult Uninstall(const string& packageId, string& errorReason);
     hresult ListPackages(IPackageIterator*& packages);
-    hresult Config(const string& packageId, const string& version,
+    hresult Config(const string& packageId,
                    string& runtimeConfigPayload);
-    hresult PackageState(const string& packageId, const string& version,
+    hresult PackageState(const string& packageId,
                          InstallState& state);
     hresult Register(INotification* notification);
     hresult Unregister(INotification* notification);
@@ -293,12 +319,12 @@ interface IPackageHandler {
         SYSTEM
     };
 
-    hresult Lock(const string& packageId, const string& version,
+    hresult Lock(const string& packageId,
                  LockReason reason, uint32_t& lockId,
                  string& unpackedPath, string& runtimeConfigPayload,
                  ILockIterator*& metadata);
-    hresult Unlock(const string& packageId, const string& version);
-    hresult GetLockedInfo(const string& packageId, const string& version,
+    hresult Unlock(const string& packageId);
+    hresult GetLockedInfo(const string& packageId,
                           string& unpackedPath, string& runtimeConfigPayload,
                           string& gatewayMetadataPath, bool& locked);
 };
@@ -374,7 +400,7 @@ sequenceDiagram
     participant FS as FileSystem
     participant Verify as Signature Verifier
 
-    Client->>PKG: Install(packageId, version, fileLocator)
+    Client->>PKG: Install(packageId, fileLocator)
     PKG->>FS: Extract package
     FS-->>PKG: Extracted path
     PKG->>Verify: Verify signature
@@ -394,7 +420,7 @@ sequenceDiagram
     participant PKG as PackageManager
     participant State as StateMap
 
-    AM->>PKG: Lock(packageId, version, RUNNING)
+    AM->>PKG: Lock(packageId, RUNNING)
     PKG->>State: Get state
     State-->>PKG: state
     PKG->>PKG: Increment lockCount

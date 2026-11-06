@@ -91,8 +91,20 @@ namespace packagemanager
     public:
         virtual ~IPackageImplDummy() = default;
 
+        // Tracks whether the one-time "UpgradeRejectApp" test package has already
+        // been installed once, so a subsequent Install() call for it can simulate
+        // the backend rejecting an upgrade while the prior artifact stays intact.
+        mutable bool mUpgradeRejectAppInstalledOnce = false;
+        bool mFailUnlockOnce = false;
+
+        static std::map<ConfigMetadataKey, uint32_t>& UnlockCalls() {
+            static std::map<ConfigMetadataKey, uint32_t> calls;
+            return calls;
+        }
+
         virtual Result Initialize(const std::string &configStr, ConfigMetadataArray &aConfigMetadata) { 
-            ConfigMetaData configMetadata;
+            mFailUnlockOnce = configStr.find("unlock-fail-once") != std::string::npos;
+            ConfigMetaData configMetadata {};
             configMetadata.dial = true; 
             configMetadata.wanLanAccess = true;
             configMetadata.thunder = true;
@@ -129,7 +141,18 @@ namespace packagemanager
             if (packageId == "VerifyFailApp") {
                 return VERIFICATION_FAILURE;
             }
+            if (packageId == "UpgradeRejectApp") {
+                // Succeed the first time (simulating a normal initial install), then
+                // reject every subsequent attempt without touching the existing
+                // artifact (simulating the backend declining an upgrade in place).
+                if (!mUpgradeRejectAppInstalledOnce) {
+                    mUpgradeRejectAppInstalledOnce = true;
+                } else {
+                    return VERSION_MISMATCH;
+                }
+            }
 
+            configMetadata = {};
             configMetadata.dial = true;
             configMetadata.wanLanAccess = true;
             configMetadata.thunder = true;
@@ -144,24 +167,53 @@ namespace packagemanager
             configMetadata.capabilities = "dial-app,wan-lan,thunder,fkps";
             configMetadata.runtimeType = "";
             configMetadata.mimeType = "application/vnd.rdk-app.dac.native";
-                configMetadata.md5Hash = "dummy-md5-" + packageId + "-" + version;
+            configMetadata.md5Hash = "dummy-md5-" + packageId + "-" + version;
             return SUCCESS;
         }
         virtual Result Uninstall(const std::string &packageId) { return SUCCESS; }
 
-        virtual Result Lock(const std::string &packageId, const std::string &version, std::string &unpackedPath, ConfigMetaData &configMetadata, NameValues &additionalLocks) { return SUCCESS; }
-        virtual Result Unlock(const std::string &packageId, const std::string &version) { return SUCCESS; }
+        virtual Result Lock(const std::string &packageId, const std::string &version, std::string &unpackedPath, ConfigMetaData &configMetadata, NameValues &additionalLocks) {
+            configMetadata = {};
+            unpackedPath = "/tmp/package-locks/" + packageId + "/" + version;
+            configMetadata.appPath = unpackedPath;
+            configMetadata.runtimePath = "/tmp/runtime-locks/" + version;
+            return SUCCESS;
+        }
+        virtual Result Unlock(const std::string &packageId, const std::string &version) {
+            ++UnlockCalls()[{packageId, version}];
+            if (mFailUnlockOnce && version == "200.0.0") {
+                mFailUnlockOnce = false;
+                return FAILED;
+            }
+            return SUCCESS;
+        }
 
         // XXX: Below THREE functions will be removed after RDK-M is updated, so don't need to time the changes in RDK-M
         virtual Result GetLockInfo(const std::string &packageId, const std::string &version, std::string &unpackedPath, bool &locked) { return SUCCESS; }
         virtual Result GetList(std::string &packageList) { return SUCCESS; }
-        virtual Result Lock(const std::string &packageId, const std::string &version, std::string &unpackedPath, ConfigMetaData &configMetadata) { return SUCCESS; }
+        virtual Result Lock(const std::string &packageId, std::string &unpackedPath, ConfigMetaData &configMetadata) { return SUCCESS; }
         
-        virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) { return SUCCESS; }
+        virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) {
+            if (packageId == "MetadataFailApp") {
+                return VERSION_MISMATCH;
+            }
+            if (packageId == "YouTube") {
+                if (fileLocator.find("youtube_300") != std::string::npos) {
+                    version = "300.0.0";
+                } else {
+                    version = (fileLocator.find("youtube_200") != std::string::npos) ? "200.0.0" : "100.1.24";
+                }
+            } else if (packageId == "UpgradeRejectApp") {
+                version = (fileLocator.find("reject_2") != std::string::npos) ? "2.0.0" : "1.0.0";
+            } else {
+                version = "1.0.0";
+            }
+            return SUCCESS;
+        }
 
         // Only the package seeded by Initialize() is considered installed.
         virtual Result GetInstalledPackageMetadata(const std::string &packageId, const std::string &version, std::string &metadata) {
-            if (packageId == "YouTube" && version == "100.1.24") {
+            if (packageId == "YouTube") {
                 metadata = "{\"packageId\":\"" + packageId + "\",\"version\":\"" + version + "\"}";
                 return SUCCESS;
             }

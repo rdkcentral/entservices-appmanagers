@@ -396,7 +396,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallSendsCompletionEventAfterInstall)
             SetArgReferee<2>(PREINSTALL_MANAGER_TEST_VERSION),
             Return(Core::ERROR_NONE)));
 
-    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _))
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _))
         .Times(1)
         .WillOnce(Return(Core::ERROR_NONE));
 
@@ -453,7 +453,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallSendsCompletionE
             return Core::ERROR_NONE;
         }));
 
-    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _)).Times(0);
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Register(mockNotification.operator->()));
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(false));
@@ -481,10 +481,9 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithForceInstallSuccess)
             SetArgReferee<2>("1.0.1"),
             Return(Core::ERROR_NONE)));
 
-    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _))
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _))
         .Times(2)
         .WillRepeatedly(Invoke([](const std::string&,
-                                  const std::string&,
                                   Exchange::IPackageInstaller::IKeyValueIterator* const&,
                                   const std::string&,
                                   Exchange::IPackageInstaller::FailReason&) {
@@ -506,9 +505,8 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithForceInstallInstallFailure)
             SetArgReferee<2>(PREINSTALL_MANAGER_TEST_VERSION),
             Return(Core::ERROR_NONE)));
 
-    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _))
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _))
         .WillOnce(Invoke([](const std::string&,
-                            const std::string&,
                             Exchange::IPackageInstaller::IKeyValueIterator* const&,
                             const std::string&,
                             Exchange::IPackageInstaller::FailReason& failReason) {
@@ -534,7 +532,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallHandlesInvalidPackageFromGetConfig)
             return Core::ERROR_GENERAL;
         }));
 
-    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _)).Times(0);
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
 }
@@ -567,7 +565,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallSkipsEqualVersio
             return Core::ERROR_NONE;
         }));
 
-    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _)).Times(0);
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(false));
 
@@ -602,7 +600,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallInstallsNewerVer
             return Core::ERROR_NONE;
         }));
 
-    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _))
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _))
         .Times(1)
         .WillOnce(Return(Core::ERROR_NONE));
 
@@ -637,7 +635,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallInvalidInstalled
             return Core::ERROR_NONE;
         }));
 
-    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _)).Times(0);
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(false));
 
@@ -678,7 +676,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallFailsWhenPreinstallDirectoryOpenFai
     EXPECT_CALL(*mWrapsImplMock, opendir(_))
         .WillRepeatedly(Return(nullptr));
 
-    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _)).Times(0);
 
     EXPECT_EQ(Core::ERROR_GENERAL, mPreinstallManagerImpl->StartPreinstall(true));
 
@@ -721,9 +719,8 @@ TEST_F(PreinstallManagerTest, StartPreinstallInstallFailureWithUnknownFailReason
             SetArgReferee<2>(PREINSTALL_MANAGER_TEST_VERSION),
             Return(Core::ERROR_NONE)));
 
-    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _))
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _))
         .WillOnce(Invoke([](const std::string&,
-                            const std::string&,
                             Exchange::IPackageInstaller::IKeyValueIterator* const&,
                             const std::string&,
                             Exchange::IPackageInstaller::FailReason& failReason) {

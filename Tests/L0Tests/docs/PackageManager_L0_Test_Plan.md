@@ -98,13 +98,13 @@ Track:
    - version not found/general failure
 3. Uninstall success/failure.
 4. ListPackages empty/non-empty.
-5. Config(packageId, version) valid/invalid.
+5. Config(packageId) valid/invalid.
 6. PackageState for installed/uninstalled/blocked/failure states.
 7. GetConfigForPackage valid/invalid locator.
 
 ### D) Handler API
-1. Lock success for valid package/version.
-2. Lock failure for unknown package/version.
+1. Lock success for valid package (packageId only).
+2. Lock failure for unknown package.
 3. Unlock success/failure.
 4. GetLockedInfo for locked/unlocked/not-found.
 5. Additional lock metadata behavior.
