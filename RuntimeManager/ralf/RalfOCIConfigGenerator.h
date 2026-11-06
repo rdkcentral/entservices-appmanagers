@@ -195,8 +195,8 @@ namespace ralf
          * @param envVariables The environment variables to be added based on permissions.
          * @return false if any permission could not be applied, true otherwise.
          */
-        bool applyPermissionsToOCIConfig(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode,
-                                         const std::vector<std::string>& envVariables);
+        bool applyPermissionsToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &manifestRootNode,
+                                         const std::vector<std::string> &envVariables);
 
         /**
          * Adds permission-based environment variables to the OCI config JSON.
@@ -205,8 +205,8 @@ namespace ralf
          * @param envVariables The environment variables to be added based on permissions.
          * @return false if any environment variable could not be added, true otherwise.
          */
-        bool addPermissionBasedEnvironmentVariables(Json::Value& ociConfigRootNode,
-                                    const Json::Value& manifestRootNode, const std::vector<std::string>& envVariables);
+        bool addPermissionBasedEnvironmentVariables(Json::Value &ociConfigRootNode,
+                                                    const Json::Value &manifestRootNode, const std::vector<std::string> &envVariables);
 
         /**
          * Updates the OCI config JSON at rdkPlugins.logging.data.fileOptions.path to point to the
@@ -249,5 +249,14 @@ namespace ralf
          * The OCI config file path to be generated.
          */
         const std::string &mConfigFilePath;
+#ifdef ALLOW_DEV_MOUNT_SUPPORT
+        /**
+         * Applies development mount support by adding the specified mount points from the configuration to the OCI config.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param manifestRootNode The manifest root node containing the mount configuration.
+         * @return true if any development mounts were applied, false otherwise.
+         */
+        bool applyDevMountSupport(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
+#endif // ALLOW_DEV_MOUNT_SUPPORT
     };
 } // namespace ralf
