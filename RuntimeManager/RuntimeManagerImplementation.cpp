@@ -973,6 +973,18 @@ namespace WPEFramework
             /* Get current timestamp at the start of hibernate for telemetry */
             time_t requestTime = getCurrentTimestamp();
 
+            if (mAIConfiguration == nullptr || !mAIConfiguration->getHibernationEnabled())
+            {
+                LOGWARN("Hibernate rejected: hibernation is disabled by rdkappmanagers.json");
+                return Core::ERROR_UNAVAILABLE;
+            }
+            const std::string& destination = mAIConfiguration->getHibernateFlashStoragePath();
+            const std::string& compression = mAIConfiguration->getHibernateCompression();
+            if (!destination.empty())
+                options = "dest=" + destination;
+            if (!compression.empty())
+                options += (options.empty() ? "" : ",") + std::string("compress=") + compression;
+
             mRuntimeManagerImplLock.Lock();
 
             if(!isOCIPluginObjectValid())
@@ -1594,4 +1606,5 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 

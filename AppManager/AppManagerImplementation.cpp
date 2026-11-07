@@ -19,6 +19,8 @@
 
 #include <iomanip>      /* for std::setw, std::setfill */
 #include <atomic>
+#include <algorithm>
+#include <cctype>
 #include <sys/stat.h>
 #ifdef APP_MANAGER_RESOURCE_MONITOR
 #include <sys/statvfs.h>
@@ -1028,9 +1030,84 @@ uint32_t AppManagerImplementation::GetAppRamTargetMB(const string& appId) const
     return static_cast<uint32_t>((static_cast<uint64_t>(systemMemoryLimit) + bytesPerMB - 1) / bytesPerMB);
 }
 
+#endif // APP_MANAGER_RESOURCE_MONITOR
+
 bool AppManagerImplementation::SupportsHibernation(const string& appId)
 {
-    // TODO: Read the widget's hibernate-mode capability per app
+    const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);
+    if (!packageInfo.configMetadata.empty())
+    {
+        Json::Value runtimeConfig;
+        Json::Reader reader;
+        if (reader.parse(packageInfo.configMetadata, runtimeConfig) &&
+            runtimeConfig.isObject() && runtimeConfig.isMember("capabilities"))
+        {
+            const Json::Value& capabilities = runtimeConfig["capabilities"];
+            const auto hasHibernateModeToken = [](const std::string& serializedCapabilities) {
+                std::string entry;
+                bool escaped = false;
+                const auto matches = [](std::string value) {
+                    const size_t parameterStart = value.find('=');
+                    if (parameterStart != std::string::npos)
+                        value.erase(parameterStart);
+
+                    const auto notSpace = [](unsigned char ch) { return !std::isspace(ch); };
+                    value.erase(value.begin(), std::find_if(value.begin(), value.end(), notSpace));
+                    value.erase(std::find_if(value.rbegin(), value.rend(), notSpace).base(), value.end());
+                    std::transform(value.begin(), value.end(), value.begin(),
+                        [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                    return value == "hibernate-mode";
+                };
+
+                for (const char ch : serializedCapabilities)
+                {
+                    if (escaped)
+                    {
+                        entry.push_back(ch);
+                        escaped = false;
+                    }
+                    else if (ch == '\\')
+                    {
+                        escaped = true;
+                    }
+                    else if (ch == ',')
+                    {
+                        if (matches(entry))
+                            return true;
+                        entry.clear();
+                    }
+                    else
+                    {
+                        entry.push_back(ch);
+                    }
+                }
+                if (escaped)
+                    entry.push_back('\\');
+                return matches(entry);
+            };
+
+            // configMetadata is the package's RuntimeConfig. Its capabilities
+            // field is the canonical comma-separated widget capability list.
+            if (capabilities.isString())
+                return hasHibernateModeToken(capabilities.asString());
+            if (capabilities.isArray())
+            {
+                for (Json::ArrayIndex index = 0; index < capabilities.size(); ++index)
+                {
+                    const Json::Value& capability = capabilities[index];
+                    if (capability.isString() && hasHibernateModeToken(capability.asString()))
+                        return true;
+                }
+                return false;
+            }
+            // A present but malformed capability field is not affirmative
+            // evidence that this widget supports hibernation.
+            return false;
+        }
+    }
+
+    // Keep compatibility with installations that still publish capability
+    // state through PersistentStore instead of package RuntimeConfig metadata.
     string value;
     if (GetAppProperty(appId, "APPLICATION_CAN_RUN_IN_HIBERNATE_MODE", value) != Core::ERROR_NONE)
     {
@@ -1040,6 +1117,12 @@ bool AppManagerImplementation::SupportsHibernation(const string& appId)
         }
     }
     return ("1" == value) || ("true" == value) || ("TRUE" == value);
+}
+
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+bool AppManagerImplementation::IsHibernationEnabled() const
+{
+    return mHibernationEnabled;
 }
 
 bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId) const
@@ -2223,5 +2306,6 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
 }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
 

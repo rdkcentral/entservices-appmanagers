@@ -62,6 +62,9 @@ namespace Plugin
         , mEnvVariables()
         , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
         , mRialtoOverride(-1)
+        , mHibernationEnabled(false)
+        , mHibernateCompression("lz4")
+        , mHibernateFlashStoragePath("/media/apps/memcr")
     {
         // All members initialized in initialization list above
     }
@@ -545,6 +548,10 @@ namespace Plugin
         return mRialtoOverride;
     }
 
+    bool AIConfiguration::getHibernationEnabled() const { return mHibernationEnabled; }
+    const std::string& AIConfiguration::getHibernateCompression() const { return mHibernateCompression; }
+    const std::string& AIConfiguration::getHibernateFlashStoragePath() const { return mHibernateFlashStoragePath; }
+
     void AIConfiguration::readFromConfigFile()
     {
         std::ifstream configFile(AICONFIGURATION_JSON_PATH);
@@ -582,6 +589,7 @@ namespace Plugin
         const Json::Value& svp     = getObj(apps,  "svp");
         const Json::Value& dial    = getObj(root,  "dial");
         const Json::Value& dialSrv = getObj(dial,  "server");
+        const Json::Value& hibernate = getObj(apps, "hibernate");
 
         // ---- memory limits -----------------------------------------------
         if (mem["defaultLimitBytes"].isInt64() || mem["defaultLimitBytes"].isInt() || mem["defaultLimitBytes"].isUInt())
@@ -622,6 +630,20 @@ namespace Plugin
             mResourceManagerClientEnabled = getObj(getObj(apps, "essosResourceManager"), "enableClient").asBool();
         if (getObj(getObj(apps, "gstreamer"), "registryEnabled").isBool())
             mGstreamerRegistryEnabled = getObj(getObj(apps, "gstreamer"), "registryEnabled").asBool();
+
+        // ---- hibernation -------------------------------------------------
+        if (hibernate["enable"].isBool())
+            mHibernationEnabled = hibernate["enable"].asBool();
+        if (hibernate["defaultCompression"].isString())
+        {
+            const std::string compression = hibernate["defaultCompression"].asString();
+            if (compression == "lz4" || compression == "zstd")
+                mHibernateCompression = compression;
+            else
+                LOGWARN("Unsupported hibernate.defaultCompression='%s'; using %s", compression.c_str(), mHibernateCompression.c_str());
+        }
+        if (hibernate["flashStoragePath"].isString())
+            mHibernateFlashStoragePath = hibernate["flashStoragePath"].asString();
 
         // ---- SVP files ---------------------------------------------------
         if (svp["files"].isArray())
@@ -684,3 +706,4 @@ namespace Plugin
     }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
