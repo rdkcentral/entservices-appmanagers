@@ -67,9 +67,8 @@ namespace
     // Host loopback access must use portForwarding.containerToHost (with localhostMasquerade).
     constexpr const char *HOST_ENDPOINT_MARKER = "_hostEndpoint";
 
-    // xdialserver uses the following ports for its REST and SSDP endpoints.
+    // xdialserver uses the following port for its REST endpoints.
     constexpr const int DIALSERVER_REST_PORT = 56889;
-    constexpr const int DIALSERVER_SSDP_PORT = 56890;
 
     /**
      * @brief Navigates, allocates, or migrates the base connection settings of the Dobby module profile.
@@ -860,23 +859,15 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
             containerToHost = Json::Value(Json::arrayValue);
         }
 
-        // No need to map the "dial-rest-port" for apps now.
-        const std::array<std::pair<int, const char*>, 1> dialPorts = {
-            std::make_pair(DIALSERVER_REST_PORT, "dial-rest-port")
-        };
-
-        for (const auto& dialPort : dialPorts)
+        // Only map the "dial-rest-port" for apps.
+        if (!(hasPortFwdContainerToHostRule(*netDataNode, static_cast<unsigned int>(DIALSERVER_REST_PORT), "tcp") &&
+            (*netDataNode)[PORT_FORWARDING].get(LOCALHOST_MASQUERADE, false).asBool()))
         {
-            if (hasPortFwdContainerToHostRule(*netDataNode, static_cast<unsigned int>(dialPort.first), "tcp") &&
-                (*netDataNode)[PORT_FORWARDING].get(LOCALHOST_MASQUERADE, false).asBool())
-            {
-                continue;
-            }
-
             Json::Value dialRule(Json::objectValue);
-            dialRule[ralf::PORT] = static_cast<unsigned int>(dialPort.first);
+            dialRule[ralf::PORT] = static_cast<unsigned int>(DIALSERVER_REST_PORT);
             dialRule[ralf::PROTOCOL] = "tcp";
-            dialRule[ralf::NAME] = dialPort.second;
+            dialRule[ralf::NAME] = "dial-rest-port";
+
             if (false == hasContainerToHostRule(containerToHost, dialRule[ralf::PORT].asUInt(), dialRule[ralf::PROTOCOL].asString()))
             {
                 containerToHost.append(dialRule);
