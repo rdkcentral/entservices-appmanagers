@@ -30,6 +30,7 @@
 #include <plugins/System.h>
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
+#include "AppManagerTypes.h
 #include <core/core.h>
 #include <com/com.h>
 #include <plugins/plugins.h>
@@ -70,6 +71,7 @@ namespace WPEFramework
                 std::string launchArgs;
                 std::string requestedVersion;
                 std::string runtimeConfigPayload;
+                AppManagerTypes::PackageInfo packageInfo;
             };
 
             class NotificationHandler : public Exchange::ILifecycleManagerState::INotification {

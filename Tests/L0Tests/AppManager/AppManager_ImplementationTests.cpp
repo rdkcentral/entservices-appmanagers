@@ -2013,6 +2013,8 @@ uint32_t Test_AM_PackageUnlockFails()
     // Insert entry with non-empty version so packageUnLock enters the unlock block
     WPEFramework::Plugin::AppInfoManager::getInstance().setPackageInfoVersion(
         "app.unlock.fail", "1.0.0");
+    WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId(
+        "app.unlock.fail", "inst-1");
 
     // handleOnAppUnloaded → async Dispatch(UNLOADED) → packageUnLock → Unlock fails → LOGERR
     impl->handleOnAppUnloaded("app.unlock.fail", "inst-1");

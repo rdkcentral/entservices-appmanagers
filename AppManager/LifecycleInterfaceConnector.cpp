@@ -369,6 +369,9 @@ namespace WPEFramework
             LOGINFO("Relaunching appId=%s after old-instance cleanup for suspendedAppInstanceId=%s",
             pendingRelaunch.appId.c_str(),suspendedAppInstanceId.c_str());
             mAdminLock.Lock();
+            AppInfoManager::getInstance().upsert(pendingRelaunch.appId, [&](AppInfo& a) {
+            a.setPackageInfo(pendingRelaunch.packageInfo);
+            a.setRequestedLaunchVersion(pendingRelaunch.requestedVersion);});
             std::string runtimeConfigPayload = pendingRelaunch.runtimeConfigPayload;
             Core::hresult status = launchRequestedPackage(pendingRelaunch.appId, pendingRelaunch.intent,
                 pendingRelaunch.launchArgs, runtimeConfigPayload);
@@ -512,6 +515,7 @@ namespace WPEFramework
                                    pendingRelaunch.launchArgs = launchArgs;
                                    pendingRelaunch.requestedVersion = requestedVersion;
                                    pendingRelaunch.runtimeConfigPayload = runtimeConfigPayload;
+                                   pendingRelaunch.packageInfo = appInfoSnap.getPackageInfo();
                                    mPendingRelaunches.emplace(suspendedAppInstanceId, pendingRelaunch);
 
                                    LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s",
