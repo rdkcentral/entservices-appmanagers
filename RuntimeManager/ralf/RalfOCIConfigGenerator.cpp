@@ -435,15 +435,6 @@ namespace ralf
             LOGERR("Failed to apply Ralf Entry args for package");
             return false;
         }
-        // Everything else is optional. So return value will be true.
-        //  Check if configuration node exists.
-        if (!manifestRootNode.isMember(CONFIGURATION) || !manifestRootNode[CONFIGURATION].isObject())
-        {
-            LOGWARN("No configurations found in Ralf package manifest config.\n");
-            return true; // Just return true since this is not a fatal error.
-        }
-        bool status = true;
-        Json::Value configNode = manifestRootNode[CONFIGURATION];
         std::string packageType;
         if (manifestRootNode.isMember(PACKAGE_TYPE) && manifestRootNode[PACKAGE_TYPE].isString())
         {
@@ -458,6 +449,15 @@ namespace ralf
                 LOGDBG("Applied runtime command to OCI config: %s\n", command.c_str());
             }
         }
+        // Everything else is optional. So return value will be true.
+        //  Check if configuration node exists.
+        if (!manifestRootNode.isMember(CONFIGURATION) || !manifestRootNode[CONFIGURATION].isObject())
+        {
+            LOGWARN("No configurations found in Ralf package manifest config.\n");
+            return true; // Just return true since this is not a fatal error.
+        }
+        bool status = true;
+        Json::Value configNode = manifestRootNode[CONFIGURATION];
         // Apply APP_CONFIG_OVERRIDES_JSON/RUNTIME_CONFIG_OVERRIDES_JSON variables
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
         {

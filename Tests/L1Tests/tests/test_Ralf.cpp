@@ -1286,7 +1286,8 @@ public:
     }
     bool applyConfigurationToOCIConfig(Json::Value& node, Json::Value& manifestNode)
     {
-        return mGen.applyConfigurationToOCIConfig(node, manifestNode);
+        const WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+        return mGen.applyConfigurationToOCIConfig(node, manifestNode, runtimeConfig);
     }
     bool applyRuntimeAndAppConfigToOCIConfig(Json::Value& node,
         const WPEFramework::Plugin::RuntimeConfiguration& rc,
