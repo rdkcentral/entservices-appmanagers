@@ -19,6 +19,8 @@
 
 #include "RDKWindowManagerImplementation.h"
 #include <sys/prctl.h>
+#include <pthread.h>
+#include <sched.h>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -239,6 +241,24 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
         pluginService = mService;
 
         shellThread = std::thread([=]() {
+            // Give the render thread a real-time scheduling priority so it can
+            // preempt ordinary SCHED_OTHER threads during brief scheduler
+            // contention spikes (this platform runs ~200+ threads across 4
+            // CPU cores). Without this, the thread queues behind unrelated
+            // work at the default SCHED_OTHER priority 0 and can miss the
+            // display's vsync deadline inside WstCompositorComposeEmbedded(),
+            // producing visible stutter/shaking. Priority 10 matches the
+            // existing SCHED_RR precedent used by ASSecurityAgentServer's
+            // updateThread for the same reason.
+            prctl(PR_SET_NAME, "RdkWmRender", 0, 0, 0);
+            sched_param schedParam{};
+            schedParam.sched_priority = 10;
+            int schedResult = pthread_setschedparam(pthread_self(), SCHED_RR, &schedParam);
+            if (schedResult != 0)
+            {
+                LOGERR("Failed to set render thread RT priority: %s", strerror(schedResult));
+            }
+
             bool isRunning = true;
             gRdkWindowManagerMutex.lock();
             RdkWindowManager::initialize();
