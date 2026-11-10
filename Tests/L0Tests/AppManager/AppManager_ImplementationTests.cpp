@@ -2019,6 +2019,8 @@ uint32_t Test_AM_PackageUnlockFails()
     // Insert entry with non-empty version so packageUnLock enters the unlock block
     WPEFramework::Plugin::AppInfoManager::getInstance().setPackageInfoVersion(
         "app.unlock.fail", "1.0.0");
+    WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId(
+        "app.unlock.fail", "inst-1");
 
     // handleOnAppUnloaded → async Dispatch(UNLOADED) → packageUnLock → Unlock fails → LOGERR
     impl->handleOnAppUnloaded("app.unlock.fail", "inst-1");
@@ -3287,6 +3289,129 @@ uint32_t Test_AM_PackageLockLocksSuccessfully()
         "packageData.version populated after successful packageLock");
 
     impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Worker thread PRELOAD loaded+suspended path uses running package version.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion()
+{
+    L0Test::TestResult tr;
+    std::atomic<bool> spawnCalled{false};
+    std::mutex captureLock;
+    std::string lockVersionSeen;
+    std::string spawnedRuntimeConfig;
+
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
+    L0Test::MockPackageHandler packageHandler;
+    L0Test::MockPackageInstaller packageInstaller;
+    L0Test::MockStore2 store;
+    L0Test::MockStorageManager storageManager;
+
+    lifecycleManager.isAppLoadedHandler = [](const std::string& appId, bool& loaded) -> WPEFramework::Core::hresult {
+        loaded = (appId == "app.worker.preload.suspended");
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    packageHandler.lockHandler = [&captureLock, &lockVersionSeen](const std::string&, const std::string& version,
+        const WPEFramework::Exchange::IPackageHandler::LockReason&,
+        uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
+        WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
+        std::lock_guard<std::mutex> guard(captureLock);
+        lockVersionSeen = version;
+        lockId = 88;
+        unpackedPath = "/tmp/app.worker.preload.suspended";
+        configMetadata = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
+        appMetadata = nullptr;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    lifecycleManager.spawnAppHandler = [&spawnCalled, &captureLock, &spawnedRuntimeConfig](
+        const std::string&, const std::string&,
+        const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        const std::string& runtimeConfig, const std::string&,
+        std::string& appInstanceId, std::string& errorReason, bool& success) {
+        std::lock_guard<std::mutex> guard(captureLock);
+        spawnedRuntimeConfig = runtimeConfig;
+        appInstanceId = "instance-worker-preload-suspended";
+        errorReason.clear();
+        success = true;
+        spawnCalled.store(true, std::memory_order_release);
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.worker.preload.suspended";
+    pkg.version = "2.0.0"; // requested version B
+    pkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    packageInstaller.installedPackages.push_back(pkg);
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = &lifecycleManager;
+    cfg.lifecycleManagerState = &lifecycleState;
+    cfg.packageHandler = &packageHandler;
+    cfg.installer = &packageInstaller;
+    cfg.store2 = &store;
+    cfg.storageManager = &storageManager;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppInfo runningInfo;
+    runningInfo.setAppInstanceId("inst-preload-running-A");
+    runningInfo.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
+    WPEFramework::Plugin::AppManagerTypes::PackageInfo runningPackageInfo;
+    runningPackageInfo.version = "1.0.0"; // running version A
+    runningPackageInfo.unpackedPath = "/tmp/running-A";
+    runningPackageInfo.configMetadata =
+        R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
+    runningInfo.setPackageInfo(runningPackageInfo);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.worker.preload.suspended", [&](WPEFramework::Plugin::AppInfo& a) { a = runningInfo; });
+
+    std::string error;
+    impl->PreloadApp("app.worker.preload.suspended", "defaultIntent", "", error);
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+    while (!spawnCalled.load(std::memory_order_acquire) &&
+           std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    std::string observedLockVersion;
+    {
+        std::lock_guard<std::mutex> guard(captureLock);
+        observedLockVersion = lockVersionSeen;
+    }
+
+    L0Test::ExpectEqU32(tr, packageHandler.lockCount, 0u,
+        "PRELOAD loaded+suspended path reuses cached running package and does not acquire a new lock");
+    L0Test::ExpectEqStr(tr, observedLockVersion, std::string(),
+        "No new PackageHandler::Lock call means no observed lock version");
+    L0Test::ExpectTrue(tr, packageHandler.unlockCount == 0u,
+        "PRELOAD loaded+suspended success path does not trigger unlock cleanup");
+    L0Test::ExpectTrue(tr, spawnCalled.load(std::memory_order_acquire),
+        "PRELOAD loaded+suspended path still launches via preLoadApp");
+
+    JsonObject runtimeConfigObject;
+    const bool parsed = runtimeConfigObject.FromString(spawnedRuntimeConfig);
+    L0Test::ExpectTrue(tr, parsed, "PRELOAD loaded+suspended path forwards parseable cached runtime config");
+    if (parsed)
+    {
+        L0Test::ExpectEqStr(tr, runtimeConfigObject["unpackedPath"].String(), std::string("/tmp/running-A"),
+            "SpawnApp receives runtime config enriched from cached running package");
+    }
+
+    impl->Release();
+    const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+    while (WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr
+        && std::chrono::steady_clock::now() < cleanDeadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }

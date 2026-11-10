@@ -158,6 +158,7 @@ extern uint32_t Test_AM_WorkerThreadLaunchSuccess();
 extern uint32_t Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn();
 extern uint32_t Test_AM_WorkerThreadPackageLockFails();
 extern uint32_t Test_AM_WorkerThreadPreloadSuccess();
+extern uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion();
 extern uint32_t Test_AM_PackageLockAlreadyLoadedEmptyVersion();
 extern uint32_t Test_AM_PackageLockIsAppLoadedError();
 extern uint32_t Test_AM_CloseAppLICReturnsError();
@@ -361,6 +362,7 @@ int main()
         { "AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn", Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn },
         { "AM_WorkerThreadPackageLockFails", Test_AM_WorkerThreadPackageLockFails },
         { "AM_WorkerThreadPreloadSuccess", Test_AM_WorkerThreadPreloadSuccess },
+        { "AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion", Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion },
         { "AM_PackageLockAlreadyLoadedEmptyVersion", Test_AM_PackageLockAlreadyLoadedEmptyVersion },
         { "AM_PackageLockIsAppLoadedError", Test_AM_PackageLockIsAppLoadedError },
         { "AM_CloseAppLICReturnsError", Test_AM_CloseAppLICReturnsError },
