@@ -500,33 +500,47 @@ namespace WPEFramework
             return result;
         }
 
-        if (!forceInstall)  // if false, we need to check installed packages
+        if (!forceInstall)
         {
             LOGWARN("forceInstall is disabled");
-            Exchange::IPackageInstaller::IPackageIterator *packageList = nullptr;
+        }
 
-            // fetch installed packages
-            Core::hresult listResult = packageInstaller->ListPackages(packageList);
-            if (listResult != Core::ERROR_NONE || packageList == nullptr)
+        Exchange::IPackageInstaller::IPackageIterator *packageList = nullptr;
+
+        // fetch installed packages; also needed with forceInstall to avoid downgrading apps updated post-image (e.g. via pathway)
+        Core::hresult listResult = packageInstaller->ListPackages(packageList);
+        if (listResult != Core::ERROR_NONE || packageList == nullptr)
+        {
+            if (packageList != nullptr)
             {
-                 LOGERR("ListPackages failed or package list is null for preinstall check");
-                if (packageList != nullptr)
-                {
-                    packageList->Release();
-                    packageList = nullptr;
-                }
+                packageList->Release();
+                packageList = nullptr;
+            }
+            if (!forceInstall)
+            {
+                LOGERR("ListPackages failed or package list is null for preinstall check");
                 releasePackageManagerObject(packageInstaller);
                 return result;
             }
-
+            LOGWARN("ListPackages failed or package list is null; forceInstall proceeds without downgrade check");
+        }
+        else
+        {
             WPEFramework::Exchange::IPackageInstaller::Package package;
             std::unordered_map<std::string, std::string> existingApps; // packageId -> version
 
-            while (packageList->Next(package) && package.state == InstallState::INSTALLED) // only consider installed apps
+            while (packageList->Next(package))
             {
-                existingApps[package.packageId] = package.version;
-                // todo check for installState if needed
-                // multiple apps possible with same packageId but different version
+                if (package.state != InstallState::INSTALLED) // only consider installed apps
+                {
+                    continue;
+                }
+                auto existing = existingApps.find(package.packageId);
+                // multiple versions of same packageId possible; keep the highest
+                if ((existing == existingApps.end()) || isNewerVersion(package.version, existing->second))
+                {
+                    existingApps[package.packageId] = package.version;
+                }
             }
 
             packageList->Release();
@@ -543,8 +557,19 @@ namespace WPEFramework
                 {
                     const std::string &installedVersion = it->second;
 
-                    // check if to-be-installed version is newer
-                    if (!isNewerVersion(toBeInstalledApp->version, installedVersion))
+                    if (forceInstall)
+                    {
+                        // forceInstall (e.g. image change) reinstalls bundled apps but must never downgrade
+                        if (isNewerVersion(installedVersion, toBeInstalledApp->version))
+                        {
+                            LOGINFO("forceInstall: not downgrading package: %s, version: %s (installed version: %s)",
+                                        toBeInstalledApp->packageId.c_str(),
+                                        toBeInstalledApp->version.c_str(),
+                                        installedVersion.c_str());
+                            remove = true;
+                        }
+                    }
+                    else if (!isNewerVersion(toBeInstalledApp->version, installedVersion))
                     {
                         // not newer (equal or older) → skip install
                         LOGINFO("Not installing package: %s, version: %s (installed version: %s)",
@@ -572,10 +597,9 @@ namespace WPEFramework
                     ++toBeInstalledApp;
                 }
             }
-
         }
 
-        // Check if all packages were filtered out after forceInstall=false filtering
+        // Check if all packages were filtered out after installed-version filtering
         if (preinstallPackages.empty())
         {
             LOGINFO("No packages to preinstall after filtering. Sending OnPreinstallationComplete event");
