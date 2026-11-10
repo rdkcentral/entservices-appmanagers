@@ -156,6 +156,11 @@ if(PLUGIN_VICTIM_SELECTOR)
     add_subdirectory(VictimSelector)
 endif()
 
+option(PLUGIN_RESOURCEMONITOR "PLUGIN_RESOURCEMONITOR" OFF)
+if(PLUGIN_RESOURCEMONITOR)
+    add_subdirectory(ResourceMonitor)
+endif()
+
 if(PLUGIN_RUNTIME_MANAGER)
 	add_subdirectory(RuntimeManager)
 endif()
