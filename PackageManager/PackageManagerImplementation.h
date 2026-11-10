@@ -27,6 +27,8 @@
 #include <condition_variable>
 #include <fstream>
 #include <cstdio>
+#include <cstdint>
+#include <ftw.h>
 
 #if defined(UNIT_TEST)
 #include "IPackageImplDummy.h"
@@ -205,6 +207,8 @@ class PackageManagerImplementation
         END_INTERFACE_MAP
 
     private:
+        static int getSize(const char* path, const struct stat* sb, int typeflag, struct FTW* ftw);
+        static bool getDirectorySizeInBytes(const std::string& path, uint64_t& sizeBytes);
         bool getRuntimeConfig(const packagemanager::ConfigMetaData &config, string &runtimeConfigPayload);
         bool getRuntimeConfigString(const string &runtimeConfigPayload, const string &key, string &value);
         bool getRuntimeConfigUnsigned(const string &runtimeConfigPayload, const string &key, uint64_t &value);
@@ -298,6 +302,9 @@ class PackageManagerImplementation
     void populateRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata);
 
     private:
+        // nftw has no callback context; serialize access to the class-owned accumulator.
+        static std::mutex mDirSizeLock;
+        static uint64_t mDirSizeBytes;
         mutable Core::CriticalSection mAdminLock;
         std::list<Exchange::IPackageDownloader::INotification*> mDownloaderNotifications;
         std::list<Exchange::IPackageInstaller::INotification*> mInstallNotifications;
