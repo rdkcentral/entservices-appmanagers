@@ -405,17 +405,25 @@ uint32_t Test_StateHandlerTransitionEventsIncludeNavigationIntent()
     bool loadingResult = WPEFramework::Plugin::StateHandler::changeState(loadingRequest, error);
     L0Test::ExpectTrue(tr, loadingResult, "UNLOADED->LOADING transition succeeds");
 
-    context->setApplicationLaunchParams(
-        context->getAppId(), "deeplink://preload", "{}",
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED, "{}");
+    context->setApplicationLaunchParams(
+
+        context->getAppId(), "deeplink://preload", "{}",
+
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED, "{}");
+
     WPEFramework::Plugin::StateTransitionRequest initializingRequest(
         context,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::INITIALIZING);
-    bool initializingResult = WPEFramework::Plugin::StateHandler::changeState(initializingRequest, error);
-    L0Test::ExpectTrue(tr, initializingResult, "LOADING->INITIALIZING transition starts successfully");
-    if (initializingResult) {
-        bool runningResult = WPEFramework::Plugin::StateHandler::changeState(initializingRequest, error);
-        L0Test::ExpectTrue(tr, runningResult, "onAppRunning completes the INITIALIZING transition");
+    bool initializingResult = WPEFramework::Plugin::StateHandler::changeState(initializingRequest, error);
+
+    L0Test::ExpectTrue(tr, initializingResult, "LOADING->INITIALIZING transition starts successfully");
+
+    if (initializingResult) {
+
+        bool runningResult = WPEFramework::Plugin::StateHandler::changeState(initializingRequest, error);
+
+        L0Test::ExpectTrue(tr, runningResult, "onAppRunning completes the INITIALIZING transition");
+
     }
     context->mPendingEventName = "onAppReady";
 
@@ -431,6 +439,11 @@ uint32_t Test_StateHandlerTransitionEventsIncludeNavigationIntent()
         const std::string& navigationIntent = gStubEventHandler.navigationIntents[eventIndex];
         L0Test::ExpectEqStr(tr, navigationIntent, "deeplink://preload",
             "Every preload transition event carries the launch intent");
+    if ((true == context->mPendingStateTransition) &&
+        ("onFirstFrame" == context->mPendingEventName)) {
+        bool readyResult = WPEFramework::Plugin::StateHandler::changeState(activeRequest, error);
+        L0Test::ExpectTrue(tr, readyResult, "onFirstFrame completes the ACTIVE transition");
+    }
     }
 
     context->setMostRecentIntent("deeplink://state-change");
