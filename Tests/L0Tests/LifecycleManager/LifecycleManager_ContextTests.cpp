@@ -54,7 +54,12 @@ namespace {
         void onRuntimeManagerEvent(WPEFramework::Core::JSON::VariantContainer&) override {}
         void onWindowManagerEvent(WPEFramework::Core::JSON::VariantContainer&) override {}
         void onRippleEvent(std::string, WPEFramework::Core::JSON::VariantContainer&) override {}
-        void onStateChangeEvent(WPEFramework::Core::JSON::VariantContainer&) override {}
+        void onStateChangeEvent(WPEFramework::Core::JSON::VariantContainer& eventData) override
+        {
+            navigationIntents.push_back(eventData["navigationIntent"].String());
+        }
+
+        std::vector<std::string> navigationIntents;
     };
     static StubEventHandler  gStubEventHandler;
     static L0Test::FakeRuntimeManager gCtxTestRtm;
@@ -379,6 +384,88 @@ uint32_t Test_RequestHandler_NullifyStaleEventHandler()
     WPEFramework::Plugin::RequestHandler::getInstance()->initialize(&mockService, &gStubEventHandler);
     WPEFramework::Plugin::RequestHandler::getInstance()->terminate();
     return 0;
+}
+
+uint32_t Test_StateHandlerTransitionEventsIncludeNavigationIntent()
+{
+    L0Test::TestResult tr;
+
+    L0Test::LcmServiceMock mockService(L0Test::LcmServiceMock::Config(&gCtxTestRtm, &gCtxTestWm));
+    WPEFramework::Plugin::RequestHandler::getInstance()->initialize(&mockService, &gStubEventHandler);
+    WPEFramework::Plugin::StateHandler::initialize();
+    gStubEventHandler.navigationIntents.clear();
+
+    auto context = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.intent.transitions");
+    context->setMostRecentIntent("deeplink://preload");
+
+    WPEFramework::Plugin::StateTransitionRequest loadingRequest(
+        context,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING);
+    std::string error;
+    bool loadingResult = WPEFramework::Plugin::StateHandler::changeState(loadingRequest, error);
+    L0Test::ExpectTrue(tr, loadingResult, "UNLOADED->LOADING transition succeeds");
+
+    context->setApplicationLaunchParams(
+
+        context->getAppId(), "deeplink://preload", "{}",
+
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED, "{}");
+
+    WPEFramework::Plugin::StateTransitionRequest initializingRequest(
+        context,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::INITIALIZING);
+    bool initializingResult = WPEFramework::Plugin::StateHandler::changeState(initializingRequest, error);
+
+    L0Test::ExpectTrue(tr, initializingResult, "LOADING->INITIALIZING transition starts successfully");
+
+    if (initializingResult) {
+
+        bool runningResult = WPEFramework::Plugin::StateHandler::changeState(initializingRequest, error);
+
+        L0Test::ExpectTrue(tr, runningResult, "onAppRunning completes the INITIALIZING transition");
+
+    }
+    context->mPendingEventName = "onAppReady";
+
+    WPEFramework::Plugin::StateTransitionRequest pausedRequest(
+        context,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED);
+    bool pausedResult = WPEFramework::Plugin::StateHandler::changeState(pausedRequest, error);
+    L0Test::ExpectTrue(tr, pausedResult, "INITIALIZING->PAUSED transition succeeds after onAppReady");
+
+    L0Test::ExpectTrue(tr, 3U == gStubEventHandler.navigationIntents.size(),
+        "Preload emits events for LOADING, INITIALIZING, and PAUSED transitions");
+    for (size_t eventIndex = 0; eventIndex < 3U && eventIndex < gStubEventHandler.navigationIntents.size(); ++eventIndex) {
+        const std::string& navigationIntent = gStubEventHandler.navigationIntents[eventIndex];
+        L0Test::ExpectEqStr(tr, navigationIntent, "deeplink://preload",
+            "Every preload transition event carries the launch intent");
+
+        L0Test::ExpectTrue(tr, readyResult, "onFirstFrame completes the ACTIVE transition");
+
+    }
+
+    }
+
+    context->setMostRecentIntent("deeplink://state-change");
+    if ((true == context->mPendingStateTransition) &&
+        ("onFirstFrame" == context->mPendingEventName)) {
+        bool readyResult = WPEFramework::Plugin::StateHandler::changeState(activeRequest, error);
+        L0Test::ExpectTrue(tr, readyResult, "onFirstFrame completes the ACTIVE transition");
+    }
+    WPEFramework::Plugin::StateTransitionRequest activeRequest(
+        context,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+    bool activeResult = WPEFramework::Plugin::StateHandler::changeState(activeRequest, error);
+    L0Test::ExpectTrue(tr, activeResult, "PAUSED->ACTIVE transition succeeds");
+    L0Test::ExpectTrue(tr, 4U == gStubEventHandler.navigationIntents.size(),
+        "State-change request emits a transition event");
+    if (4U == gStubEventHandler.navigationIntents.size()) {
+        L0Test::ExpectEqStr(tr, gStubEventHandler.navigationIntents[3], "deeplink://state-change",
+            "State-change transition event carries its request intent");
+    }
+
+    WPEFramework::Plugin::RequestHandler::getInstance()->terminate();
+    return tr.failures;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
