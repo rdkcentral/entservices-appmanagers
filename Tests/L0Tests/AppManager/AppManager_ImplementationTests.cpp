@@ -3295,6 +3295,7 @@ uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion()
     std::atomic<bool> spawnCalled{false};
     std::mutex captureLock;
     std::string lockVersionSeen;
+    std::string spawnedRuntimeConfig;
 
     L0Test::MockLifecycleManager lifecycleManager;
     L0Test::MockLifecycleManagerState lifecycleState;
@@ -3321,11 +3322,13 @@ uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion()
         return WPEFramework::Core::ERROR_NONE;
     };
 
-    lifecycleManager.spawnAppHandler = [&spawnCalled](
+    lifecycleManager.spawnAppHandler = [&spawnCalled, &captureLock, &spawnedRuntimeConfig](
         const std::string&, const std::string&,
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
-        const std::string&, const std::string&,
+        const std::string& runtimeConfig, const std::string&,
         std::string& appInstanceId, std::string& errorReason, bool& success) {
+        std::lock_guard<std::mutex> guard(captureLock);
+        spawnedRuntimeConfig = runtimeConfig;
         appInstanceId = "instance-worker-preload-suspended";
         errorReason.clear();
         success = true;
@@ -3356,6 +3359,9 @@ uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion()
     runningInfo.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
     WPEFramework::Plugin::AppManagerTypes::PackageInfo runningPackageInfo;
     runningPackageInfo.version = "1.0.0"; // running version A
+    runningPackageInfo.unpackedPath = "/tmp/running-A";
+    runningPackageInfo.configMetadata =
+        R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
     runningInfo.setPackageInfo(runningPackageInfo);
     WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
         "app.worker.preload.suspended", [&](WPEFramework::Plugin::AppInfo& a) { a = runningInfo; });
@@ -3375,14 +3381,23 @@ uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion()
         observedLockVersion = lockVersionSeen;
     }
 
-    L0Test::ExpectTrue(tr, packageHandler.lockCount >= 1u,
-        "PRELOAD loaded+suspended path acquires package lock");
-    L0Test::ExpectEqStr(tr, observedLockVersion, std::string("1.0.0"),
-        "PRELOAD loaded+suspended path keeps running version A instead of requested version B");
+    L0Test::ExpectEqU32(tr, packageHandler.lockCount, 0u,
+        "PRELOAD loaded+suspended path reuses cached running package and does not acquire a new lock");
+    L0Test::ExpectEqStr(tr, observedLockVersion, std::string(),
+        "No new PackageHandler::Lock call means no observed lock version");
     L0Test::ExpectTrue(tr, packageHandler.unlockCount == 0u,
         "PRELOAD loaded+suspended success path does not trigger unlock cleanup");
     L0Test::ExpectTrue(tr, spawnCalled.load(std::memory_order_acquire),
         "PRELOAD loaded+suspended path still launches via preLoadApp");
+
+    JsonObject runtimeConfigObject;
+    const bool parsed = runtimeConfigObject.FromString(spawnedRuntimeConfig);
+    L0Test::ExpectTrue(tr, parsed, "PRELOAD loaded+suspended path forwards parseable cached runtime config");
+    if (parsed)
+    {
+        L0Test::ExpectEqStr(tr, runtimeConfigObject["unpackedPath"].String(), std::string("/tmp/running-A"),
+            "SpawnApp receives runtime config enriched from cached running package");
+    }
 
     impl->Release();
     const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
