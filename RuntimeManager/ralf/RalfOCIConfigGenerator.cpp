@@ -110,11 +110,11 @@ namespace ralf
 
 #ifdef RDK_APPMANAGERS_DEBUG
         struct stat eyilDevDirectory {};
-        if (stat("/usr/libexec/eyil-dev", &eyilDevDirectory) == 0 && S_ISDIR(eyilDevDirectory.st_mode))
+        if (stat("/usr/lib/eyil", &eyilDevDirectory) == 0 && S_ISDIR(eyilDevDirectory.st_mode))
         {
             Json::Value mount(Json::objectValue);
-            mount["source"] = "/usr/libexec/eyil-dev";
-            mount["destination"] = "/usr/libexec/eyil-dev";
+            mount["source"] = "/usr/lib/eyil";
+            mount["destination"] = "/usr/lib/eyil";
             mount["type"] = "bind";
             for (const auto* option : {"bind", "ro", "nosuid", "nodev"})
                 mount["options"].append(option);

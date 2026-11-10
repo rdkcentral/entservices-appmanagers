@@ -551,10 +551,10 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
 
 #ifdef RDK_APPMANAGERS_DEBUG
     struct stat eyilDevDirectory {};
-    if (stat("/usr/libexec/eyil-dev", &eyilDevDirectory) == 0 && S_ISDIR(eyilDevDirectory.st_mode))
+    if (stat("/usr/lib/eyil", &eyilDevDirectory) == 0 && S_ISDIR(eyilDevDirectory.st_mode))
     {
         // Development images only. The bundle contains its own executable/loader/libraries.
-        mounts.append(createBindMount("/usr/libexec/eyil-dev", "/usr/libexec/eyil-dev",
+        mounts.append(createBindMount("/usr/lib/eyil", "/usr/lib/eyil",
                                      MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV));
     }
 #endif
