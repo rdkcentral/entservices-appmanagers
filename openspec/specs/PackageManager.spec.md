@@ -38,7 +38,7 @@ PackageManagerImplementation
 - **PackageManagerImplementation**: Core logic — download queue, install, lock/unlock state machine
 - **HttpClient**: libcurl-based HTTP download client with pause/resume and rate-limit support
 - **PackageManagerTelemetryReporting**: Optional telemetry instrumentation
-- **Lock State Machine**: Reference-counted lock per `(packageId, version)` pair
+- **Lock State Machine**: Reference-counted lock per `packageId` (single tracked version per package)
 
 ## External Interfaces
 
@@ -51,13 +51,13 @@ PackageManagerImplementation
 | `Cancel(downloadId)` | Cancel and discard download |
 | `Progress(downloadId, percent)` | Query current download progress |
 | `RateLimit(downloadId, limit)` | Throttle download bandwidth |
-| `Install(packageId, version, additionalMetadata, fileLocator, failReason)` | Install downloaded package |
+| `Install(packageId, additionalMetadata, fileLocator, failReason)` | Install downloaded package |
 | `Uninstall(packageId, errorReason)` | Remove installed package |
-| `Lock(packageId, version, lockReason, ...)` | Lock package for app execution |
-| `Unlock(packageId, version)` | Unlock package |
-| `GetLockedInfo(packageId, version, unpackedPath, runtimeConfigPayload, ...)` | Query lock state and opaque JSON payload |
+| `Lock(packageId, lockReason, ...)` | Lock package for app execution |
+| `Unlock(packageId)` | Unlock package |
+| `GetLockedInfo(packageId, unpackedPath, runtimeConfigPayload, ...)` | Query lock state and opaque JSON payload |
 | `ListPackages(packages)` | List installed packages |
-| `PackageState(packageId, version, state)` | Query package install state |
+| `PackageState(packageId, state)` | Query package install state |
 | `Register / Unregister (INotification)` | Subscribe/unsubscribe download or install notifications |
 
 ### Configuration
@@ -75,7 +75,7 @@ PackageManagerImplementation::Download()
         ├→ Report progress (OnProgressUpdate)
         └→ Save to PLUGIN_PACKAGEMANAGER_DOWNLOAD_DIR
 
-Client::Install(packageId, version, fileLocator)
+Client::Install(packageId, fileLocator)
     ↓
 PackageManagerImplementation::Install()
     ├→ Parse package manifest via libpackage-sky
@@ -84,13 +84,13 @@ PackageManagerImplementation::Install()
     ├→ Extract app files to storage path
     └→ Update package state → INSTALLED
 
-Lock(packageId, version):
+Lock(packageId, lockReason):
     ├→ Verify package is INSTALLED
     ├→ Increment lock reference count
     ├→ Return unpackedPath and the flat opaque JSON payload via GetLockedInfo
     └→ Block uninstall while locked
 
-Unlock(packageId, version):
+Unlock(packageId):
     ├→ Decrement lock reference count
     └→ If count == 0, allow uninstall / trigger pending operations
 ```
@@ -115,9 +115,9 @@ Unlock(packageId, version):
 - Download directory permissions should restrict access to the PackageManager process
 
 ## Versioning & Compatibility
-- **API Version**: 1.0.0
+- **API Version**: 2.0.0
 - **Plugin Execution Mode**: Configurable via `PLUGIN_PACKAGEMANAGER_MODE`
-- Multiple package versions are allowed simultaneously (no version conflict enforcement)
+- `packageId` is the sole package identifier; only one (current) version is tracked per package, so installing a new version replaces the prior one rather than coexisting with it
 - `USE_LIBPACKAGE_RALF`: optional flag for RALF package format support
 
 ## Conformance Testing & Validation
@@ -159,13 +159,13 @@ Unlock(packageId, version):
 - **Compiled Artifact**: `lib${NAMESPACE}AppPackageManager.so`
 - **Install Path**: `${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins`
 - **Required Build Flags**: C++11
-- **API Version**: 1.0.0
+- **API Version**: 2.0.0
 - **Build Dependencies**: `libPackage.so` (from libpackage-sky)
 
 ## Constraints & Limitations
 - Downloads are sequential (queued, not parallel by default)
 - Package removal requires all locks to be released
-- No package versioning conflict enforcement (multiple versions allowed)
+- No package versioning conflict enforcement needed: `packageId` is the sole identifier and only one version is tracked per package at a time
 - Download interruption requires manual retry
 - Metadata parsing depends on libpackage-sky format
 - Paused downloads may be lost if daemon restarts

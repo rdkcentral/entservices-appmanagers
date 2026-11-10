@@ -170,28 +170,28 @@ class PackageManagerImplementation
         Core::hresult StartCacheInitialization() override;
 
         // IPackageInstaller methods
-        Core::hresult Install(const string &packageId, const string &version, IPackageInstaller::IKeyValueIterator* const& additionalMetadata, const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason) override;
+        Core::hresult Install(const string &packageId, IPackageInstaller::IKeyValueIterator* const& additionalMetadata, const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason) override;
         Core::hresult Uninstall(const string &packageId, string &errorReason ) override;
         Core::hresult ListPackages(Exchange::IPackageInstaller::IPackageIterator*& packages);
-        Core::hresult Config(const string &packageId, const string &version, string& configMetadata) override;
-        Core::hresult PackageState(const string &packageId, const string &version, Exchange::IPackageInstaller::InstallState &state) override;
+        Core::hresult Config(const string &packageId, string& configMetadata) override;
+        Core::hresult PackageState(const string &packageId, Exchange::IPackageInstaller::InstallState &state) override;
         Core::hresult GetConfigForPackage(const string &fileLocator, string& id, string &version, string& config) override;
 
         Core::hresult Register(Exchange::IPackageInstaller::INotification *sink) override;
         Core::hresult Unregister(Exchange::IPackageInstaller::INotification *sink) override;
 
         // IPackageHandler methods
-        Core::hresult Lock(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
+        Core::hresult Lock(const string &packageId, const Exchange::IPackageHandler::LockReason &lockReason,
             uint32_t &lockId, string &unpackedPath, string& configMetadata,
             Exchange::IPackageHandler::ILockIterator*& appMetadata
         ) override;
 
-        Core::hresult Unlock(const string &packageId, const string &version) override;
-        Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, string& configMetadata,
+        Core::hresult Unlock(const string &packageId) override;
+        Core::hresult GetLockedInfo(const string &packageId, string &unpackedPath, string& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
         // IAppPackageManagerConfig methods
-        Core::hresult GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */) override;
+        Core::hresult GetConfigForInstalledPackage(const string &packageId, string &config /* @out @opaque */) override;
         Core::hresult GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */) override;
 
 	// IAppPackagesStatus methods
@@ -254,6 +254,8 @@ class PackageManagerImplementation
         void downloader(int n);
         void NotifyDownloadStatus(const string& id, const string& locator, const DownloadReason status);
         void NotifyInstallStatus(const string& id, const string& version, const State &state);
+        // Caller must hold mtxState.
+        StateMap::iterator FindLockedState(const string &packageId);
 
         DownloadInfoPtr getNext();
         int nextRetryDuration(int n) {
@@ -320,6 +322,7 @@ class PackageManagerImplementation
         DownloadQueue  mDownloadQueue;
         std::recursive_mutex mtxState;
         StateMap  mState;
+        std::map<string, InstallState> mLastInstallState; // last operation state per packageId, guarded by mtxState
         bool cacheInitialized = false;
 
         std::string downloadDir = "/opt/CDL/";

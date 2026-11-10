@@ -1275,12 +1275,32 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                 if ((nullptr != mPackageManagerHandlerObject) && !packageData.version.empty())
                 {
                     Exchange::IPackageHandler::ILockIterator *appMetadata = nullptr;
-                    status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
+                    status = mPackageManagerHandlerObject->Lock(appId, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
                     if (Core::ERROR_NONE == status)
                     {
                         if (nullptr != lockAcquired)
                         {
                             *lockAcquired = true;
+                        }
+
+                        /* Lock() selects the version itself and reports it in the payload; record that one, not the version captured before queuing. */
+                        Utils::RuntimeConfigPayload lockedConfig;
+                        std::string lockedVersion;
+                        std::string payloadError;
+                        bool versionPresent = false;
+                        if (lockedConfig.Parse(packageData.configMetadata, payloadError) &&
+                            lockedConfig.GetString("packageVersion", lockedVersion, versionPresent, payloadError) &&
+                            versionPresent && !lockedVersion.empty())
+                        {
+                            if (lockedVersion != packageData.version)
+                            {
+                                LOGWARN("Installed version of appId %s changed before lock (queued '%s', locked '%s')", appId.c_str(), packageData.version.c_str(), lockedVersion.c_str());
+                            }
+                            packageData.version = lockedVersion;
+                        }
+                        else
+                        {
+                            LOGWARN("Lock result for appId %s carries no packageVersion, keeping '%s'", appId.c_str(), packageData.version.c_str());
                         }
                         LOGINFO("Fetching package entry updated for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
                                  appId.c_str(), packageData.version.c_str(), packageData.lockId, packageData.unpackedPath.c_str(), packageData.appMetadata.c_str());
@@ -1386,12 +1406,11 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
         Core::hresult status = Core::ERROR_GENERAL;
         AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
 
-        const std::string pkgVersion = AppInfoManager::getInstance().getPackageInfoVersion(appId);
-        if (!pkgVersion.empty() || AppInfoManager::getInstance().exists(appId))
+        if (AppInfoManager::getInstance().exists(appId))
         {
             if (nullptr != mPackageManagerHandlerObject)
             {
-                status = mPackageManagerHandlerObject->Unlock(appId, pkgVersion);
+                status = mPackageManagerHandlerObject->Unlock(appId);
 
                 if(Core::ERROR_NONE != status)
                 {
@@ -1407,7 +1426,7 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
         }
         if (!AppInfoManager::getInstance().exists(appId))
         {
-            LOGERR("AppId not found in map to get the version");
+            LOGERR("AppId not found in map to unlock");
             appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_INVALID_PARAMS);
         }
         return status;
