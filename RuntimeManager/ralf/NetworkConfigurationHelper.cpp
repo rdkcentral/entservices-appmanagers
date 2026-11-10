@@ -871,6 +871,7 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
             if (false == hasContainerToHostRule(containerToHost, dialRule[ralf::PORT].asUInt(), dialRule[ralf::PROTOCOL].asString()))
             {
                 containerToHost.append(dialRule);
+                LOGDBG("%s: Added DIAL specific port forwarding rule.", MODULE_LOGTAG);
             }
         }
 
