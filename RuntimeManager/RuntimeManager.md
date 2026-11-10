@@ -22,6 +22,10 @@ environment-variable generation in `DobbySpecGenerator` for DIAL-enabled
 applications. Set `-DRUNTIMEMANAGER_ENABLE_DIALCONFIG=ON` when configuring both
 RuntimeManager and its standalone L0 tests to build and test this behavior.
 
+RALF OCI generation adds Wayland environment variables and the socket bind mount
+only when `mWesterosSocketPath` is configured; headless daemon containers omit
+these display settings.
+
 ### Interacting Subsystems
 
 | Subsystem | Interaction Type | Purpose |
