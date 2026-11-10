@@ -30,7 +30,7 @@
 #include <plugins/System.h>
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
-#include "AppManagerTypes.h
+#include "AppManagerTypes.h"
 #include <core/core.h>
 #include <com/com.h>
 #include <plugins/plugins.h>

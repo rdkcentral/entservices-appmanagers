@@ -243,6 +243,12 @@ namespace WPEFramework
             else
             {
                LOGINFO("spawnApp called ,state %u",state);
+                if (mLifecycleManagerRemoteObject == nullptr)
+                {
+                    LOGERR("launchRequestedPackage failed: LifecycleManager remote object is null");
+                    appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_INTERNAL);
+                    return Core::ERROR_GENERAL;
+                }
                status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success);
             }
                 
@@ -295,6 +301,7 @@ namespace WPEFramework
             if (nullptr == mLifecycleManagerRemoteObject)
             {
                LOGERR("restartSuspendedWithRequestedVersion failed: LifecycleManager remote object is null for appId=%s", appId.c_str());
+               Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
 	       mPendingRelaunches.erase(suspendedAppInstanceId);
 
                const Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(appId, requestedVersion);
@@ -318,6 +325,7 @@ namespace WPEFramework
             {
                 LOGERR("Failed to kill old suspended app instance for replacement appId=%s status=%d success=%d errorReason=%s",
                     appId.c_str(), status, success, errorReason.c_str());
+                Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
                 mPendingRelaunches.erase(suspendedAppInstanceId);
 		const Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(
                 appId, requestedVersion);
@@ -488,6 +496,7 @@ namespace WPEFramework
                             else
                             {
                                 const string suspendedAppInstanceId = appInfoSnap.getAppInstanceId();
+                                Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
 
                                 std::map<std::string, PendingRelaunchRequest>::iterator pendingRelaunchIter = mPendingRelaunches.find(suspendedAppInstanceId);
                                 if (mPendingRelaunches.end() != pendingRelaunchIter)
@@ -516,6 +525,7 @@ namespace WPEFramework
                                    pendingRelaunch.requestedVersion = requestedVersion;
                                    pendingRelaunch.runtimeConfigPayload = runtimeConfigPayload;
                                    pendingRelaunch.packageInfo = appInfoSnap.getPackageInfo();
+                                   Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
                                    mPendingRelaunches.emplace(suspendedAppInstanceId, pendingRelaunch);
 
                                    LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s",
