@@ -491,10 +491,69 @@ namespace ralf
         if (packageType == PKG_TYPE_APPLICATION)
         {
             addAppPackageVersionToConfig(ociConfigRootNode, manifestRootNode);
+#ifdef ALLOW_DEV_MOUNT_SUPPORT
+            if (applyDevMountSupport(ociConfigRootNode, configNode))
+            {
+                LOGWARN("Applied development mount support to OCI config\n");
+            }
+#else
+            LOGDBG("Development mount support is not enabled\n");
+#endif // ALLOW_DEV_MOUNT_SUPPORT
         }
 
         return true;
     }
+
+#ifdef ALLOW_DEV_MOUNT_SUPPORT
+    bool RalfOCIConfigGenerator::applyDevMountSupport(Json::Value &ociConfigRootNode, Json::Value &configNode)
+    {
+        bool status = false;
+        if (configNode.isMember(DEV_MOUNT_SUPPORT_URN) && configNode[DEV_MOUNT_SUPPORT_URN].isArray())
+        {
+            /**The structure of the node is defined as follows
+             *
+              "urn:rdk:config:extra-mounts-dbg": [
+                {
+                    "destination": "/folder-inside-container",
+                    "type":"none",
+                    "source": "/folder-on-host",
+                    "options": [
+                         "rbind",
+                         "ro",
+                         "noexec",
+                         "nodev",
+                         "nosuid"
+                    ]
+                }
+              ]
+
+              There is no parsing of the arguments. Each object in the array is added as a mount point to the OCI configuration.
+            *
+            */
+
+            LOGDBG("Processing development mount configuration\n");
+            Json::Value devMountConfig = configNode[DEV_MOUNT_SUPPORT_URN];
+            for (const auto &mount : devMountConfig)
+            {
+                if (mount.isObject())
+                {
+                    ociConfigRootNode[MOUNTS].append(mount);
+                    status = true;
+                }
+                else
+                {
+                    LOGWARN("Invalid mount configuration, expected an array.\n");
+                }
+            }
+        }
+        else
+        {
+            LOGDBG("No development mount configuration found\n");
+        }
+        return status;
+    }
+#endif // ALLOW_DEV_MOUNT_SUPPORT
+
     bool RalfOCIConfigGenerator::addAppPackageVersionToConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
     {
         // Identifies the application package version. This value is used for logging, debugging, and version-specific behavior.
