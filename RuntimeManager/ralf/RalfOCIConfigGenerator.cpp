@@ -146,17 +146,20 @@ namespace ralf
         gidMapping[SIZE] = 1;
         ociConfigRootNode[LINUX][GID_MAPPINGS].append(gidMapping);
 
-        // Set westeros environment variable
-        // mWesterosSocketPath has XDG_RUNTIME_DIR/WAYLAND_DISPLAY, we need to set WAYLAND_DISPLAY env variable to just the display
-        // name (i.e. the last part of the path) because that is what westeros expects.
-        std::string waylandDisplay = appConfig.mWesterosSocketPath.substr(appConfig.mWesterosSocketPath.find_last_of("/") + 1);
-        addToEnvironment(ociConfigRootNode, "WAYLAND_DISPLAY", waylandDisplay);
-        // Keep it consistent with what is set in DobbyPluginLauncher for Ralf package.
-        // DobbyPluginLauncher will bind mount /tmp from host to container and westeros socket will be created inside /tmp in the container.
-        addToEnvironment(ociConfigRootNode, "XDG_RUNTIME_DIR", "/tmp");
+        if (!appConfig.mWesterosSocketPath.empty())
+        {
+            // Set westeros environment variable
+            // mWesterosSocketPath has XDG_RUNTIME_DIR/WAYLAND_DISPLAY, we need to set WAYLAND_DISPLAY env variable to just the display
+            // name (i.e. the last part of the path) because that is what westeros expects.
+            std::string waylandDisplay = appConfig.mWesterosSocketPath.substr(appConfig.mWesterosSocketPath.find_last_of("/") + 1);
+            addToEnvironment(ociConfigRootNode, "WAYLAND_DISPLAY", waylandDisplay);
+            // Keep it consistent with what is set in DobbyPluginLauncher for Ralf package.
+            // DobbyPluginLauncher will bind mount /tmp from host to container and westeros socket will be created inside /tmp in the container.
+            addToEnvironment(ociConfigRootNode, "XDG_RUNTIME_DIR", "/tmp");
 
-        // Need to mount bind  XDG_RUNTIME_DIR/WAYLAND_DISPLAY from host to container
-        addBindMountToOCIConfig(ociConfigRootNode, appConfig.mWesterosSocketPath, appConfig.mWesterosSocketPath);
+            // Need to mount bind  XDG_RUNTIME_DIR/WAYLAND_DISPLAY from host to container
+            addBindMountToOCIConfig(ociConfigRootNode, appConfig.mWesterosSocketPath, appConfig.mWesterosSocketPath);
+        }
 
         // Home by default will be set to PERSIST_STORAGE_PATH in the OCI config.
         std::string homePath = PERSIST_STORAGE_PATH; // Default HOME path
