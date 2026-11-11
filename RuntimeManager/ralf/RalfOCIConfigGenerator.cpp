@@ -538,7 +538,7 @@ namespace ralf
                 }
                 else
                 {
-                    LOGWARN("Invalid mount configuration, expected an array.\n");
+                    LOGWARN("Invalid mount configuration entry, expected an object.\n");
                 }
             }
         }
