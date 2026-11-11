@@ -1291,6 +1291,32 @@ bool AppManagerImplementation::createOrUpdatePackageInfoByAppId(const string& ap
     }
     else
     {
+        AppManagerTypes::ApplicationType packageType = AppManagerTypes::APPLICATION_TYPE_UNKNOWN;
+        if (!packageData.configMetadata.empty())
+        {
+            Json::Value config;
+            Json::Reader reader;
+            if (reader.parse(packageData.configMetadata, config) && config.isObject())
+            {
+                if (config["appType"].isString())
+                {
+                    const std::string appType = config["appType"].asString();
+                    if ("SYSTEM" == appType)
+                    {
+                        packageType = AppManagerTypes::APPLICATION_TYPE_SYSTEM;
+                    }
+                    else if ("INTERACTIVE" == appType)
+                    {
+                        packageType = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                    }
+                }
+            }
+            else
+            {
+                LOGWARN("Unable to parse package config metadata for appId=%s", appId.c_str());
+            }
+        }
+
         /* Atomically insert-or-update the PackageInfo for this appId */
         AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
             AppManagerTypes::PackageInfo pi = a.getPackageInfo();
@@ -1299,6 +1325,10 @@ bool AppManagerImplementation::createOrUpdatePackageInfoByAppId(const string& ap
             pi.unpackedPath   = packageData.unpackedPath;
             pi.configMetadata = packageData.configMetadata;
             pi.appMetadata    = packageData.appMetadata;
+            if (AppManagerTypes::APPLICATION_TYPE_UNKNOWN != packageType)
+            {
+                pi.type = packageType;
+            }
             a.setPackageInfo(pi);
         });
         LOGINFO("Package entry upserted for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
@@ -2127,7 +2157,9 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
                 JsonObject package;
                 package["appId"] = pkg.packageId;
                 package["versionString"] = pkg.version;
-                package["type"] = getInstallAppType(APPLICATION_TYPE_INTERACTIVE);
+                const ApplicationType packageType = ("system" == pkg.packageType)
+                    ? APPLICATION_TYPE_SYSTEM : APPLICATION_TYPE_INTERACTIVE;
+                package["type"] = getInstallAppType(packageType);
                 AppInfo pkgSnap;
                 if (AppInfoManager::getInstance().get(pkg.packageId, pkgSnap))
                 {
@@ -2474,6 +2506,3 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
 }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
-
-
-
