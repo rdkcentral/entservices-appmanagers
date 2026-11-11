@@ -515,7 +515,9 @@ sequenceDiagram
             RMH-->>SH: success
         end
         SH->>LCM: sendEvent(oldState, newState)
-        LCM->>AM: OnAppLifecycleStateChanged
+        LCM->>AC: getMostRecentIntent()
+        AC-->>LCM: navigationIntent
+        LCM->>AM: OnAppLifecycleStateChanged(oldState, newState, navigationIntent)
     end
     
     LCM-->>AM: Core::ERROR_NONE

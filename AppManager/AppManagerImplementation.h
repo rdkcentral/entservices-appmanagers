@@ -220,11 +220,12 @@ namespace Plugin {
         Core::hresult GetMaxHibernatedApps(int32_t& maxHibernatedApps) const override;
         Core::hresult GetMaxHibernatedFlashUsage(int32_t& maxHibernatedFlashUsage) const override;
         Core::hresult GetMaxInactiveRamUsage(int32_t& maxInactiveRamUsage) const override;
+        bool SupportsHibernation(const string& appId);
     #ifdef APP_MANAGER_RESOURCE_MONITOR
         Core::hresult SetInactiveTargetState(const string& appId, Exchange::ILifecycleManager::LifecycleState state);
         Core::hresult Reconcile(const string& appId, uint32_t ramTargetMB, bool allowTerminate);
         uint32_t GetAppRamTargetMB(const string& appId) const;
-        bool SupportsHibernation(const string& appId);
+        bool IsHibernationEnabled() const;
         bool HasHibernationFlashSpace(const string& appId) const;
     #endif
         void handleOnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::IAppManager::AppLifecycleState newState,
@@ -280,6 +281,7 @@ namespace Plugin {
         std::mutex mPendingPreloadLock;
         std::map<std::string, std::shared_ptr<AppLaunchRequestParam>> mPendingPreloads;
         std::string mHibernationStoragePath;
+        bool mHibernationEnabled{false};
         std::unique_ptr<AppStateTransitionManager> mStateTransitionManager;
     #endif
         Core::hresult fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
@@ -302,9 +304,11 @@ namespace Plugin {
     public: /* public methods */
         void updateCurrentAction(const std::string& appId, CurrentAction action);
         void updateCurrentActionTime(const std::string& appId, time_t currentActionTime, CurrentAction currentAction);
+        Core::hresult releaseDeferredReplacementLock(const std::string& appId, const std::string& requestedVersion);
     bool checkInstallUninstallBlock(const std::string& appId);
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
 

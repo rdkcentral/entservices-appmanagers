@@ -1970,6 +1970,26 @@ static WPEFramework::Plugin::RuntimeConfiguration makeRtConfig()
     return rc;
 }
 
+TEST_F(RalfOCIConfigGeneratorPrivateTest, ApplyRuntimeAndAppConfig_EmptyWaylandSocketOmitsWaylandSettings)
+{
+    auto config = makeAppConfig();
+    config.mWesterosSocketPath.clear();
+    auto rc = makeRtConfig();
+    Json::Value root;
+
+    ASSERT_TRUE(mAcc.applyRuntimeAndAppConfigToOCIConfig(root, rc, config));
+
+    for (const auto& env : root[ralf::PROCESS][ralf::ENV])
+    {
+        EXPECT_NE("WAYLAND_DISPLAY=", env.asString());
+        EXPECT_NE("XDG_RUNTIME_DIR=/tmp", env.asString());
+    }
+    for (const auto& mount : root[ralf::MOUNTS])
+    {
+        EXPECT_FALSE(mount[ralf::SOURCE].asString().empty());
+    }
+}
+
 // ──────────────────────────────
 // addAppStorageToOCIConfig
 // ──────────────────────────────

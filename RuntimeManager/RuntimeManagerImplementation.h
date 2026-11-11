@@ -55,14 +55,31 @@ namespace WPEFramework
         {
             private:
                 class Configuration : public Core::JSON::Container {
+                    class Hibernation : public Core::JSON::Container {
+                    public:
+                        Hibernation()
+                            : Core::JSON::Container()
+                            , enable()
+                            , defaultCompression()
+                        {
+                            Add(_T("enable"), &enable);
+                            Add(_T("defaultCompression"), &defaultCompression);
+                        }
+
+                        Core::JSON::Boolean enable;
+                        Core::JSON::String defaultCompression;
+                    };
+
                     public:
                         Configuration()
                             : Core::JSON::Container()
                             , runtimeAppPortal()
                             , runtimeConfigFile()
+                            , hibernation()
                         {
                             Add(_T("runtimeAppPortal"), &runtimeAppPortal);
                             Add(_T("runtimeConfigFile"), &runtimeConfigFile);
+                            Add(_T("hibernate"), &hibernation);
                         }
                         ~Configuration() = default;
 
@@ -74,6 +91,7 @@ namespace WPEFramework
                     public:
                         Core::JSON::String runtimeAppPortal;
                         Core::JSON::String runtimeConfigFile;
+                        Hibernation hibernation;
                 };
 
             public:
@@ -257,3 +275,4 @@ namespace WPEFramework
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
