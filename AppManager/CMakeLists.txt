@@ -30,7 +30,6 @@ if(APP_MANAGER_RESOURCE_MONITOR)
 endif()
 set(PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT 60 CACHE STRING "Seconds before moving a paused app to suspended")
 set(PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT 15 CACHE STRING "Seconds before evaluating a suspended app for hibernation")
-set(PLUGIN_APP_MANAGER_HIBERNATION_STORAGE_PATH "/media/apps/memcr" CACHE STRING "Filesystem path used for hibernated application data")
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 
 add_definitions(-DAPP_MANAGER_API_VERSION_NUMBER_MAJOR=1)
@@ -117,3 +116,4 @@ install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
 write_config(${PLUGIN_NAME})
+
