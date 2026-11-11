@@ -62,7 +62,9 @@ namespace WPEFramework {
             , _evictionInProgress(false)
             , _initialized(false)
             , _reconcileAppId("")
+            , _reconcileEvictionRetryPending(false)
             , _evictionOwner(EvictionOwner::NONE)
+            , _pendingEvictionType(Exchange::IVictimSelector::EVICTION_TYPE_SOFT)
             , _victimSelector(nullptr)
             , _victimSelectorNotification(this)
             , _adminLock()
@@ -826,18 +828,30 @@ namespace WPEFramework {
                         [this] {
                             return !_workerRunning ||
                             (!_reconcileInProgress &&
-                            !_reconcileRequests.empty());
+                            !_reconcileRequests.empty()) ||
+                            (_reconcileInProgress &&
+                            _reconcileEvictionRetryPending);
                         });
 
                     if (!_workerRunning) {
                         break;
                     }
-                    request = _reconcileRequests.front();
-                    LOGINFO("POP appId=%s queueSizeBeforePop=%zu", request.appId.c_str(), _reconcileRequests.size());
-                    _reconcileRequests.pop();
-                    _reconcileInProgress = true;
-                    _reconcileAppId = request.appId;
-                    _reconcileAppSystemMemoryLimitKb = request.appMemoryLimitKb;
+                    if (_reconcileInProgress && _reconcileEvictionRetryPending) {
+                        // Continue the same reconciliation request.
+                        request.appId = _reconcileAppId;
+                        request.appMemoryLimitKb = _reconcileAppSystemMemoryLimitKb;
+                        request.allowTerminate = true;
+                        _reconcileEvictionRetryPending = false;
+                        LOGINFO("Processing eviction retry for appId=%s", request.appId.c_str());
+                    }
+                    else {
+                        request = _reconcileRequests.front();
+                        LOGINFO("POP appId=%s queueSizeBeforePop=%zu", request.appId.c_str(), _reconcileRequests.size());
+                        _reconcileRequests.pop();
+                        _reconcileInProgress = true;
+                        _reconcileAppId = request.appId;
+                        _reconcileAppSystemMemoryLimitKb = request.appMemoryLimitKb;
+                    }
                 }
                 ProcessReconcileRequest(request);
             }
@@ -848,10 +862,15 @@ namespace WPEFramework {
             string completedAppId;
             {
                 std::lock_guard<std::mutex> lock(_reconcileMutex);
+                if (!_reconcileInProgress) {
+                    LOGWARN("Ignoring reconciliation completion: no active request");
+                    return;
+                }
                 completedAppId = _reconcileAppId;
                 _reconcileAppId.clear();
                 _reconcileAppSystemMemoryLimitKb = 0;
                 _reconcileInProgress = false;
+                _reconcileEvictionRetryPending = false;
             }
             OnReconciliationComplete(completedAppId, targetRamAchieved);
             _reconcileConditionVariable.notify_one();
@@ -860,21 +879,11 @@ namespace WPEFramework {
         Core::hresult ResourceMonitorImplementation::Evict(const std::string& reason, const std::string& action, EvictionOwner owner)
         {
             Exchange::IVictimSelector::EvictionReason evictionReason = Exchange::IVictimSelector::EVICTION_REASON_RAM;
-            Exchange::IVictimSelector::EvictionType evictionType = Exchange::IVictimSelector::EVICTION_TYPE_SOFT;
+            Exchange::IVictimSelector::EvictionType evictionType;
             LOGINFO("VictimSelector Evict is called!");
 
-            if (_evictionInProgress.exchange(true)) {
-                LOGWARN("Eviction already in progress");
-                return Core::ERROR_INPROGRESS;
-            }
-            
-            if (_victimSelector == nullptr) {
-                _evictionInProgress = false;
-                LOGWARN("VictimSelector is not available");
-                return Core::ERROR_UNAVAILABLE;
-            }
-
-            // Mapping VictimSelector eviction types.
+            // Determine the requested eviction type before checking whether
+            // another eviction is already in progress.
             if (action == "Kill") {
                 evictionType = Exchange::IVictimSelector::EVICTION_TYPE_HARD;
             }
@@ -882,22 +891,63 @@ namespace WPEFramework {
                 evictionType = Exchange::IVictimSelector::EVICTION_TYPE_SOFT;
             }
             else {
-                _evictionInProgress = false;
                 LOGWARN("Invalid VictimSelector action: %s", action.c_str());
                 return Core::ERROR_BAD_REQUEST;
             }
 
-            // RAM for now as GPU and FLASH are not implemented yet.
-            evictionReason = Exchange::IVictimSelector::EVICTION_REASON_RAM;
+            if (_victimSelector == nullptr) {
+                LOGWARN("VictimSelector is not available");
+                return Core::ERROR_UNAVAILABLE;
+            }
+
+            // An eviction is already active. Allow only SOFT -> HARD escalation.
+            if (_evictionInProgress.load()) {
+                if (evictionType == Exchange::IVictimSelector::EVICTION_TYPE_HARD) {
+                    auto expected = Exchange::IVictimSelector::EVICTION_TYPE_SOFT;
+                    if (_pendingEvictionType.compare_exchange_strong(expected, Exchange::IVictimSelector::EVICTION_TYPE_HARD)) {
+                        LOGWARN("Upgrading pending SOFT eviction to HARD");
+                        const Core::hresult result = _victimSelector->Evict(evictionReason, evictionType);
+                        if (result != Core::ERROR_NONE) {
+                            // Restore SOFT only if the original eviction is still active and the type has not changed again.
+                            expected = Exchange::IVictimSelector::EVICTION_TYPE_HARD;
+                            _pendingEvictionType.compare_exchange_strong(expected, Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
+                            LOGERR("VictimSelector HARD escalation failed: %u", result);
+                        }
+                        // Do not change _evictionOwner. The original eviction remains responsible for completing its operation.
+                        return result;
+                    }
+                }
+                LOGWARN("Eviction already in progress; requested eviction cannot be started");
+                return Core::ERROR_INPROGRESS;
+            }
+
+            // Claim the eviction slot. Another thread may have claimed it
+            // after the earlier load.
+            bool expectedNotInProgress = false;
+            if (!_evictionInProgress.compare_exchange_strong(expectedNotInProgress, true)) {
+                LOGWARN("Eviction already in progress");
+                return Core::ERROR_INPROGRESS;
+            }
+
+            _pendingEvictionType.store(evictionType);
             _evictionOwner.store(owner);
             LOGINFO("Calling VictimSelector::Evict: reason=%s action=%s", reason.c_str(), action.c_str());
-
             const Core::hresult result = _victimSelector->Evict(evictionReason, evictionType);
             if (result != Core::ERROR_NONE) {
-                _evictionInProgress = false;
-                LOGERR("VictimSelector::Evict failed!: result=%u", result);
+                // VictimSelector can invoke OnEvictComplete synchronously and still return an error. Claim the operation only if its callback has not already claimed it.
+                const EvictionOwner pendingOwner = _evictionOwner.exchange(EvictionOwner::NONE);
+                if (pendingOwner != EvictionOwner::NONE) {
+                    _evictionInProgress.store(false);
+                    _pendingEvictionType.store(Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
+                    LOGERR("VictimSelector::Evict failed: result=%u", result);
+                    return result;
+                }
+
+                // The callback already claimed completion. Do not let the caller complete the same reconciliation a second time.
+                LOGWARN("Eviction callback already handled the failed request");
+                return Core::ERROR_NONE;
             }
-            return result;
+            return Core::ERROR_NONE;
         }
 
         void ResourceMonitorImplementation::OnEvictComplete(const bool evicted, const Exchange::IVictimSelector::EvictErrorReason errorCode)
@@ -908,10 +958,15 @@ namespace WPEFramework {
             uint64_t swapFree = 0;
             uint64_t swapTotal, remainingMemory = 0;
             Core::hresult result = Core::ERROR_NONE;
-            EvictionOwner owner = _evictionOwner.exchange(EvictionOwner::NONE);
-            _evictionInProgress = false;
-            LOGINFO("VictimSelector::OnEvictComplete: evicted=%s errorCode=%u", evicted ? _T("true") : _T("false"), static_cast<uint32_t>(errorCode));
 
+            EvictionOwner owner = _evictionOwner.exchange(EvictionOwner::NONE);
+            if (owner == EvictionOwner::NONE) {
+                LOGWARN("Ignoring duplicate or already handled eviction callback");
+                return;
+            }
+            _evictionInProgress.store(false);
+            _pendingEvictionType.store(Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
+            LOGINFO("VictimSelector::OnEvictComplete: evicted=%s errorCode=%u", evicted ? _T("true") : _T("false"), static_cast<uint32_t>(errorCode));
             // No active Reconcile. This eviction was triggered by the reactive resource monitoring path.
             {
                 std::lock_guard<std::mutex> lock(_reconcileMutex);
@@ -953,13 +1008,17 @@ namespace WPEFramework {
                 return;
             }
 
-            // Still not enough memory. Ask VictimSelector for another victim. The SAME Reconcile remains active.
-            LOGWARN("Still insufficient memory. Requesting another eviction");
-            const Core::hresult evictionResult = Evict("systemMemoryLow", "terminate", EvictionOwner::RECONCILE);
-            if (evictionResult != Core::ERROR_NONE) {
-                LOGERR("VictimSelector Evict failed during continued reconciliation");
-                CompleteReconcile(false);
+            // Still insufficient memory. Schedule the retry on the reconciliation worker. Do not call VictimSelector again from this callback.
+            LOGWARN("Still insufficient memory. Scheduling eviction retry");
+            {
+                std::lock_guard<std::mutex> lock(_reconcileMutex);
+                if (!_reconcileInProgress) {
+                    LOGERR("Cannot schedule eviction retry: no active reconciliation");
+                    return;
+                }
+                _reconcileEvictionRetryPending = true;
             }
+            _reconcileConditionVariable.notify_one();
         }
     } // namespace Plugin
 } // namespace WPEFramework
