@@ -31,6 +31,7 @@
 #include <plugins/plugins.h>
 #include <mutex>
 #include <map>
+#include <set>
 #include <thread>
 
 namespace WPEFramework
@@ -158,11 +159,13 @@ namespace WPEFramework
             bool isValidSemVer(const std::string &version);
             bool isNewerVersion(const std::string &v1, const std::string &v2);
             bool readPreinstallDirectory(Exchange::IPackageInstaller* packageInstaller, std::list<PackageInfo> &packages);
+            bool readPreinstalledUpdateExclusionList();
             string getFailReason(FailReason reason);
 
         private:
             mutable Core::CriticalSection mAdminLock;
             std::string mAppPreinstallDirectory;
+            std::set<std::string> mPreinstalledUpdateExclusionList;
             std::list<Exchange::IPreinstallManager::INotification*> mPreinstallManagerNotifications;
             PluginHost::IShell *mCurrentservice;
             State mPreinstallState;
