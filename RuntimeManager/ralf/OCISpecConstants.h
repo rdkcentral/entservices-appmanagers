@@ -81,7 +81,7 @@ namespace ralf
     constexpr const char *PERMISSION_THUNDER = "urn:rdk:permission:thunder";
 
     constexpr const char *CONFIG_OVERRIDES_URN = "urn:rdk:config:overrides";
-
+    constexpr const char *DIAL_CONFIG_URN = "urn:rdk:config:dial";
     constexpr const char *NETWORK_CONFIG_URN = "urn:rdk:config:network";
 
     constexpr const char *NETWORK = "network";

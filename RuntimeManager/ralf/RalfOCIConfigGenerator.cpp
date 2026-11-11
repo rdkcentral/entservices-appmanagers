@@ -475,6 +475,7 @@ namespace ralf
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
         }
         // Process urn:rdk:config:network - spec matrix: Application/Service/Runtime (N/A for Base)
+        // urn:rdk:config:dial if present will be handled by updateNetworkConfigurationNode.
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE || packageType == PKG_TYPE_RUNTIME)
         {
             status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
