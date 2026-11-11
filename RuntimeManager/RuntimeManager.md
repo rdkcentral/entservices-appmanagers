@@ -43,6 +43,9 @@ remain independent. These vendor mounts apply to Dobby-spec generation, not RALF
 
 Enable the same CMake option for the standalone L0 target to build the YAML
 parsing and vendor-mount regression tests; this requires `yaml-cpp`.
+RALF OCI generation adds Wayland environment variables and the socket bind mount
+only when `mWesterosSocketPath` is configured; headless daemon containers omit
+these display settings.
 
 ### Interacting Subsystems
 
