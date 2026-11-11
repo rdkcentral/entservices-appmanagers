@@ -37,7 +37,7 @@ static std::atomic<bool> sRunning{false};
 
 #ifdef APP_MANAGER_RESOURCE_MONITOR
 namespace {
-void loadHibernationStoragePath(std::string& storagePath)
+void loadHibernationSettings(std::string& storagePath, bool& hibernationEnabled)
 {
     std::ifstream configFile(AICONFIGURATION_JSON_PATH);
     if (!configFile.is_open())
@@ -50,7 +50,7 @@ void loadHibernationStoragePath(std::string& storagePath)
     std::string errors;
     if (!Json::parseFromStream(builder, configFile, &root, &errors))
     {
-        LOGWARN("Could not parse '%s' for hibernation storage path: %s",
+        LOGWARN("Could not parse '%s' for hibernation settings: %s",
                 AICONFIGURATION_JSON_PATH, errors.c_str());
         return;
     }
@@ -58,7 +58,12 @@ void loadHibernationStoragePath(std::string& storagePath)
     if (!root.isObject() || !root["apps"].isObject())
         return;
     const Json::Value& hibernate = root["apps"]["hibernate"];
-    if (hibernate.isObject() && hibernate["flashStoragePath"].isString())
+    if (!hibernate.isObject())
+        return;
+
+    if (hibernate["enable"].isBool())
+        hibernationEnabled = hibernate["enable"].asBool();
+    if (hibernate["flashStoragePath"].isString())
         storagePath = hibernate["flashStoragePath"].asString();
 }
 } // namespace
@@ -774,7 +779,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
             }
         }
 
-        loadHibernationStoragePath(mHibernationStoragePath);
+        loadHibernationSettings(mHibernationStoragePath, mHibernationEnabled);
 
         mStateTransitionManager.reset(new AppStateTransitionManager(*this));
         mStateTransitionManager->Configure(pausedToSuspendedTimeout, suspendedToHibernatedTimeout);
