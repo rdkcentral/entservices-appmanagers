@@ -21,6 +21,7 @@
 #include <atomic>
 #include <algorithm>
 #include <cctype>
+#include <fstream>
 #include <sys/stat.h>
 #ifdef APP_MANAGER_RESOURCE_MONITOR
 #include <sys/statvfs.h>
@@ -31,7 +32,37 @@
 #include "UtilsAppManagerTelemetry.h"
 
 #define TIME_DATA_SIZE           200
+#define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
 static std::atomic<bool> sRunning{false};
+
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+namespace {
+void loadHibernationStoragePath(std::string& storagePath)
+{
+    std::ifstream configFile(AICONFIGURATION_JSON_PATH);
+    if (!configFile.is_open())
+        return;
+
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    builder["allowComments"] = true;
+    builder["strictRoot"] = false;
+    std::string errors;
+    if (!Json::parseFromStream(builder, configFile, &root, &errors))
+    {
+        LOGWARN("Could not parse '%s' for hibernation storage path: %s",
+                AICONFIGURATION_JSON_PATH, errors.c_str());
+        return;
+    }
+
+    if (!root.isObject() || !root["apps"].isObject())
+        return;
+    const Json::Value& hibernate = root["apps"]["hibernate"];
+    if (hibernate.isObject() && hibernate["flashStoragePath"].isString())
+        storagePath = hibernate["flashStoragePath"].asString();
+}
+} // namespace
+#endif
 
 RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
 
@@ -741,11 +772,9 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
             {
                 suspendedToHibernatedTimeout = static_cast<uint32_t>(configuration["suspendedToHibernatedTimeout"].Number());
             }
-            if (configuration.HasLabel("hibernationStoragePath"))
-            {
-                mHibernationStoragePath = configuration["hibernationStoragePath"].String();
-            }
         }
+
+        loadHibernationStoragePath(mHibernationStoragePath);
 
         mStateTransitionManager.reset(new AppStateTransitionManager(*this));
         mStateTransitionManager->Configure(pausedToSuspendedTimeout, suspendedToHibernatedTimeout);

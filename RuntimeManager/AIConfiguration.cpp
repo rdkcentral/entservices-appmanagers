@@ -29,8 +29,6 @@
 #include <climits>
 #include <cinttypes>
 #include <cctype>
-#include <algorithm>
-#include <sys/mount.h>
 #include <sys/stat.h>
 #include <yaml-cpp/yaml.h>
 #endif
@@ -62,7 +60,6 @@ namespace Plugin
         , mIonHeapQuotas()
         , mPreloads()
         , mEnvVariables()
-        , mExtraMounts()
         , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
         , mRialtoOverride(-1)
         , mHibernationEnabled(false)
@@ -79,7 +76,6 @@ namespace Plugin
 
     void AIConfiguration::initialize(const std::string& runtimeConfigFile)
     {
-        mExtraMounts.clear();
         readFromConfigFile();
 #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
         readFromYamlConfigFile(runtimeConfigFile);
@@ -179,11 +175,6 @@ namespace Plugin
     std::list<std::string> AIConfiguration::getEnvs() const
     {
         return mEnvVariables;
-    }
-
-    const std::vector<AIConfiguration::VendorMount>& AIConfiguration::getVendorMounts() const
-    {
-        return mExtraMounts;
     }
 
     std::map<std::string, size_t> AIConfiguration::getIonHeapQuotas() const
@@ -544,67 +535,6 @@ namespace Plugin
                 }
             }
 
-            const YAML::Node mountsNode = root["mounts"];
-            if (mountsNode.IsDefined() && !mountsNode.IsSequence()) {
-                LOGWARN("Invalid mounts in YAML: expected a sequence");
-            } else if (mountsNode.IsSequence()) {
-                const std::map<std::string, unsigned long> supportedFlags = {
-                    {"MS_BIND", MS_BIND}, {"MS_REC", MS_REC},
-                    {"MS_RDONLY", MS_RDONLY}, {"MS_NOSUID", MS_NOSUID},
-                    {"MS_NODEV", MS_NODEV}, {"MS_NOEXEC", MS_NOEXEC},
-                    {"MS_SILENT", MS_SILENT}, {"MS_SYNCHRONOUS", MS_SYNCHRONOUS},
-                    {"MS_DIRSYNC", MS_DIRSYNC}, {"MS_NODIRATIME", MS_NODIRATIME},
-                    {"MS_RELATIME", MS_RELATIME}, {"MS_NOATIME", MS_NOATIME},
-                    {"MS_STRICTATIME", MS_STRICTATIME}
-                };
-                const auto trim = [](const std::string& value) {
-                    const auto first = std::find_if_not(value.begin(), value.end(),
-                        [](unsigned char ch) { return std::isspace(ch); });
-                    const auto last = std::find_if_not(value.rbegin(), value.rend(),
-                        [](unsigned char ch) { return std::isspace(ch); }).base();
-                    return first < last ? std::string(first, last) : std::string();
-                };
-                std::set<std::string> mountPaths;
-                for (const auto& entry : mountsNode) {
-                    if (!entry.IsScalar()) {
-                        LOGWARN("Invalid vendor mount in YAML: expected a string");
-                        continue;
-                    }
-                    const std::string value = entry.as<std::string>();
-                    const auto separator = value.find(',');
-                    if (std::string::npos == separator ||
-                        std::string::npos != value.find(',', separator + 1)) {
-                        LOGWARN("Invalid vendor mount '%s': expected path,flags", value.c_str());
-                        continue;
-                    }
-                    const std::string path = trim(value.substr(0, separator));
-                    if (path.empty() || '/' != path.front()) {
-                        LOGWARN("Invalid vendor mount '%s': expected an absolute path", value.c_str());
-                        continue;
-                    }
-                    std::istringstream flagsStream(value.substr(separator + 1));
-                    std::string flagName;
-                    unsigned long mountFlags = 0;
-                    bool validFlags = '|' != value.back();
-                    while (std::getline(flagsStream, flagName, '|')) {
-                        const auto flag = supportedFlags.find(trim(flagName));
-                        if (flag == supportedFlags.end()) {
-                            validFlags = false;
-                            break;
-                        }
-                        mountFlags |= flag->second;
-                    }
-                    if (!validFlags || 0 == (mountFlags & MS_BIND)) {
-                        LOGWARN("Invalid vendor mount '%s': unsupported flags or missing MS_BIND", value.c_str());
-                        continue;
-                    }
-                    if (mountPaths.insert(path).second) {
-                        mExtraMounts.emplace_back(path, mountFlags);
-                        LOGINFO("Configured vendor mount: %s", path.c_str());
-                    }
-                }
-            }
-
             //printAIConfiguration();
 
         } catch (const std::exception& ex) {
@@ -621,6 +551,13 @@ namespace Plugin
     bool AIConfiguration::getHibernationEnabled() const { return mHibernationEnabled; }
     const std::string& AIConfiguration::getHibernateCompression() const { return mHibernateCompression; }
     const std::string& AIConfiguration::getHibernateFlashStoragePath() const { return mHibernateFlashStoragePath; }
+
+    void AIConfiguration::overrideHibernationSettings(bool enabled, const std::string& compression)
+    {
+        mHibernationEnabled = enabled;
+        if (compression.empty() || compression == "lz4" || compression == "zstd")
+            mHibernateCompression = compression;
+    }
 
     void AIConfiguration::readFromConfigFile()
     {
@@ -702,18 +639,21 @@ namespace Plugin
             mGstreamerRegistryEnabled = getObj(getObj(apps, "gstreamer"), "registryEnabled").asBool();
 
         // ---- hibernation -------------------------------------------------
-        if (hibernate["enable"].isBool())
-            mHibernationEnabled = hibernate["enable"].asBool();
-        if (hibernate["defaultCompression"].isString())
+        if (hibernate.isObject())
         {
-            const std::string compression = hibernate["defaultCompression"].asString();
-            if (compression == "lz4" || compression == "zstd")
-                mHibernateCompression = compression;
-            else
-                LOGWARN("Unsupported hibernate.defaultCompression='%s'; using %s", compression.c_str(), mHibernateCompression.c_str());
+            if (hibernate["enable"].isBool())
+                mHibernationEnabled = hibernate["enable"].asBool();
+            if (hibernate["defaultCompression"].isString())
+            {
+                const std::string compression = hibernate["defaultCompression"].asString();
+                if (compression == "lz4" || compression == "zstd")
+                    mHibernateCompression = compression;
+                else
+                    LOGWARN("Unsupported hibernate.defaultCompression='%s'; using %s", compression.c_str(), mHibernateCompression.c_str());
+            }
+            if (hibernate["flashStoragePath"].isString())
+                mHibernateFlashStoragePath = hibernate["flashStoragePath"].asString();
         }
-        if (hibernate["flashStoragePath"].isString())
-            mHibernateFlashStoragePath = hibernate["flashStoragePath"].asString();
 
         // ---- SVP files ---------------------------------------------------
         if (svp["files"].isArray())

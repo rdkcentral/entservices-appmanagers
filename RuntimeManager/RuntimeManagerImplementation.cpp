@@ -348,6 +348,15 @@ namespace WPEFramework
                 LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
                 mAIConfiguration = new AIConfiguration();
                 mAIConfiguration->initialize(mRuntimeConfigFile);
+                if (config.hibernation.enable.IsSet() || config.hibernation.defaultCompression.IsSet())
+                {
+                    mAIConfiguration->overrideHibernationSettings(
+                        config.hibernation.enable.IsSet() ? config.hibernation.enable.Value()
+                                                          : mAIConfiguration->getHibernationEnabled(),
+                        config.hibernation.defaultCompression.IsSet()
+                            ? config.hibernation.defaultCompression.Value()
+                            : mAIConfiguration->getHibernateCompression());
+                }
 
                 if (mAIConfiguration->getGstreamerRegistryEnabled())
                 {
