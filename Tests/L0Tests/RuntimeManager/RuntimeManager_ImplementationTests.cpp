@@ -291,9 +291,9 @@ uint32_t Test_Impl_TerminateEmptyAppInstanceId()
 {
     L0Test::TestResult tr;
 
-    const auto result = impl->Hibernate("");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
-                        "Hibernate() returns ERROR_UNAVAILABLE when hibernation is not configured");
+    auto* impl = CreateImpl();
+    const auto result = impl->Terminate("");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
                         "Terminate() with empty appInstanceId returns ERROR_GENERAL");
 
     impl->Release();
@@ -308,9 +308,9 @@ uint32_t Test_Impl_TerminateEmptyAppInstanceId()
 uint32_t Test_Impl_TerminateNoOCIPlugin()
 {
     L0Test::TestResult tr;
-    const auto result = impl->Hibernate("youTube");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
-                        "Hibernate() returns ERROR_UNAVAILABLE when hibernation is not configured, before checking whether an OCI plugin is available.");
+
+    auto* impl = CreateImpl();
+    const auto result = impl->Terminate("youTube");
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
                         "Terminate() without OCI plugin returns ERROR_GENERAL");
 
