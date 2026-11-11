@@ -292,7 +292,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
 				AppInfoManager::getInstance().setRequestedLaunchVersion(appId, packageData.version);
 
                                 // Preserve legacy behavior by appending launchArgs["env"] only for preload requests.
-                                if ((APP_ACTION_PRELOAD == action) && (Core::ERROR_NONE == status) && launchArgsObj.HasLabel("env"))
+                                if ((Core::ERROR_NONE == status) && launchArgsObj.HasLabel("env"))
                                 {
                                     if (launchArgsObj["env"].Content() != JsonValue::type::ARRAY)
                                     {
@@ -318,6 +318,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                         }
                                     }
                                 }
+
                                 if ((status == Core::ERROR_NONE) && !runtimeConfig.Serialize(runtimeConfigPayload, payloadError))
                                 {
                                     LOGERR("Failed to serialize runtime configuration for appId=%s: %s", appId.c_str(), payloadError.c_str());
