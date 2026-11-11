@@ -703,7 +703,7 @@ uint32_t Test_AIConfig_VendorMounts()
         for (size_t index = 0; index < paths.size(); ++index)
         {
             L0Test::ExpectTrue(tr, paths[index] == mounts[index].getPath(), "Vendor mount path preserved");
-            const unsigned long expectedFlags = baseFlags | (index < 2 ? 0 : MS_RDONLY);
+            const unsigned long expectedFlags = baseFlags | (2 > index ? 0 : MS_RDONLY);
             L0Test::ExpectTrue(tr, expectedFlags == mounts[index].getMountFlags(), "Vendor mount flags preserved");
         }
     }
