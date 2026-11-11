@@ -60,7 +60,7 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev gdb ninja-build libxtables-dev libip4tc-dev libip6tc-dev libcapture-tiny-perl libdatetime-perl libtimedate-perl
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev gdb ninja-build libxtables-dev libip4tc-dev libip6tc-dev libcapture-tiny-perl libdatetime-perl libtimedate-perl libyaml-cpp-dev
 
       - name: Install lcov 2.4
         env:
@@ -376,6 +376,7 @@ jobs:
             -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
             -DPREFIX="$PREFIX" \
             -DPLUGIN_RUNTIME_MANAGER=ON \
+            -DENABLE_RDKAPPMANAGERS_RUNTIMECONFIG=ON \
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_RDK_WINDOW_MANAGER=ON \
             -DPLUGIN_DOWNLOAD_MANAGER=ON \
