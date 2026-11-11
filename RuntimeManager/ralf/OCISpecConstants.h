@@ -103,6 +103,10 @@ namespace ralf
     constexpr const char *MAX_LOCAL_STORAGE = "maxLocalStorage";
     constexpr const char *ENV_CONFIG_URN = "urn:rdk:config:env";
 
+#ifdef ALLOW_DEV_MOUNT_SUPPORT
+    constexpr const char *DEV_MOUNT_SUPPORT_URN = "urn:rdk:config:extra-mounts-dbg";
+#endif // ALLOW_DEV_MOUNT_SUPPORT
+
     constexpr const char *RUNTIME_CONFIG_OVERRIDES_ENV_KEY = "RUNTIME_CONFIG_OVERRIDES_JSON";
     constexpr const char *APP_CONFIG_OVERRIDES_ENV_KEY = "APP_CONFIG_OVERRIDES_JSON";
 

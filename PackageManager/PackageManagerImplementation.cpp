@@ -170,6 +170,7 @@ namespace Plugin {
             PackageManagerImplementation::Configuration config;
             config.FromString(service->ConfigLine());
             downloadDir = config.downloadDir;
+            enablePackageSpecifierRuntimes = config.enablePackageSpecifierRuntimes.Value();
 
             // Remove trailing slashes (unless path is just "/")
             while (!downloadDir.empty() && 1 < downloadDir.size() && '/' == downloadDir.back()) {
@@ -1627,6 +1628,60 @@ Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(co
     }
 
     return result;
+}
+
+Core::hresult PackageManagerImplementation::GetPackageSpecifierRuntimes(
+    Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator *&runtimes)
+{
+    runtimes = nullptr;
+    if (!enablePackageSpecifierRuntimes)
+    {
+        return Core::ERROR_NOT_SUPPORTED;
+    }
+
+    CHECK_CACHE()
+    packagemanager::PackageSpecifierRuntimeMap runtimeMap;
+    std::vector<Exchange::IAppPackageConnector::PackageSpecifierRuntime> runtimeList;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
+        const packagemanager::Result pmResult = packageImpl->GetPackageSpecifierRuntimes(runtimeMap);
+        if (pmResult != packagemanager::SUCCESS)
+        {
+            return Core::ERROR_GENERAL;
+        }
+        for (const auto &runtime : runtimeMap)
+        {
+            Exchange::IAppPackageConnector::PackageSpecifierRuntime entry;
+            entry.packageSpecifier = runtime.first;
+            entry.packageId = runtime.second;
+            runtimeList.emplace_back(std::move(entry));
+        }
+    }
+    LOGINFO("Retrieved %zu package specifier runtimes", runtimeList.size());
+
+    runtimes = Core::Service<RPC::IteratorType<
+        Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator>>::Create<Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator>(runtimeList);
+    return (runtimes != nullptr) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
+}
+
+Core::hresult PackageManagerImplementation::SetPackageSpecifier(
+    const string &packageSpecifier, const string &packageId)
+{
+    if (!enablePackageSpecifierRuntimes)
+    {
+        return Core::ERROR_NOT_SUPPORTED;
+    }
+
+    CHECK_CACHE()
+
+    std::lock_guard<std::recursive_mutex> lock(mtxState);
+    const string installedVersion = GetInstalledVersion(packageId);
+    if (installedVersion.empty())
+    {
+        return Core::ERROR_UNKNOWN_KEY;
+    }
+    const packagemanager::Result pmResult = packageImpl->SetPackageSpecifierRuntime(packageSpecifier, packageId);
+    return (pmResult == packagemanager::SUCCESS) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
 }
 } // namespace Plugin
 } // namespace WPEFramework

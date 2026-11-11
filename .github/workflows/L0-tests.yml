@@ -17,7 +17,7 @@ env:
   THUNDER_TOOLS_REF: "R4_4-RDK"
   THUNDER_TOOLS_COMMIT_SHA: "d5dd83c7c19c49c7f25c558c126500bd2d64f7a4"
   THUNDER_COMMIT_SHA: "2c0fcc5529e7da734be558ca6efa05d934dcce31"
-  INTERFACES_REF: "a6e324d881e51d976a302e6cfe96d95e303d37ab"
+  INTERFACES_REF: "dbeab963ae87678a0e226cb478ee0c0deede0bc8"
 
 jobs:
   L0-tests:
@@ -60,7 +60,7 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev gdb ninja-build libxtables-dev libip4tc-dev libip6tc-dev libcapture-tiny-perl libdatetime-perl libtimedate-perl
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev gdb ninja-build libxtables-dev libip4tc-dev libip6tc-dev libcapture-tiny-perl libdatetime-perl libtimedate-perl libyaml-cpp-dev
 
       - name: Install lcov 2.4
         env:
@@ -376,6 +376,7 @@ jobs:
             -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
             -DPREFIX="$PREFIX" \
             -DPLUGIN_RUNTIME_MANAGER=ON \
+            -DENABLE_RDKAPPMANAGERS_RUNTIMECONFIG=ON \
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_RDK_WINDOW_MANAGER=ON \
             -DPLUGIN_DOWNLOAD_MANAGER=ON \
