@@ -60,7 +60,7 @@ namespace ralf
                 LOGERR("Failed to load Ralf package config JSON from file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
-            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
+            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode, runtimeConfigObject))
             {
                 LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
                 return false;
@@ -95,7 +95,7 @@ namespace ralf
 
     bool RalfOCIConfigGenerator::addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode)
     {
-        const char* thunderaccess = getenv(THUNDER_ACCESS_ENV_KEY);
+        const char *thunderaccess = getenv(THUNDER_ACCESS_ENV_KEY);
         if (nullptr != thunderaccess)
         {
             addToEnvironment(ociConfigRootNode, THUNDER_ACCESS_ENV_KEY, thunderaccess);
@@ -423,7 +423,7 @@ namespace ralf
         }
         return status;
     }
-    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
+    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject)
     {
         if (!addEntryPointToOCIConfig(ociConfigRootNode, manifestRootNode))
         {
@@ -435,6 +435,20 @@ namespace ralf
             LOGERR("Failed to apply Ralf Entry args for package");
             return false;
         }
+        std::string packageType;
+        if (manifestRootNode.isMember(PACKAGE_TYPE) && manifestRootNode[PACKAGE_TYPE].isString())
+        {
+            packageType = manifestRootNode[PACKAGE_TYPE].asString();
+        }
+        if (packageType == PKG_TYPE_RUNTIME)
+        {
+            if (!runtimeConfigObject.command.empty())
+            {
+                const std::string &command = runtimeConfigObject.command;
+                ociConfigRootNode[PROCESS][ARGS].append(command);
+                LOGDBG("Applied runtime command to OCI config: %s\n", command.c_str());
+            }
+        }
         // Everything else is optional. So return value will be true.
         //  Check if configuration node exists.
         if (!manifestRootNode.isMember(CONFIGURATION) || !manifestRootNode[CONFIGURATION].isObject())
@@ -444,20 +458,13 @@ namespace ralf
         }
         bool status = true;
         Json::Value configNode = manifestRootNode[CONFIGURATION];
-        std::string packageType;
-        if (manifestRootNode.isMember(PACKAGE_TYPE) && manifestRootNode[PACKAGE_TYPE].isString())
-        {
-            packageType = manifestRootNode[PACKAGE_TYPE].asString();
-        }
         // Apply APP_CONFIG_OVERRIDES_JSON/RUNTIME_CONFIG_OVERRIDES_JSON variables
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
         {
             status = addConfigOverridesToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied config overrides to OCI config ? %s\n", status ? "true" : "false");
-        }
-        // Apply "urn:rdk:config:memory", reserved
-        if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
-        {
+
+            // Apply "urn:rdk:config:memory", reserved
             status = addMemoryConfigToOCIConfig(ociConfigRootNode, configNode, packageType);
             LOGDBG("Applied memory config to OCI config ? %s\n", status ? "true" : "false");
 
@@ -664,18 +671,18 @@ namespace ralf
         return status;
     }
 
-    bool RalfOCIConfigGenerator::applyPermissionsToOCIConfig(Json::Value& ociConfigRootNode,
-                                                        const Json::Value& manifestRootNode,
-                                                        const std::vector<std::string>& envVariables)
+    bool RalfOCIConfigGenerator::applyPermissionsToOCIConfig(Json::Value &ociConfigRootNode,
+                                                             const Json::Value &manifestRootNode,
+                                                             const std::vector<std::string> &envVariables)
     {
-        const auto& pkgNode = manifestRootNode[PACKAGE_TYPE];
+        const auto &pkgNode = manifestRootNode[PACKAGE_TYPE];
         if (!pkgNode.isString())
         {
             LOGWARN("Package type is missing or not a string; skipping permission-based OCI config updates");
             return true;
         }
 
-        const char* pkgTypeStr = pkgNode.asCString();
+        const char *pkgTypeStr = pkgNode.asCString();
         if (!pkgTypeStr)
         {
             return true;
@@ -689,7 +696,7 @@ namespace ralf
             return true;
         }
 
-        const auto& permissions = manifestRootNode[ralf::PERMISSIONS];
+        const auto &permissions = manifestRootNode[ralf::PERMISSIONS];
         if (!permissions.isArray())
         {
             LOGWARN("Permissions node is missing or not an array; skipping permission-based OCI config updates");
@@ -704,10 +711,10 @@ namespace ralf
         return (nwStatus && envStatus);
     }
 
-    bool RalfOCIConfigGenerator::addPermissionBasedEnvironmentVariables(Json::Value& ociConfigRootNode,
-                                    const Json::Value& permissions, const std::vector<std::string>& envVariables)
+    bool RalfOCIConfigGenerator::addPermissionBasedEnvironmentVariables(Json::Value &ociConfigRootNode,
+                                                                        const Json::Value &permissions, const std::vector<std::string> &envVariables)
     {
-        for (const auto& permValue : permissions)
+        for (const auto &permValue : permissions)
         {
             if (!permValue.isString())
             {

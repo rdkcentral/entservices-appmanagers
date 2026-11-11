@@ -101,7 +101,7 @@ namespace ralf
          * @param manifestRootNode The manifest root node.
          * @return true if the configuration was applied successfully, false otherwise.
          */
-        bool applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
+        bool applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject);
 
         /**
          * Add device node entries from graphics config to OCI config.
