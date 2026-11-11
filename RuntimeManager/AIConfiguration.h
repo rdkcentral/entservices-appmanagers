@@ -62,6 +62,10 @@ namespace Plugin
             std::list<std::string> getEnvs() const;
 
             int getRialtoOverride() const;
+            bool getHibernationEnabled() const;
+            const std::string& getHibernateCompression() const;
+            const std::string& getHibernateFlashStoragePath() const;
+            void overrideHibernationSettings(bool enabled, const std::string& compression);
 
         private:
             void readFromCustomData();
@@ -95,6 +99,10 @@ namespace Plugin
             std::list<std::string> mSvpFiles;
             std::list<std::string> mDefaultAllowedLogLevels;
             int mRialtoOverride;
+            bool mHibernationEnabled;
+            std::string mHibernateCompression;
+            std::string mHibernateFlashStoragePath;
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+

@@ -348,6 +348,15 @@ namespace WPEFramework
                 LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
                 mAIConfiguration = new AIConfiguration();
                 mAIConfiguration->initialize(mRuntimeConfigFile);
+                if (config.hibernation.enable.IsSet() || config.hibernation.defaultCompression.IsSet())
+                {
+                    mAIConfiguration->overrideHibernationSettings(
+                        config.hibernation.enable.IsSet() ? config.hibernation.enable.Value()
+                                                          : mAIConfiguration->getHibernationEnabled(),
+                        config.hibernation.defaultCompression.IsSet()
+                            ? config.hibernation.defaultCompression.Value()
+                            : mAIConfiguration->getHibernateCompression());
+                }
 
                 if (mAIConfiguration->getGstreamerRegistryEnabled())
                 {
@@ -982,6 +991,18 @@ namespace WPEFramework
             /* Get current timestamp at the start of hibernate for telemetry */
             time_t requestTime = getCurrentTimestamp();
 
+            if (mAIConfiguration == nullptr || !mAIConfiguration->getHibernationEnabled())
+            {
+                LOGWARN("Hibernate rejected: hibernation is disabled by rdkappmanagers.json");
+                return Core::ERROR_UNAVAILABLE;
+            }
+            const std::string& destination = mAIConfiguration->getHibernateFlashStoragePath();
+            const std::string& compression = mAIConfiguration->getHibernateCompression();
+            if (!destination.empty())
+                options = "dest=" + destination;
+            if (!compression.empty())
+                options += (options.empty() ? "" : ",") + std::string("compress=") + compression;
+
             mRuntimeManagerImplLock.Lock();
 
             if(!isOCIPluginObjectValid())
@@ -1603,4 +1624,5 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 

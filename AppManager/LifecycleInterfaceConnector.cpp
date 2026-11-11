@@ -462,7 +462,8 @@ namespace WPEFramework
                             (Core::ERROR_NONE == status) &&
                             appInMap &&
                             ((Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED == currentState) ||
-                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == currentState)) && (false == versionChanged))
+                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == currentState) ||
+                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED == currentState)) && (false == versionChanged))
                         {
                             LOGINFO("Resume suspended app appId=%s appInstanceId=%s state=%d runningVersion=%s requestedVersion=%s versionChanged=%d",
                             appId.c_str(), appInfoSnap.getAppInstanceId().c_str(), static_cast<int>(appInfoSnap.getAppNewState()), runningVersion.c_str(),
@@ -1347,3 +1348,4 @@ End:
 
      } /* namespace Plugin */
 } /* namespace WPEFramework */
+

@@ -1,7 +1,7 @@
 /**
 * If not stated otherwise in this file or this component's LICENSE
 * file the following copyright and licenses apply:
-*
+    virtual ~RuntimeManagerTest() override
 * Copyright 2024 RDK Management
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -186,7 +186,8 @@ protected:
         interface->Release();
      }
 
-    bool createResources(void)
+    bool createResources(bool hibernationEnabled = false,
+                         const std::string& compression = "lz4")
     {
         mStoreageManagerMock = new NiceMock<StorageManagerMock>;
         mociContainerMock = new NiceMock<OCIContainerMock>;
@@ -218,9 +219,14 @@ protected:
         ON_CALL(*mWindowManagerMock, Register(::testing::_))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-        // Mock ConfigLine to return the runtime app portal configuration
+        // Set hibernation explicitly so tests do not depend on the host's
+        // /etc/rdk/rdkappmanagers.json settings.
+        const std::string configLine =
+            "{\"runtimeAppPortal\":\"com.sky.as.apps\",\"hibernate\":{\"enable\":"
+            + std::string(hibernationEnabled ? "true" : "false")
+            + ",\"defaultCompression\":\"" + compression + "\"}}";
         ON_CALL(*mServiceMock, ConfigLine())
-            .WillByDefault(::testing::Return("{\"runtimeAppPortal\":\"com.sky.as.apps\"}"));
+            .WillByDefault(::testing::Return(configLine));
 
         runTimeManagerConfigure->Configure(mServiceMock);
         return true;
@@ -505,7 +511,7 @@ TEST_F(RuntimeManagerTest, HibernateMethods)
 {
     string appInstanceId("youTube");
 
-    EXPECT_EQ(true, createResources());
+    EXPECT_EQ(true, createResources(true, "zstd"));
 
     EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(1)
@@ -529,7 +535,9 @@ TEST_F(RuntimeManagerTest, HibernateMethods)
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, RuntimeConfigurationPayload(runtimeConfig)));
 
-    EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID, "",::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID,
+                                                       "dest=/media/apps/memcr,compress=zstd",
+                                                       ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string&, const string&, bool& success, string& errorReason) {
@@ -539,6 +547,17 @@ TEST_F(RuntimeManagerTest, HibernateMethods)
           }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Hibernate(appInstanceId));
+    releaseResources();
+}
+
+TEST_F(RuntimeManagerTest, HibernateDisabledByConfiguration)
+{
+    EXPECT_EQ(true, createResources(false));
+
+    EXPECT_CALL(*mociContainerMock, HibernateContainer(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
+
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, interface->Hibernate("youTube"));
     releaseResources();
 }
 
@@ -556,9 +575,11 @@ TEST_F(RuntimeManagerTest, HibernateFailsWithEmptyAppInstanceId)
 {
     string appInstanceId("");
 
-    EXPECT_EQ(true, createResources());
+    EXPECT_EQ(true, createResources(true));
 
-    EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID_UNREGISTERED, "",::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID_UNREGISTERED,
+                                                       "dest=/media/apps/memcr,compress=lz4",
+                                                       ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string&, const string&, bool& success, string& errorReason) {
@@ -1401,7 +1422,7 @@ TEST_F(RuntimeManagerTest, WakeMethods)
     runtimeConfig.systemMemoryLimit = 512;
     runtimeConfig.command ="SkyBrowserLauncher";
 
-    EXPECT_EQ(true, createResources());
+    EXPECT_EQ(true, createResources(true));
 
     EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, "", "/run/user/1001/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -1415,7 +1436,9 @@ TEST_F(RuntimeManagerTest, WakeMethods)
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
 
-    EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID, "",::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID,
+                                                       "dest=/media/apps/memcr,compress=lz4",
+                                                       ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string&, const string&, bool& success, string& errorReason) {
@@ -1512,7 +1535,7 @@ TEST_F(RuntimeManagerTest, WakeWithGeneralError)
     runtimeConfig.systemMemoryLimit = 512;
     runtimeConfig.command ="SkyBrowserLauncher";
 
-    EXPECT_EQ(true, createResources());
+    EXPECT_EQ(true, createResources(true));
 
     EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, "", "/run/user/1001/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -1526,7 +1549,9 @@ TEST_F(RuntimeManagerTest, WakeWithGeneralError)
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
 
-    EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID, "",::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID,
+                                                       "dest=/media/apps/memcr,compress=lz4",
+                                                       ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string&, const string&, bool& success, string& errorReason) {
@@ -2201,3 +2226,4 @@ TEST(DobbySpecGeneratorRialtoTest, RialtoPrefixedSocketPathUsedInSpec)
         << "Bare app temp path /tmp/amazonPrime must NOT appear in spec";
 }
 #endif // ENABLE_RIALTO
+
