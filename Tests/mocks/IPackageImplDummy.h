@@ -84,6 +84,7 @@ namespace packagemanager
     typedef std::pair<std::string, std::string> ConfigMetadataKey;
     typedef std::map<ConfigMetadataKey, ConfigMetaData> ConfigMetadataArray;
 
+    typedef std::map<std::string, std::string> PackageSpecifierRuntimeMap;
     typedef std::pair<std::string, std::string> NameValue;
     typedef std::vector<NameValue> NameValues;
     class IPackageImplDummy
@@ -185,10 +186,20 @@ namespace packagemanager
             applicationIds = ("YouTube" == packageId) ? "[\"YouTube\"]" : "[]";
             return SUCCESS;
         }
+       virtual Result SetPackageSpecifierRuntime(const std::string &packageSpecifier, const std::string &packageId) {
+            packageSpecifierRuntimeMap[packageSpecifier] = packageId;
+            return SUCCESS;
+        }
+        virtual Result GetPackageSpecifierRuntimes(PackageSpecifierRuntimeMap &rtPkgSpecifierList) {
+            rtPkgSpecifierList = packageSpecifierRuntimeMap;
+            return SUCCESS;
+        }
 
         static std::shared_ptr<packagemanager::IPackageImplDummy> instance() {
                 return std::make_shared<packagemanager::IPackageImplDummy>();
         }
+    private:
+        PackageSpecifierRuntimeMap packageSpecifierRuntimeMap;
     };
 
 }
