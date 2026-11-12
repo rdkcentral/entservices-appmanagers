@@ -64,7 +64,8 @@ namespace AppManagerTypes {
         APP_ACTION_CLOSE     = 5,
         APP_ACTION_TERMINATE = 6,
         APP_ACTION_HIBERNATE = 7,
-        APP_ACTION_KILL      = 8
+        APP_ACTION_KILL      = 8,
+        APP_ACTION_SET_TARGET_STATE = 9
     };
 
     /**

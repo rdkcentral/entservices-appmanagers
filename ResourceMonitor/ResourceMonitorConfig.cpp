@@ -63,6 +63,7 @@ void ResourceMonitorConfig::SetDefaults()
     _minPostWarningDelay = ResourceMonitorConfig::DEFAULT_MIN_POST_WARNING_DELAY;
     _softThresholdDeltaPercentage = ResourceMonitorConfig::DEFAULT_SOFT_THRESHOLD_DELTA;
     _hardThresholdDeltaPercentage = ResourceMonitorConfig::DEFAULT_HARD_THRESHOLD_DELTA;
+    _pausedToSuspendedTimeout = ResourceMonitorConfig::DEFAULT_PAUSED_TO_SUSPENDED_TIMEOUT;
     _pollingIntervalRfcValue = ResourceMonitorConfig::RFC_POLLING_INTERVAL;
     CalculateMemoryThresholds();
     CalculateSwapThresholds();
@@ -308,6 +309,15 @@ bool ResourceMonitorConfig::Load(const ResourceMonitorConfigJSON& json)
         _hardThresholdDeltaPercentage = ResourceMonitorConfig::DEFAULT_HARD_THRESHOLD_DELTA;
     }
 
+    // PAUSED to SUSPENDED timeout.
+    if (root.PausedToSuspendedTimeout.Value() > 0) {
+        _pausedToSuspendedTimeout = root.PausedToSuspendedTimeout.Value();
+    }
+    else {
+        LOGWARN("Invalid paused_to_suspended_timeout. Using default: %u", ResourceMonitorConfig::DEFAULT_PAUSED_TO_SUSPENDED_TIMEOUT);
+        _pausedToSuspendedTimeout = ResourceMonitorConfig::DEFAULT_PAUSED_TO_SUSPENDED_TIMEOUT;
+    }
+
     #ifdef WITH_RFC
         uint32_t rfcPollingInterval = _pollingInterval;
         if (Utils::ApplyRFCInt(ResourceMonitorConfig::RFC_POLLING_INTERVAL, rfcPollingInterval) && IsValidPollingInterval(rfcPollingInterval)) {
@@ -371,6 +381,7 @@ bool ResourceMonitorConfig::Load(const ResourceMonitorConfigJSON& json)
     LOGINFO("hard_threshold_max_psi=%.2f", _hardThresholdMaxPsi);
     LOGINFO("soft_threshold_delta_percentage=%u", _softThresholdDeltaPercentage);
     LOGINFO("hard_threshold_delta_percentage=%u", _hardThresholdDeltaPercentage);
+    LOGINFO("paused_to_suspended_timeout=%u", _pausedToSuspendedTimeout);
     return true;
 }
 } // namespace Plugin

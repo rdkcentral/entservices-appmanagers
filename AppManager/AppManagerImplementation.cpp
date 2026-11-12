@@ -1581,6 +1581,68 @@ Core::hresult AppManagerImplementation::CloseApp(const string& appId)
 }
 
 /*
+ * This function sets the target lifecycle state for an application
+ *
+ * Input:
+ * - const string& appId: The ID of the application.
+ * - const Exchange::IAppManager::AppLifecycleState targetState: The target lifecycle state.
+ *
+ * Output:
+ * - Returns a Core::hresult status code:
+ *     - Core::ERROR_NONE on success.
+ *     - Core::ERROR_GENERAL on error.
+ */
+Core::hresult AppManagerImplementation::SetTargetAppState(const string& appId, const Exchange::IAppManager::AppLifecycleState targetState)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+    AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
+    time_t requestTime = appManagerTelemetryReporting.getCurrentTimestampMs();
+    LOGINFO("SetTargetAppState Entered with appId %s targetState %d", appId.c_str(), static_cast<int>(targetState));
+
+    if (!appId.empty())
+    {
+        // Convert AppLifecycleState to LifecycleState
+        Exchange::ILifecycleManager::LifecycleState lifecycleState;
+        switch (targetState)
+        {
+            case Exchange::IAppManager::APP_STATE_PAUSED:
+                lifecycleState = Exchange::ILifecycleManager::PAUSED;
+                break;
+            case Exchange::IAppManager::APP_STATE_SUSPENDED:
+                lifecycleState = Exchange::ILifecycleManager::SUSPENDED;
+                break;
+            case Exchange::IAppManager::APP_STATE_HIBERNATED:
+                lifecycleState = Exchange::ILifecycleManager::HIBERNATED;
+                break;
+            default:
+                LOGERR("SetTargetAppState failed: unsupported targetState=%d for appId=%s", static_cast<int>(targetState), appId.c_str());
+                return Core::ERROR_GENERAL;
+        }
+
+        mAdminLock.Lock();
+        if (nullptr != mLifecycleInterfaceConnector)
+        {
+            status = mLifecycleInterfaceConnector->setTargetAppState(appId, lifecycleState);
+        }
+        else
+        {
+            LOGERR("SetTargetAppState failed: appId=%s lifecycleConnector=null", appId.c_str());
+        }
+        if(status == Core::ERROR_NONE)
+        {
+            updateCurrentActionTime(appId, requestTime, AppManagerImplementation::APP_ACTION_SET_TARGET_STATE);
+            appManagerTelemetryReporting.reportTelemetryData(appId, AppManagerImplementation::APP_ACTION_SET_TARGET_STATE);
+        }
+        mAdminLock.Unlock();
+    }
+    else
+    {
+        LOGERR("appId is empty");
+    }
+    return status;
+}
+
+/*
  * This function Starts terminating a running app. Lifecycle Manager will move the state into
  * TERMINATE_REQUESTED
  *.This will trigger a clean shutdown
