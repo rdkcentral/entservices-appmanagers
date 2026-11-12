@@ -213,6 +213,7 @@ class PackageManagerImplementation
         bool getRuntimeConfigString(const string &runtimeConfigPayload, const string &key, string &value);
         bool getRuntimeConfigUnsigned(const string &runtimeConfigPayload, const string &key, uint64_t &value);
         bool updateRuntimeConfigString(string &runtimeConfigPayload, const string &key, const string &value);
+        void addApplicationLifecycle(const string &packageId, const string &ralfPkgPath, string &runtimeConfigPayload);
         Core::hresult LockRuntime(State &state, string &unpackedPath);
         Core::hresult LockPackage(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
             uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks);

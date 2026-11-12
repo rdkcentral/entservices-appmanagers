@@ -65,6 +65,7 @@ namespace WPEFramework {
             , _evictionOwner(EvictionOwner::NONE)
             , _victimSelector(nullptr)
             , _victimSelectorNotification(this)
+            , _lifecycleConfigProvider()
             , _adminLock()
             , _rservice(nullptr)
             {
@@ -107,6 +108,7 @@ namespace WPEFramework {
             for (auto* notification : notifications) {
                 notification->Release();
             }
+            _lifecycleConfigProvider.reset();
             if (_rservice != nullptr) {
                 _rservice->Release();
                 _rservice = nullptr;
@@ -126,6 +128,10 @@ namespace WPEFramework {
             } else {
                 _rservice = service;
                 _rservice->AddRef();
+                if (!_lifecycleConfigProvider) {
+                    _lifecycleConfigProvider.reset(new PackageLifecycleConfigProvider(
+                        std::unique_ptr<IPackageLifecycleSource>(new PackageManagerLifecycleSource(_rservice))));
+                }
                 _victimSelector = _rservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IVictimSelector>("org.rdk.VictimSelector");
                 if (_victimSelector == nullptr) {
                     LOGERR("VictimSelector Interface is unavailable. ResourceMonitor will continue without Evict support");
@@ -173,6 +179,34 @@ namespace WPEFramework {
             LOGINFO("ResourceMonitorImplementation configuration loaded");
             return Core::ERROR_NONE;
 
+        }
+
+        Core::hresult ResourceMonitorImplementation::GetAppLifecycleCapabilities(const string& appId,
+            AppLifecycleCapabilities& capabilities, const string& version)
+        {
+            if (!_lifecycleConfigProvider) {
+                capabilities = AppLifecycleCapabilities();
+                return appId.empty() ? Core::ERROR_INVALID_PARAMETER : Core::ERROR_NONE;
+            }
+            return _lifecycleConfigProvider->GetLifecycleCapabilities(appId, capabilities, version);
+        }
+
+        Core::hresult ResourceMonitorImplementation::IsAppLifecycleStateSupported(const string& appId,
+            const AppLifecycleState state, bool& supported, const string& version)
+        {
+            AppLifecycleCapabilities capabilities;
+            const Core::hresult result = GetAppLifecycleCapabilities(appId, capabilities, version);
+            supported = (result == Core::ERROR_NONE) && capabilities.IsSupported(state);
+            return result;
+        }
+
+        Core::hresult ResourceMonitorImplementation::GetAppSuspendedStateConfig(const string& appId,
+            SuspendedStateConfig& config, const string& version)
+        {
+            AppLifecycleCapabilities capabilities;
+            const Core::hresult result = GetAppLifecycleCapabilities(appId, capabilities, version);
+            config = capabilities.suspended;
+            return result;
         }
 
         Core::hresult ResourceMonitorImplementation::Register(WPEFramework::Exchange::IResourceMonitor::INotification* notification)

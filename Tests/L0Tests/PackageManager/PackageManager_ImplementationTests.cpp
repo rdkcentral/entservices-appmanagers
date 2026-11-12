@@ -1,12 +1,18 @@
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <limits>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "PackageManagerImplementation.h"
 #include "RuntimeConfigPayload.h"
+#include "UtilsMemorySize.h"
 #include "ServiceMock.h"
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
@@ -1014,6 +1020,303 @@ uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable()
         WPEFramework::Core::ERROR_UNAVAILABLE,
         "GetRunningApplicationsUsingPackage() before cache initialization returns ERROR_UNAVAILABLE");
     impl->Release();
+
+    return tr.failures;
+}
+
+// ---------------------------------------------------------------------------
+// RDKEMW-28030: applicationLifecycle payload member and shared helpers
+// ---------------------------------------------------------------------------
+
+namespace {
+
+const char* const kLifecycleBlock =
+    "{\"supportedNonActiveStates\":[\"paused\",\"suspended\"],"
+    "\"maxSuspendedSystemMemory\":\"16M\",\"maxTimeToSuspendMemoryState\":10,"
+    "\"vendorFuture\":{\"cpuThreshold\":1}}";
+
+struct LifecycleFixtureDir {
+    std::string path;
+
+    LifecycleFixtureDir()
+    {
+        char tmpl[] = "/tmp/pm_l0_lifecycle_XXXXXX";
+        const char* created = mkdtemp(tmpl);
+        path = (created != nullptr) ? created : "/tmp";
+    }
+
+    ~LifecycleFixtureDir()
+    {
+        if (path != "/tmp") {
+            std::error_code ec;
+            std::filesystem::remove_all(path, ec);
+        }
+    }
+
+    std::string Write(const std::string& name, const std::string& contents) const
+    {
+        const std::string file = path + "/" + name;
+        std::ofstream out(file);
+        out << contents;
+        return file;
+    }
+
+    // Writes a libpackage-style package list that references the given metadata files.
+    std::string WritePackageList(const std::string& name, const std::vector<std::string>& metadataPaths) const
+    {
+        std::string list = "{\"packages\":[";
+        for (size_t i = 0; i < metadataPaths.size(); ++i) {
+            list += (i == 0 ? "" : ",");
+            list += "{\"pkgMountPath\":\"" + path + "/rootfs" + std::to_string(i) + "\",\"pkgMetaDataPath\":\"" + metadataPaths[i] + "\"}";
+        }
+        list += "]}";
+        return Write(name, list);
+    }
+};
+
+std::string MetadataJson(const std::string& id, const std::string& packageType, const std::string& configurationMembers)
+{
+    return "{\"id\":\"" + id + "\",\"version\":\"100.1.24\",\"packageType\":\"" + packageType +
+        "\",\"configuration\":{" + configurationMembers + "}}";
+}
+
+struct RalfPkgPathEnv {
+    explicit RalfPkgPathEnv(const std::string& value) { setenv("PACKAGEMANAGER_TEST_RALF_PKG_PATH", value.c_str(), 1); }
+    ~RalfPkgPathEnv() { unsetenv("PACKAGEMANAGER_TEST_RALF_PKG_PATH"); }
+};
+
+// Locks the dummy package, returns Lock() and GetLockedInfo() payloads, then unlocks it.
+void LockDummyPackage(L0Test::TestResult& tr, std::string& lockPayload, std::string& lockedInfoPayload)
+{
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    uint32_t lockId = 0;
+    std::string unpackedPath;
+    WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Lock("YouTube", "100.1.24", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+                                      lockId, unpackedPath, lockPayload, appMetadata),
+                        ERROR_NONE,
+                        "Lock() returns ERROR_NONE regardless of lifecycle metadata");
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+    }
+
+    std::string gatewayMetadataPath;
+    bool locked = false;
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->GetLockedInfo("YouTube", "100.1.24", unpackedPath, lockedInfoPayload, gatewayMetadataPath, locked),
+                        ERROR_NONE,
+                        "GetLockedInfo() returns ERROR_NONE");
+    L0Test::ExpectTrue(tr, locked, "GetLockedInfo() reports the package as locked");
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube", "100.1.24"), ERROR_NONE, "Unlock() returns ERROR_NONE");
+}
+
+bool PayloadMembersEqualExcept(const std::string& lhs, const std::string& rhs, const std::vector<std::string>& ignored)
+{
+    WPEFramework::Core::JSON::VariantContainer a;
+    WPEFramework::Core::JSON::VariantContainer b;
+    if (!a.FromString(lhs) || !b.FromString(rhs)) {
+        return false;
+    }
+    auto ignoredLabel = [&ignored](const std::string& label) {
+        return std::find(ignored.begin(), ignored.end(), label) != ignored.end();
+    };
+    for (const WPEFramework::Core::JSON::VariantContainer* side : { &a, &b }) {
+        const WPEFramework::Core::JSON::VariantContainer& other = (side == &a) ? b : a;
+        auto it = side->Variants();
+        while (it.Next()) {
+            const std::string label = it.Label();
+            if (ignoredLabel(label)) {
+                continue;
+            }
+            if (!other.HasLabel(label.c_str())) {
+                return false;
+            }
+            WPEFramework::Core::JSON::VariantContainer mineWrapper;
+            WPEFramework::Core::JSON::VariantContainer theirsWrapper;
+            mineWrapper[label.c_str()] = it.Current();
+            theirsWrapper[label.c_str()] = other[label.c_str()];
+            std::string mine;
+            std::string theirs;
+            mineWrapper.ToString(mine);
+            theirsWrapper.ToString(theirs);
+            if (mine != theirs) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool PayloadHasLifecycle(const std::string& payloadText, std::string& lifecycle)
+{
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    bool present = false;
+    return payload.Parse(payloadText, error) && payload.GetObject("applicationLifecycle", lifecycle, present, error) && present;
+}
+
+} // namespace
+
+uint32_t Test_PM_Impl_RuntimeConfigPayloadObjectAccessors()
+{
+    L0Test::TestResult tr;
+    std::string error;
+    std::string serialized;
+    bool present = true;
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    L0Test::ExpectTrue(tr, payload.Parse("{\"appPath\":\"/opt/app\"}", error), "Base payload parses");
+    L0Test::ExpectTrue(tr, payload.SetObject("applicationLifecycle", kLifecycleBlock, error), "SetObject() accepts a JSON object");
+    L0Test::ExpectTrue(tr, payload.Serialize(serialized, error), "Payload with nested object serializes");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload decoded;
+    std::string object;
+    L0Test::ExpectTrue(tr, decoded.Parse(serialized, error), "Serialized payload parses");
+    L0Test::ExpectTrue(tr, decoded.GetObject("applicationLifecycle", object, present, error) && present,
+                       "GetObject() returns the nested object");
+    WPEFramework::Core::JSON::VariantContainer lifecycle;
+    L0Test::ExpectTrue(tr, lifecycle.FromString(object), "Returned object is valid JSON");
+    L0Test::ExpectTrue(tr, lifecycle.HasLabel("vendorFuture") && lifecycle["vendorFuture"].Object().HasLabel("cpuThreshold"),
+                       "Nested unknown members survive the round trip");
+    L0Test::ExpectEqStr(tr, lifecycle["maxSuspendedSystemMemory"].String(), "16M", "String members survive the round trip");
+    std::string appPath;
+    L0Test::ExpectTrue(tr, decoded.GetString("appPath", appPath, present, error) && present && appPath == "/opt/app",
+                       "Other payload members are preserved");
+
+    std::string before;
+    L0Test::ExpectTrue(tr, payload.Serialize(before, error), "Payload serializes before invalid SetObject()");
+    L0Test::ExpectTrue(tr, !payload.SetObject("applicationLifecycle", "[1,2]", error), "SetObject() rejects a JSON array");
+    L0Test::ExpectTrue(tr, !payload.SetObject("applicationLifecycle", "{not json", error), "SetObject() rejects invalid JSON");
+    L0Test::ExpectTrue(tr, !payload.SetObject("applicationLifecycle", "", error), "SetObject() rejects empty input");
+    std::string after;
+    L0Test::ExpectTrue(tr, payload.Serialize(after, error), "Payload serializes after invalid SetObject()");
+    L0Test::ExpectEqStr(tr, after, before, "Rejected SetObject() leaves the payload unchanged");
+
+    L0Test::ExpectTrue(tr, decoded.GetObject("missing", object, present, error) && !present,
+                       "GetObject() on a missing key reports present=false");
+    L0Test::ExpectTrue(tr, !decoded.GetObject("appPath", object, present, error) && present,
+                       "GetObject() on a non-object member fails");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_ParseMemorySize()
+{
+    L0Test::TestResult tr;
+    uint64_t bytes = 0;
+
+    L0Test::ExpectTrue(tr, Utils::ParseMemorySize("16M", bytes) && bytes == 16777216ULL, "\"16M\" is 16777216 bytes");
+    L0Test::ExpectTrue(tr, Utils::ParseMemorySize("100B", bytes) && bytes == 100ULL, "\"100B\" is 100 bytes");
+    L0Test::ExpectTrue(tr, Utils::ParseMemorySize("1g", bytes) && bytes == 1073741824ULL, "\"1g\" is 1073741824 bytes");
+    L0Test::ExpectTrue(tr, Utils::ParseMemorySize("512KB", bytes) && bytes == 524288ULL, "\"512KB\" is 524288 bytes");
+    L0Test::ExpectTrue(tr, Utils::ParseMemorySize("2mb", bytes) && bytes == 2097152ULL, "\"2mb\" is 2097152 bytes");
+    L0Test::ExpectTrue(tr, Utils::ParseMemorySize("4096", bytes) && bytes == 4096ULL, "Plain number is bytes");
+
+    bytes = 7;
+    L0Test::ExpectTrue(tr, !Utils::ParseMemorySize("16X", bytes), "Unknown suffix is rejected");
+    L0Test::ExpectTrue(tr, !Utils::ParseMemorySize("", bytes), "Empty input is rejected");
+    L0Test::ExpectTrue(tr, !Utils::ParseMemorySize("M", bytes), "Missing digits are rejected");
+    L0Test::ExpectTrue(tr, !Utils::ParseMemorySize("16MBx", bytes), "Trailing characters are rejected");
+    L0Test::ExpectTrue(tr, !Utils::ParseMemorySize("16BB", bytes), "Double byte suffix is rejected");
+    L0Test::ExpectTrue(tr, !Utils::ParseMemorySize("-1M", bytes), "Negative values are rejected");
+    L0Test::ExpectTrue(tr, !Utils::ParseMemorySize("99999999999999999999", bytes), "Overflowing numbers are rejected");
+    L0Test::ExpectTrue(tr, !Utils::ParseMemorySize("17179869184G", bytes), "Overflowing multiplication is rejected");
+    L0Test::ExpectTrue(tr, bytes == 7, "Rejected input leaves the output unchanged");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_LockAddsApplicationLifecycle()
+{
+    L0Test::TestResult tr;
+
+    std::string baselinePayload;
+    std::string baselineLockedInfo;
+    LockDummyPackage(tr, baselinePayload, baselineLockedInfo);
+    std::string lifecycle;
+    L0Test::ExpectTrue(tr, !PayloadHasLifecycle(baselinePayload, lifecycle),
+                       "Without ralfPkgPath the payload has no applicationLifecycle");
+
+    LifecycleFixtureDir dir;
+    const std::string runtimeMeta = dir.Write("runtime.json",
+        MetadataJson("com.rdk.runtime", "runtime", "\"urn:rdk:config:application-lifecycle\":{\"supportedNonActiveStates\":[]}"));
+    const std::string appMeta = dir.Write("app.json",
+        MetadataJson("YouTube", "application",
+                     std::string("\"urn:rdk:config:memory\":{\"system\":\"256M\"},\"urn:rdk:config:application-lifecycle\":") + kLifecycleBlock));
+    const std::string ralfPkgPath = dir.WritePackageList("full_list.json", { runtimeMeta, appMeta });
+    RalfPkgPathEnv env(ralfPkgPath);
+
+    std::string lockPayload;
+    std::string lockedInfoPayload;
+    LockDummyPackage(tr, lockPayload, lockedInfoPayload);
+
+    L0Test::ExpectTrue(tr, PayloadHasLifecycle(lockPayload, lifecycle), "Lock() payload contains applicationLifecycle");
+    WPEFramework::Core::JSON::VariantContainer block;
+    L0Test::ExpectTrue(tr, block.FromString(lifecycle), "applicationLifecycle is a JSON object");
+    L0Test::ExpectEqStr(tr, block["maxSuspendedSystemMemory"].String(), "16M", "maxSuspendedSystemMemory is copied unchanged");
+    L0Test::ExpectEqStr(tr, block["maxTimeToSuspendMemoryState"].Value(), "10", "maxTimeToSuspendMemoryState is copied unchanged");
+    L0Test::ExpectTrue(tr, block["supportedNonActiveStates"].Array().Length() == 2,
+                       "The application's states are used, not the runtime dependency's");
+    L0Test::ExpectTrue(tr, block.HasLabel("vendorFuture") && block["vendorFuture"].Object().HasLabel("cpuThreshold"),
+                       "Unknown lifecycle members are preserved");
+
+    std::string lockedLifecycle;
+    L0Test::ExpectTrue(tr, PayloadHasLifecycle(lockedInfoPayload, lockedLifecycle) && lockedLifecycle == lifecycle,
+                       "GetLockedInfo() returns the same applicationLifecycle");
+    L0Test::ExpectTrue(tr, PayloadMembersEqualExcept(lockPayload, baselinePayload, { "applicationLifecycle", "ralfPkgPath" }),
+                       "Every other payload member is unchanged");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_LockWithoutApplicationLifecycle()
+{
+    L0Test::TestResult tr;
+    LifecycleFixtureDir dir;
+
+    struct Case {
+        const char* name;
+        std::string ralfPkgPath;
+    };
+    const std::vector<Case> cases = {
+        { "metadata without the lifecycle block",
+          dir.WritePackageList("noblock_list.json", { dir.Write("noblock.json", MetadataJson("YouTube", "application", "\"urn:rdk:config:memory\":{\"system\":\"256M\"}")) }) },
+        { "lifecycle block that is not an object",
+          dir.WritePackageList("notobject_list.json", { dir.Write("notobject.json", MetadataJson("YouTube", "application", "\"urn:rdk:config:application-lifecycle\":[\"paused\"]")) }) },
+        { "malformed metadata file",
+          dir.WritePackageList("malformed_list.json", { dir.Write("malformed.json", "{\"id\":\"YouTube\",\"configuration\":") }) },
+        { "metadata whose id does not match",
+          dir.WritePackageList("other_list.json", { dir.Write("other.json", MetadataJson("OtherApp", "application", std::string("\"urn:rdk:config:application-lifecycle\":") + kLifecycleBlock)) }) },
+        { "metadata file that does not exist",
+          dir.WritePackageList("missing_meta_list.json", { dir.path + "/does-not-exist.json" }) },
+        { "package list that does not exist",
+          dir.path + "/missing_metadata.json" },
+        { "malformed package list",
+          dir.Write("badlist.json", "{\"packages\":{}}") },
+    };
+
+    for (const Case& c : cases) {
+        RalfPkgPathEnv env(c.ralfPkgPath);
+        std::string lockPayload;
+        std::string lockedInfoPayload;
+        LockDummyPackage(tr, lockPayload, lockedInfoPayload);
+
+        std::string lifecycle;
+        L0Test::ExpectTrue(tr, !PayloadHasLifecycle(lockPayload, lifecycle),
+                           std::string("Lock() payload omits applicationLifecycle for ") + c.name);
+        L0Test::ExpectTrue(tr, !PayloadHasLifecycle(lockedInfoPayload, lifecycle),
+                           std::string("GetLockedInfo() payload omits applicationLifecycle for ") + c.name);
+        WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+        std::string error;
+        std::string ralfPkgPath;
+        bool present = false;
+        L0Test::ExpectTrue(tr, payload.Parse(lockPayload, error) && payload.GetString("ralfPkgPath", ralfPkgPath, present, error) &&
+                               present && ralfPkgPath == c.ralfPkgPath,
+                           std::string("Payload still reports ralfPkgPath for ") + c.name);
+    }
 
     return tr.failures;
 }
