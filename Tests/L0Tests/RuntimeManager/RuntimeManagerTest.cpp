@@ -80,6 +80,11 @@ extern uint32_t Test_AIConfig_ResourceManagerClientDisabledByDefault();
 extern uint32_t Test_AIConfig_SvpDisabledByDefault();
 extern uint32_t Test_AIConfig_IPv6DisabledByDefault();
 extern uint32_t Test_AIConfig_PrintAIConfigurationDoesNotCrash();
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+extern uint32_t Test_AIConfig_VendorMounts();
+extern uint32_t Test_AIConfig_InvalidVendorMounts();
+extern uint32_t Test_DobbySpecGenerator_VendorMounts();
+#endif
 extern uint32_t Test_DobbyEventListener_ConstructionAndDestruction();
 extern uint32_t Test_DobbyEventListener_InitializeWithNullOCIPlugin();
 extern uint32_t Test_DobbyEventListener_DeinitializeWithoutInitialize();
@@ -184,6 +189,9 @@ extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConf
 extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission();
 extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints();
 extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeEnabled();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeDisabled();
 
 // ── ralf/RalfPackageBuilder tests ─────────────────────────────────────────────
 extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
@@ -383,6 +391,11 @@ int main()
         { "AIConfig_SvpDisabledByDefault",                                           Test_AIConfig_SvpDisabledByDefault },
         { "AIConfig_IPv6DisabledByDefault",                                          Test_AIConfig_IPv6DisabledByDefault },
         { "AIConfig_PrintAIConfigurationDoesNotCrash",                               Test_AIConfig_PrintAIConfigurationDoesNotCrash },
+    #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+        { "AIConfig_VendorMounts",                                                  Test_AIConfig_VendorMounts },
+        { "AIConfig_InvalidVendorMounts",                                           Test_AIConfig_InvalidVendorMounts },
+        { "DobbySpecGenerator_VendorMounts",                                         Test_DobbySpecGenerator_VendorMounts },
+    #endif
         { "DobbyEventListener_ConstructionAndDestruction",                           Test_DobbyEventListener_ConstructionAndDestruction },
         { "DobbyEventListener_InitializeWithNullOCIPlugin",                          Test_DobbyEventListener_InitializeWithNullOCIPlugin },
         { "DobbyEventListener_DeinitializeWithoutInitialize",                        Test_DobbyEventListener_DeinitializeWithoutInitialize },
@@ -538,6 +551,9 @@ int main()
         { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission },
         { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints },
         { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeEnabled", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeEnabled },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeDisabled", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeDisabled },
 
         // ── ralf/RalfPackageBuilder tests ────────────────────────────────────
         { "RalfPackageBuilder_ConstructionAndDestruction",                           Test_RalfPackageBuilder_ConstructionAndDestruction },

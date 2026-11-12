@@ -41,6 +41,7 @@
 #include "UtilsLogging.h"
 #include "TelemetryMarkers.h"
 #include <interfaces/IAppPackageManager.h>
+#include <interfaces/IAppPackageConnector.h>
 #include <interfaces/IAppPackagesStatus.h>
 #include <interfaces/IAppStorageManager.h>
 
@@ -61,6 +62,7 @@ class PackageManagerImplementation
     , public Exchange::IAppPackageManagerConfig
     , public Exchange::IPackageCacheInitializer
     , public Exchange::IAppPackagesStatus
+    , public Exchange::IAppPackageConnector
 {
     private:
         class State {
@@ -87,8 +89,10 @@ class PackageManagerImplementation
                 Configuration()
                     : Core::JSON::Container()
                     , downloadDir()
+                    , enablePackageSpecifierRuntimes()
                 {
                     Add(_T("downloadDir"), &downloadDir); //
+                    Add(_T("enablePackageSpecifierRuntimes"), &enablePackageSpecifierRuntimes);
                 }
                 ~Configuration() = default;
 
@@ -99,6 +103,7 @@ class PackageManagerImplementation
 
             public:
                 Core::JSON::String downloadDir;
+                Core::JSON::Boolean enablePackageSpecifierRuntimes;
         };
 
         class DownloadInfo {
@@ -197,6 +202,11 @@ class PackageManagerImplementation
 	// IAppPackagesStatus methods
         Core::hresult GetRunningApplicationsUsingPackage(const string &packageId, string& applicationIds) override;
 
+        // IAppPackageConnector methods
+        Core::hresult GetPackageSpecifierRuntimes(
+            Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator*& runtimes) override;
+        Core::hresult SetPackageSpecifier(const string& packageSpecifier, const string& packageId) override;
+
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
             INTERFACE_ENTRY(Exchange::IPackageDownloader)
             INTERFACE_ENTRY(Exchange::IPackageInstaller)
@@ -204,6 +214,7 @@ class PackageManagerImplementation
             INTERFACE_ENTRY(Exchange::IAppPackageManagerConfig)
             INTERFACE_ENTRY(Exchange::IPackageCacheInitializer)
             INTERFACE_ENTRY(Exchange::IAppPackagesStatus)
+            INTERFACE_ENTRY(Exchange::IAppPackageConnector)
         END_INTERFACE_MAP
 
     private:
@@ -322,6 +333,7 @@ class PackageManagerImplementation
         std::recursive_mutex mtxState;
         StateMap  mState;
         bool cacheInitialized = false;
+        bool enablePackageSpecifierRuntimes = false;
 
         std::string downloadDir = "/opt/CDL/";
         string configStr;

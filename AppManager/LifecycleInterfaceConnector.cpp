@@ -251,7 +251,7 @@ namespace WPEFramework
                 }
                status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success);
             }
-                
+
             if ((Core::ERROR_NONE == status) && (true == success))
             {
                 LOGINFO("Update App Info");
@@ -261,7 +261,10 @@ namespace WPEFramework
                 AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
                     a.setAppInstanceId(capturedInstanceId);
                     a.setAppIntent(intent);
-                    a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                    if (AppManagerTypes::APPLICATION_TYPE_SYSTEM != a.getPackageInfoMutable().type)
+                    {
+                        a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                    }
                     a.setTargetAppState(targetState);
                 });
             }
@@ -459,7 +462,8 @@ namespace WPEFramework
                             (Core::ERROR_NONE == status) &&
                             appInMap &&
                             ((Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED == currentState) ||
-                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == currentState)) && (false == versionChanged))
+                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == currentState) ||
+                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED == currentState)) && (false == versionChanged))
                         {
                             LOGINFO("Resume suspended app appId=%s appInstanceId=%s state=%d runningVersion=%s requestedVersion=%s versionChanged=%d",
                             appId.c_str(), appInfoSnap.getAppInstanceId().c_str(), static_cast<int>(appInfoSnap.getAppNewState()), runningVersion.c_str(),
@@ -534,15 +538,15 @@ namespace WPEFramework
                                    appId.c_str(), suspendedAppInstanceId.c_str());
                                    status = restartSuspendedWithRequestedVersion(appId, intent, launchArgs, runtimeConfigPayload, suspendedAppInstanceId, requestedVersion);
 				 }
-                                     
+
                             }
                         }
                         else
                         {
-                           LOGINFO("Launching app appId=%s state=%d loaded=%d appInMap=%d runningVersion=%s requestedVersion=%s versionChanged=%d",
-                           appId.c_str(), static_cast<int>(appInfoSnap.getAppNewState()), loaded, appInMap, runningVersion.c_str(), requestedVersion.c_str(),
-                           versionChanged);
-                           status = launchRequestedPackage(appId, intent, launchArgs, runtimeConfigPayload);
+                            LOGINFO("Launching app appId=%s state=%d loaded=%d appInMap=%d runningVersion=%s requestedVersion=%s versionChanged=%d",
+                                appId.c_str(), static_cast<int>(appInfoSnap.getAppNewState()), loaded, appInMap, runningVersion.c_str(), requestedVersion.c_str(),
+                                versionChanged);
+                            status = launchRequestedPackage(appId, intent, normalizedLaunchArgs, runtimeConfigPayload);
                         }
                     }
                     else
@@ -613,7 +617,10 @@ namespace WPEFramework
                             AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
                                 a.setAppInstanceId(capturedInstanceId);
 								a.setAppIntent(intent);
-                                a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                                if (AppManagerTypes::APPLICATION_TYPE_SYSTEM != a.getPackageInfoMutable().type)
+                                {
+                                    a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                                }
                                 a.setTargetAppState(targetState);
                             });
                         }
@@ -1339,3 +1346,4 @@ End:
 
      } /* namespace Plugin */
 } /* namespace WPEFramework */
+
