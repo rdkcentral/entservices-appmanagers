@@ -60,7 +60,7 @@ namespace ralf
                 LOGERR("Failed to load Ralf package config JSON from file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
-            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
+            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode, runtimeConfigObject))
             {
                 LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
                 return false;
@@ -95,7 +95,7 @@ namespace ralf
 
     bool RalfOCIConfigGenerator::addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode)
     {
-        const char* thunderaccess = getenv(THUNDER_ACCESS_ENV_KEY);
+        const char *thunderaccess = getenv(THUNDER_ACCESS_ENV_KEY);
         if (nullptr != thunderaccess)
         {
             addToEnvironment(ociConfigRootNode, THUNDER_ACCESS_ENV_KEY, thunderaccess);
@@ -146,17 +146,20 @@ namespace ralf
         gidMapping[SIZE] = 1;
         ociConfigRootNode[LINUX][GID_MAPPINGS].append(gidMapping);
 
-        // Set westeros environment variable
-        // mWesterosSocketPath has XDG_RUNTIME_DIR/WAYLAND_DISPLAY, we need to set WAYLAND_DISPLAY env variable to just the display
-        // name (i.e. the last part of the path) because that is what westeros expects.
-        std::string waylandDisplay = appConfig.mWesterosSocketPath.substr(appConfig.mWesterosSocketPath.find_last_of("/") + 1);
-        addToEnvironment(ociConfigRootNode, "WAYLAND_DISPLAY", waylandDisplay);
-        // Keep it consistent with what is set in DobbyPluginLauncher for Ralf package.
-        // DobbyPluginLauncher will bind mount /tmp from host to container and westeros socket will be created inside /tmp in the container.
-        addToEnvironment(ociConfigRootNode, "XDG_RUNTIME_DIR", "/tmp");
+        if (!appConfig.mWesterosSocketPath.empty())
+        {
+            // Set westeros environment variable
+            // mWesterosSocketPath has XDG_RUNTIME_DIR/WAYLAND_DISPLAY, we need to set WAYLAND_DISPLAY env variable to just the display
+            // name (i.e. the last part of the path) because that is what westeros expects.
+            std::string waylandDisplay = appConfig.mWesterosSocketPath.substr(appConfig.mWesterosSocketPath.find_last_of("/") + 1);
+            addToEnvironment(ociConfigRootNode, "WAYLAND_DISPLAY", waylandDisplay);
+            // Keep it consistent with what is set in DobbyPluginLauncher for Ralf package.
+            // DobbyPluginLauncher will bind mount /tmp from host to container and westeros socket will be created inside /tmp in the container.
+            addToEnvironment(ociConfigRootNode, "XDG_RUNTIME_DIR", "/tmp");
 
-        // Need to mount bind  XDG_RUNTIME_DIR/WAYLAND_DISPLAY from host to container
-        addBindMountToOCIConfig(ociConfigRootNode, appConfig.mWesterosSocketPath, appConfig.mWesterosSocketPath);
+            // Need to mount bind  XDG_RUNTIME_DIR/WAYLAND_DISPLAY from host to container
+            addBindMountToOCIConfig(ociConfigRootNode, appConfig.mWesterosSocketPath, appConfig.mWesterosSocketPath);
+        }
 
         // Home by default will be set to PERSIST_STORAGE_PATH in the OCI config.
         std::string homePath = PERSIST_STORAGE_PATH; // Default HOME path
@@ -423,7 +426,7 @@ namespace ralf
         }
         return status;
     }
-    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
+    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject)
     {
         if (!addEntryPointToOCIConfig(ociConfigRootNode, manifestRootNode))
         {
@@ -435,6 +438,20 @@ namespace ralf
             LOGERR("Failed to apply Ralf Entry args for package");
             return false;
         }
+        std::string packageType;
+        if (manifestRootNode.isMember(PACKAGE_TYPE) && manifestRootNode[PACKAGE_TYPE].isString())
+        {
+            packageType = manifestRootNode[PACKAGE_TYPE].asString();
+        }
+        if (packageType == PKG_TYPE_RUNTIME)
+        {
+            if (!runtimeConfigObject.command.empty())
+            {
+                const std::string &command = runtimeConfigObject.command;
+                ociConfigRootNode[PROCESS][ARGS].append(command);
+                LOGDBG("Applied runtime command to OCI config: %s\n", command.c_str());
+            }
+        }
         // Everything else is optional. So return value will be true.
         //  Check if configuration node exists.
         if (!manifestRootNode.isMember(CONFIGURATION) || !manifestRootNode[CONFIGURATION].isObject())
@@ -444,20 +461,13 @@ namespace ralf
         }
         bool status = true;
         Json::Value configNode = manifestRootNode[CONFIGURATION];
-        std::string packageType;
-        if (manifestRootNode.isMember(PACKAGE_TYPE) && manifestRootNode[PACKAGE_TYPE].isString())
-        {
-            packageType = manifestRootNode[PACKAGE_TYPE].asString();
-        }
         // Apply APP_CONFIG_OVERRIDES_JSON/RUNTIME_CONFIG_OVERRIDES_JSON variables
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
         {
             status = addConfigOverridesToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied config overrides to OCI config ? %s\n", status ? "true" : "false");
-        }
-        // Apply "urn:rdk:config:memory", reserved
-        if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
-        {
+
+            // Apply "urn:rdk:config:memory", reserved
             status = addMemoryConfigToOCIConfig(ociConfigRootNode, configNode, packageType);
             LOGDBG("Applied memory config to OCI config ? %s\n", status ? "true" : "false");
 
@@ -465,6 +475,7 @@ namespace ralf
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
         }
         // Process urn:rdk:config:network - spec matrix: Application/Service/Runtime (N/A for Base)
+        // urn:rdk:config:dial if present will be handled by updateNetworkConfigurationNode.
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE || packageType == PKG_TYPE_RUNTIME)
         {
             status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
@@ -484,10 +495,69 @@ namespace ralf
         if (packageType == PKG_TYPE_APPLICATION)
         {
             addAppPackageVersionToConfig(ociConfigRootNode, manifestRootNode);
+#ifdef ALLOW_DEV_MOUNT_SUPPORT
+            if (applyDevMountSupport(ociConfigRootNode, configNode))
+            {
+                LOGWARN("Applied development mount support to OCI config\n");
+            }
+#else
+            LOGDBG("Development mount support is not enabled\n");
+#endif // ALLOW_DEV_MOUNT_SUPPORT
         }
 
         return true;
     }
+
+#ifdef ALLOW_DEV_MOUNT_SUPPORT
+    bool RalfOCIConfigGenerator::applyDevMountSupport(Json::Value &ociConfigRootNode, Json::Value &configNode)
+    {
+        bool status = false;
+        if (configNode.isMember(DEV_MOUNT_SUPPORT_URN) && configNode[DEV_MOUNT_SUPPORT_URN].isArray())
+        {
+            /**The structure of the node is defined as follows
+             *
+              "urn:rdk:config:extra-mounts-dbg": [
+                {
+                    "destination": "/folder-inside-container",
+                    "type":"none",
+                    "source": "/folder-on-host",
+                    "options": [
+                         "rbind",
+                         "ro",
+                         "noexec",
+                         "nodev",
+                         "nosuid"
+                    ]
+                }
+              ]
+
+              There is no parsing of the arguments. Each object in the array is added as a mount point to the OCI configuration.
+            *
+            */
+
+            LOGDBG("Processing development mount configuration\n");
+            Json::Value devMountConfig = configNode[DEV_MOUNT_SUPPORT_URN];
+            for (const auto &mount : devMountConfig)
+            {
+                if (mount.isObject())
+                {
+                    ociConfigRootNode[MOUNTS].append(mount);
+                    status = true;
+                }
+                else
+                {
+                    LOGWARN("Invalid mount configuration entry, expected an object.\n");
+                }
+            }
+        }
+        else
+        {
+            LOGDBG("No development mount configuration found\n");
+        }
+        return status;
+    }
+#endif // ALLOW_DEV_MOUNT_SUPPORT
+
     bool RalfOCIConfigGenerator::addAppPackageVersionToConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
     {
         // Identifies the application package version. This value is used for logging, debugging, and version-specific behavior.
@@ -664,18 +734,18 @@ namespace ralf
         return status;
     }
 
-    bool RalfOCIConfigGenerator::applyPermissionsToOCIConfig(Json::Value& ociConfigRootNode,
-                                                        const Json::Value& manifestRootNode,
-                                                        const std::vector<std::string>& envVariables)
+    bool RalfOCIConfigGenerator::applyPermissionsToOCIConfig(Json::Value &ociConfigRootNode,
+                                                             const Json::Value &manifestRootNode,
+                                                             const std::vector<std::string> &envVariables)
     {
-        const auto& pkgNode = manifestRootNode[PACKAGE_TYPE];
+        const auto &pkgNode = manifestRootNode[PACKAGE_TYPE];
         if (!pkgNode.isString())
         {
             LOGWARN("Package type is missing or not a string; skipping permission-based OCI config updates");
             return true;
         }
 
-        const char* pkgTypeStr = pkgNode.asCString();
+        const char *pkgTypeStr = pkgNode.asCString();
         if (!pkgTypeStr)
         {
             return true;
@@ -689,7 +759,7 @@ namespace ralf
             return true;
         }
 
-        const auto& permissions = manifestRootNode[ralf::PERMISSIONS];
+        const auto &permissions = manifestRootNode[ralf::PERMISSIONS];
         if (!permissions.isArray())
         {
             LOGWARN("Permissions node is missing or not an array; skipping permission-based OCI config updates");
@@ -704,10 +774,10 @@ namespace ralf
         return (nwStatus && envStatus);
     }
 
-    bool RalfOCIConfigGenerator::addPermissionBasedEnvironmentVariables(Json::Value& ociConfigRootNode,
-                                    const Json::Value& permissions, const std::vector<std::string>& envVariables)
+    bool RalfOCIConfigGenerator::addPermissionBasedEnvironmentVariables(Json::Value &ociConfigRootNode,
+                                                                        const Json::Value &permissions, const std::vector<std::string> &envVariables)
     {
-        for (const auto& permValue : permissions)
+        for (const auto &permValue : permissions)
         {
             if (!permValue.isString())
             {
