@@ -1,7 +1,9 @@
 #include <cstdint>
 #include <iostream>
 
+#include "WindowManagerCapabilities.h"
 #include "common/L0Bootstrap.hpp"
+#include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
 // ── RuntimeManager_LifecycleTests.cpp ────────────────────────────────────────
@@ -305,6 +307,33 @@ extern uint32_t Test_DobbySpecGenerator_GstRegistryMountAbsentWhenRialtoActive()
 extern uint32_t Test_DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec();
 #endif
 
+namespace WPEFramework {
+namespace Plugin {
+
+uint32_t Test_WindowManagerCapabilities_CompositorAccess()
+{
+    L0Test::TestResult result;
+    L0Test::ExpectEqStr(result, buildWindowManagerCapabilities("home-app"),
+                        "privilegedclient", "home app retains SkyApps access");
+    L0Test::ExpectEqStr(result, buildWindowManagerCapabilities("compositor-app"),
+                        "privilegedclient", "compositor app receives SkyApps access");
+    L0Test::ExpectEqStr(result,
+                        buildWindowManagerCapabilities("refresh-rate-60hz,compositor-app,suspend-mode"),
+                        "60hz,privilegedclient,suspendable", "Monarch keeps display hints and SkyApps access");
+    L0Test::ExpectEqStr(result, buildWindowManagerCapabilities("storage,thunder,firebolt"),
+                        "", "ordinary apps do not receive compositor privileges");
+    L0Test::ExpectEqStr(result, buildWindowManagerCapabilities("not-compositor-app,compositor-app-extra"),
+                        "", "only exact compositor capability names grant access");
+    L0Test::ExpectEqStr(result,
+                        buildWindowManagerCapabilities("issue-notifications,suspend-mode,refresh-rate-60hz,mediarite-underlay,game-controller"),
+                        "overlayenabled,suspendable,60hz,mediarite,gamecontrollersupport",
+                        "unrelated display capabilities remain unchanged");
+    return result.failures;
+}
+
+} // namespace Plugin
+} // namespace WPEFramework
+
 int main()
 {
     L0Test::L0BootstrapGuard bootstrap;
@@ -400,6 +429,7 @@ int main()
         { "DobbyEventListener_InitializeWithNullOCIPlugin",                          Test_DobbyEventListener_InitializeWithNullOCIPlugin },
         { "DobbyEventListener_DeinitializeWithoutInitialize",                        Test_DobbyEventListener_DeinitializeWithoutInitialize },
         { "DobbyEventListener_DoubleDeinitialize",                                   Test_DobbyEventListener_DoubleDeinitialize },
+        { "WindowManagerCapabilities_CompositorAccess",                             WPEFramework::Plugin::Test_WindowManagerCapabilities_CompositorAccess },
         { "WindowManagerConnector_ConstructionAndDestruction",                       Test_WindowManagerConnector_ConstructionAndDestruction },
         { "WindowManagerConnector_IsPluginInitializedReturnsFalseInitially",         Test_WindowManagerConnector_IsPluginInitializedReturnsFalseInitially },
         { "WindowManagerConnector_InitializeWithNullServiceReturnsFalse",            Test_WindowManagerConnector_InitializeWithNullServiceReturnsFalse },
