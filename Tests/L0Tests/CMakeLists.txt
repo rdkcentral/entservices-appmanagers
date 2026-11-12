@@ -217,6 +217,7 @@ set(RESOURCE_MONITOR_L0_SOURCES
     ResourceMonitor/ResourceMonitorTest.cpp
     ResourceMonitor/ResourceMonitor_LifecycleConfigTests.cpp
     ResourceMonitor/ResourceMonitor_LifecycleConcurrencyTests.cpp
+    ResourceMonitor/ResourceMonitor_LifecycleEnforcementTests.cpp
     common/L0Bootstrap.cpp
 )
 

@@ -48,6 +48,7 @@ public:
     Core::hresult StartSystemApp(const string&) override { return Core::ERROR_NONE; }
     Core::hresult StopSystemApp(const string&) override { return Core::ERROR_NONE; }
     Core::hresult KillApp(const string& appId) override { ++killCalls; killedAppId = appId; return Core::ERROR_NONE; }
+    Core::hresult SetTargetAppState(const string&, const AppLifecycleState) override { return Core::ERROR_NONE; }
     Core::hresult SendIntent(const string&, const string&) override { return Core::ERROR_NONE; }
     Core::hresult ClearAppData(const string&) override { return Core::ERROR_NONE; }
     Core::hresult ClearAllAppData() override { return Core::ERROR_NONE; }

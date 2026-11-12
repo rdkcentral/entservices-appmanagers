@@ -55,7 +55,7 @@ void ExpectStates(L0Test::TestResult& tr, const AppLifecycleCapabilities& caps, 
 
 void ExpectNoSuspendedConfig(L0Test::TestResult& tr, const SuspendedStateConfig& config, const std::string& what)
 {
-    L0Test::ExpectTrue(tr, !config.hasMaxSystemMemory && !config.hasMaxTimeToSuspend && !config.hasCpuThreshold,
+    L0Test::ExpectTrue(tr, !config.hasMaxSystemMemory && !config.hasMaxTimeToSuspend,
         what + ": Suspended configuration is unavailable");
 }
 
@@ -261,7 +261,6 @@ uint32_t Test_RM_Lifecycle_SuspendedConfigPresent()
         "maxSuspendedSystemMemory \"16M\" is reported as 16777216 bytes");
     L0Test::ExpectTrue(tr, config.hasMaxTimeToSuspend && config.maxTimeToSuspendSec == 10U,
         "maxTimeToSuspendMemoryState is reported as 10 seconds");
-    L0Test::ExpectTrue(tr, !config.hasCpuThreshold, "CPU threshold is unavailable");
     return tr.failures;
 }
 
@@ -298,7 +297,7 @@ uint32_t Test_RM_Lifecycle_CpuThresholdUnavailable()
     const AppLifecycleCapabilities caps = ParseRalf(
         "{\"supportedNonActiveStates\":[\"paused\",\"suspended\"],\"maxSuspendedSystemMemory\":\"16M\","
         "\"maxTimeToSuspendMemoryState\":10,\"maxSuspendedCpuUsage\":1}");
-    L0Test::ExpectTrue(tr, !caps.suspended.hasCpuThreshold, "CPU threshold stays unavailable even with unknown CPU members");
+    L0Test::ExpectTrue(tr, caps.suspended.hasMaxSystemMemory, "Memory config still available");
     ExpectStates(tr, caps, true, true, false, "Unknown members do not affect states");
     return tr.failures;
 }

@@ -25,6 +25,13 @@ extern uint32_t Test_RM_Lifecycle_PackageManagerErrors();
 extern uint32_t Test_RM_Lifecycle_ProductionSourceWithoutService();
 extern uint32_t Test_RM_Lifecycle_ConcurrentQueries();
 extern uint32_t Test_RM_Lifecycle_SlowPackageManagerDoesNotSerializeCallers();
+extern uint32_t Test_RM_Enforcement_CapabilitySnapshot();
+extern uint32_t Test_RM_Enforcement_SuspendedConfigParsing();
+extern uint32_t Test_RM_Enforcement_GPUMemoryParsing();
+extern uint32_t Test_RM_Enforcement_GPUMemoryValueExtraction();
+extern uint32_t Test_RM_Enforcement_SuspendedSupportCheck();
+extern uint32_t Test_RM_Enforcement_HibernatedSupportCheck();
+extern uint32_t Test_RM_Enforcement_ConfigurationParsing();
 
 int main()
 {
@@ -55,6 +62,13 @@ int main()
         { "Lifecycle_ProductionSourceWithoutService", Test_RM_Lifecycle_ProductionSourceWithoutService },
         { "Lifecycle_ConcurrentQueries", Test_RM_Lifecycle_ConcurrentQueries },
         { "Lifecycle_SlowPackageManagerDoesNotSerializeCallers", Test_RM_Lifecycle_SlowPackageManagerDoesNotSerializeCallers },
+        { "Enforcement_CapabilitySnapshot", Test_RM_Enforcement_CapabilitySnapshot },
+        { "Enforcement_SuspendedConfigParsing", Test_RM_Enforcement_SuspendedConfigParsing },
+        { "Enforcement_GPUMemoryParsing", Test_RM_Enforcement_GPUMemoryParsing },
+        { "Enforcement_GPUMemoryValueExtraction", Test_RM_Enforcement_GPUMemoryValueExtraction },
+        { "Enforcement_SuspendedSupportCheck", Test_RM_Enforcement_SuspendedSupportCheck },
+        { "Enforcement_HibernatedSupportCheck", Test_RM_Enforcement_HibernatedSupportCheck },
+        { "Enforcement_ConfigurationParsing", Test_RM_Enforcement_ConfigurationParsing },
     };
 
     uint32_t failures = 0;
