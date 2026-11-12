@@ -161,9 +161,7 @@ void AppStateTransitionManager::Process(const std::string& appId, Exchange::IApp
             mParent.TerminateApp(appId);
         }
     } else if (Exchange::IAppManager::APP_STATE_SUSPENDED == state) {
-        if (!mParent.IsHibernationEnabled()) {
-            LOGINFO("AppId %s remains suspended because hibernation is disabled", appId.c_str());
-        } else if (!mParent.SupportsHibernation(appId)) {
+        if (!mParent.SupportsHibernation(appId)) {
             LOGINFO("AppId %s remains suspended because hibernation is unsupported", appId.c_str());
         } else if (!mParent.HasHibernationFlashSpace(appId)) {
             LOGINFO("AppId %s remains suspended because flash space is unavailable", appId.c_str());
@@ -177,4 +175,5 @@ void AppStateTransitionManager::Process(const std::string& appId, Exchange::IApp
 
 } // namespace Plugin
 } // namespace WPEFramework
+
 

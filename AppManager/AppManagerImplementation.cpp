@@ -21,53 +21,14 @@
 #include <atomic>
 #include <algorithm>
 #include <cctype>
-#include <fstream>
 #include <sys/stat.h>
-#ifdef APP_MANAGER_RESOURCE_MONITOR
-#include <sys/statvfs.h>
-#endif
 #include <json/json.h>
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
 
 #define TIME_DATA_SIZE           200
-#define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
 static std::atomic<bool> sRunning{false};
-
-#ifdef APP_MANAGER_RESOURCE_MONITOR
-namespace {
-void loadHibernationSettings(std::string& storagePath, bool& hibernationEnabled)
-{
-    std::ifstream configFile(AICONFIGURATION_JSON_PATH);
-    if (!configFile.is_open())
-        return;
-
-    Json::Value root;
-    Json::CharReaderBuilder builder;
-    builder["allowComments"] = true;
-    builder["strictRoot"] = false;
-    std::string errors;
-    if (!Json::parseFromStream(builder, configFile, &root, &errors))
-    {
-        LOGWARN("Could not parse '%s' for hibernation settings: %s",
-                AICONFIGURATION_JSON_PATH, errors.c_str());
-        return;
-    }
-
-    if (!root.isObject() || !root["apps"].isObject())
-        return;
-    const Json::Value& hibernate = root["apps"]["hibernate"];
-    if (!hibernate.isObject())
-        return;
-
-    if (hibernate["enable"].isBool())
-        hibernationEnabled = hibernate["enable"].asBool();
-    if (hibernate["flashStoragePath"].isString())
-        storagePath = hibernate["flashStoragePath"].asString();
-}
-} // namespace
-#endif
 
 RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
 
@@ -95,9 +56,6 @@ AppManagerImplementation::AppManagerImplementation()
 #endif
 , mEnhancedLoggingEnabled(false)
 , mAppManagerWorkerThread()
-#ifdef APP_MANAGER_RESOURCE_MONITOR
-, mHibernationStoragePath("/media/apps/memcr")
-#endif
 {
     LOGINFO("Create AppManagerImplementation Instance");
 #ifdef APP_INFRA_ENHANCED_LOGGING_INDICATOR
@@ -851,8 +809,6 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
             }
         }
 
-        loadHibernationSettings(mHibernationStoragePath, mHibernationEnabled);
-
         mStateTransitionManager.reset(new AppStateTransitionManager(*this));
         mStateTransitionManager->Configure(pausedToSuspendedTimeout, suspendedToHibernatedTimeout);
         mStateTransitionManager->Start();
@@ -1226,12 +1182,7 @@ bool AppManagerImplementation::SupportsHibernation(const string& appId)
 }
 
 #ifdef APP_MANAGER_RESOURCE_MONITOR
-bool AppManagerImplementation::IsHibernationEnabled() const
-{
-    return mHibernationEnabled;
-}
-
-bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId) const
+bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId)
 {
     const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);
     
@@ -1263,13 +1214,28 @@ bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId) con
         return false;
     }
 
-    struct statvfs filesystemInfo;
-    if (mHibernationStoragePath.empty() || statvfs(mHibernationStoragePath.c_str(), &filesystemInfo) != 0)
+    Exchange::IResourceMonitor* resourceMonitor = nullptr;
+    {
+        std::lock_guard<std::mutex> resourceMonitorLock(mResourceMonitorLock);
+        if (nullptr == mResourceMonitorRemoteObject &&
+            Core::ERROR_NONE != createResourceMonitorRemoteObjectLocked())
+        {
+            return false;
+        }
+        mResourceMonitorRemoteObject->AddRef();
+        resourceMonitor = mResourceMonitorRemoteObject;
+    }
+
+    uint64_t total = 0;
+    uint64_t used = 0;
+    uint64_t available = 0;
+    const Core::hresult status = resourceMonitor->GetFlashSpace(total, used, available);
+    resourceMonitor->Release();
+    if (Core::ERROR_NONE != status)
     {
         return false;
     }
-    const uint64_t availableBytes = static_cast<uint64_t>(filesystemInfo.f_bavail) * filesystemInfo.f_frsize;
-    return availableBytes >= requiredBytes;
+    return available >= requiredBytes;
 }
 
 Core::hresult AppManagerImplementation::SetInactiveTargetState(const string& appId, Exchange::ILifecycleManager::LifecycleState state)
@@ -2506,3 +2472,4 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
 }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+

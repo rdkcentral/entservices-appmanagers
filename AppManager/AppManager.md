@@ -1,565 +1,270 @@
-# AppManager Plugin Documentation
+# AppManager Resource Monitoring Integration
 
-> Primary API for Application Management in RDK Infrastructure
+## Overview
 
-## 1. High-Level Purpose & Architecture
+AppManager now coordinates with the App System Resource Monitor before launching or preloading applications and drives inactive applications through the lifecycle described by the App Resource Monitoring HLA.
 
-### Role in ENT / RDK Infrastructure
+The implementation covers three areas:
 
-The **AppManager** plugin serves as the primary entry point for application management operations in the RDK ecosystem. It provides a unified JSON-RPC API that orchestrates:
+1. Foreground launches request resource reconciliation without waiting for completion.
+2. Preloads are accepted after reconciliation submission and proceed only when the completion callback reports that the RAM target is achieved.
+3. Confirmed PAUSED and SUSPENDED lifecycle states are advanced by a timer-driven state-transition worker.
 
-- Application launching and lifecycle control
-- Package installation status queries
-- Application data management
-- Lifecycle state change notifications
+ResourceMonitor remains responsible for observing platform-level signals such as `MemAvailable`, PSI, and swap usage. AppManager does not duplicate that monitoring. Each reconciliation request identifies the application and the maximum RAM target it needs.
 
-### Responsibilities
+## Feature Gate
 
-- **Application Orchestration**: Coordinate app launch, close, terminate, and kill operations
-- **Package Integration**: Query installed packages and manage package locks
-- **Storage Management**: Clear application data via AppStorageManager
-- **State Tracking**: Maintain application state information via `AppInfoManager`
-- **Event Propagation**: Notify clients of lifecycle state changes, installations, and unloads
+All ResourceMonitor integration and inactive-state scheduling is compiled only when CMake receives `-DAPP_MANAGER_RESOURCE_MONITOR=ON`. The `entservices-rdkappmanagers` recipe sets this option only when `DISTRO_FEATURES` contains `resource-monitor`.
 
-### Interacting Subsystems
+When the feature is absent, AppManager has no ResourceMonitor dependency: it does not include or query the interface, register callbacks, start the state-transition worker, alter launch or preload behavior, or add resource-monitoring configuration values.
 
-| Subsystem | Interaction Type | Purpose |
-|-----------|-----------------|---------|
-| LifecycleManager | COM-RPC | Delegate lifecycle operations (spawn, state changes, unload, kill) |
-| PackageManager | COM-RPC | Lock/unlock packages, query installed apps |
-| AppStorageManager | COM-RPC | Clear application storage |
-| PersistentStore | COM-RPC | Store/retrieve application properties |
+## ResourceMonitor Contract
 
-### What It Does NOT Do
-
-- Does not directly manage OCI containers (delegated to RuntimeManager)
-- Does not handle package downloads (delegated to PackageManager/DownloadManager)
-- Does not manage display/window creation (delegated to RDKWindowManager)
-
----
-
-## 2. Architectural Overview
-
-### Major Components
-
-```mermaid
-graph TB
-    subgraph "AppManager Plugin"
-        Shell[AppManager<br/>JSON-RPC Shell]
-        Impl[AppManagerImplementation<br/>Business Logic]
-        LIC[LifecycleInterfaceConnector<br/>LCM Bridge]
-        AIM[AppInfoManager<br/>State Registry]
-        AI[AppInfo<br/>App State Object]
-    end
-
-    subgraph "External Plugins"
-        LCM[LifecycleManager]
-        PKG[PackageManager]
-        ASM[AppStorageManager]
-        PS[PersistentStore]
-    end
-
-    Shell --> Impl
-    Impl --> LIC
-    Impl --> AIM
-    AIM --> AI
-    LIC --> LCM
-    Impl --> PKG
-    Impl --> ASM
-    Impl --> PS
-```
-
-### Component Interactions
-
-1. **AppManager (Shell)**: Receives JSON-RPC requests and dispatches to implementation
-2. **AppManagerImplementation**: Core business logic, manages worker thread for async operations
-3. **LifecycleInterfaceConnector**: Bridge to LifecycleManager for lifecycle operations
-4. **AppInfoManager**: Thread-safe singleton registry for all loaded application state
-5. **AppInfo**: Individual application state container
-
-`LifecycleInterfaceConnector` processes lifecycle callbacks on one worker thread. `AppManagerImplementation::dispatchEvent()` then queues outgoing notifications in FIFO order for a single worker-pool job to drain. Callbacks execute outside the queue lock, so notifications remain asynchronous while `INITIALIZING → PAUSED` is delivered before a subsequent `PAUSED → ACTIVE` for the same instance. Ordering starts at LifecycleManager's own ordered dispatch queue; these queues do not impose an order on genuinely concurrent producers before they enqueue.
-
----
-
-## 3. Code Organization (Folder & File-Level)
-
-### Directory Structure
-
-```
-AppManager/
-├── AppManager.cpp              # Plugin shell implementation
-├── AppManager.h                # Plugin shell header
-├── AppManagerImplementation.cpp # Core business logic
-├── AppManagerImplementation.h   # Implementation header
-├── AppInfo.cpp                 # Application state class
-├── AppInfo.h                   # AppInfo header
-├── AppInfoManager.cpp          # Thread-safe state registry
-├── AppInfoManager.h            # AppInfoManager header
-├── AppManagerTypes.h           # Type definitions and enums
-├── LifecycleInterfaceConnector.cpp # LCM bridge
-├── LifecycleInterfaceConnector.h   # LCM bridge header
-├── AppManagerTelemetryReporting.cpp # Telemetry utilities
-├── AppManagerTelemetryReporting.h   # Telemetry header
-├── Module.cpp                  # Plugin module registration
-├── Module.h                    # Module header
-├── CMakeLists.txt             # Build configuration
-├── AppManager.config          # Plugin configuration
-└── AppManager.conf.in         # Configuration template
-```
-
-### File-by-File Breakdown
-
-#### AppManager.h / AppManager.cpp
-
-**Purpose**: JSON-RPC shell plugin that exposes the AppManager API to external clients.
-
-**Key Elements**:
-- Implements `PluginHost::IPlugin` and `PluginHost::JSONRPC`
-- Contains `Notification` inner class for event handling
-- Aggregates `Exchange::IAppManager` interface to implementation
+The COM-RPC interface is defined in `entservices-apis/apis/ResourceMonitor/IResourceMonitor.h`.
 
 ```cpp
-// From AppManager.h (lines 32-35)
-class AppManager: public PluginHost::IPlugin, public PluginHost::JSONRPC
-{
-    // ...
-    BEGIN_INTERFACE_MAP(AppManager)
-    INTERFACE_ENTRY(PluginHost::IPlugin)
-    INTERFACE_ENTRY(PluginHost::IDispatcher)
-    INTERFACE_AGGREGATE(Exchange::IAppManager, mAppManagerImpl)
-    END_INTERFACE_MAP
-```
+struct IResourceMonitor : virtual public Core::IUnknown {
+    struct INotification : virtual public Core::IUnknown {
+      virtual void OnReconciliationComplete(const string& appId, bool targetRamAchieved) = 0;
+    };
 
-#### AppManagerImplementation.h / AppManagerImplementation.cpp
-
-**Purpose**: Core business logic implementing `Exchange::IAppManager` and `Exchange::IConfiguration`.
-
-**Key Types**:
-- `ApplicationType`: UNKNOWN, INTERACTIVE, SYSTEM
-- `CurrentAction`: NONE, LAUNCH, PRELOAD, SUSPEND, RESUME, CLOSE, TERMINATE, HIBERNATE, KILL
-- `CurrentActionError`: Error codes for operations
-- `AppManagerRequest`: Request structure for worker thread queue
-
-**Key Methods**:
-```cpp
-Core::hresult LaunchApp(const string& appId, const string& intent, const string& launchArgs);
-Core::hresult CloseApp(const string& appId);
-Core::hresult TerminateApp(const string& appId);
-Core::hresult KillApp(const string& appId);
-Core::hresult GetLoadedApps(Exchange::IAppManager::ILoadedAppInfoIterator*& appData);
-Core::hresult PreloadApp(const string& appId, const string& intent, const string& launchArgs, string& error);
-Core::hresult GetInstalledApps(string& apps);
-Core::hresult ClearAppData(const string& appId);
-Core::hresult ClearAllAppData();
-```
-
-**`GetLoadedApps` ordering**: the returned iterator is ordered by when each app was last
-ACTIVE, most recently active first. Apps that have never been ACTIVE are returned last,
-ordered by `appId`. Callers that need least-recently-used semantics (for example
-VictimSelector) can rely on this ordering instead of a per-app recency field.
-
-#### AppInfo.h / AppInfo.cpp
-
-**Purpose**: Encapsulates runtime state for a single loaded application.
-
-**Key Members**:
-| Member | Type | Description |
-|--------|------|-------------|
-| `mAppInstanceId` | `std::string` | Unique instance identifier |
-| `mActiveSessionId` | `std::string` | Active session ID |
-| `mPackageInfo` | `AppManagerTypes::PackageInfo` | Package metadata |
-| `mAppNewState` | `Exchange::IAppManager::AppLifecycleState` | Latest app lifecycle state |
-| `mTargetAppState` | `Exchange::IAppManager::AppLifecycleState` | Target state requested by current action |
-| `mAppOldState` | `Exchange::IAppManager::AppLifecycleState` | Previous app lifecycle state |
-| `mAppLifecycleState` | `Exchange::ILifecycleManager::LifecycleState` | LifecycleManager-reported state |
-| `mLastActiveStateChangeTime` | `timespec` | Timestamp of last active-state change |
-| `mCurrentAction` | `AppManagerTypes::CurrentAction` | Current in-flight action |
-| `mCurrentActionTime` | `time_t` | Time when current action started |
-
-#### AppInfoManager.h / AppInfoManager.cpp
-
-**Purpose**: Thread-safe singleton registry for all `AppInfo` entries.
-
-**Key Features**:
-- Copy-update-swap strategy for multi-field updates
-- Lock-free callbacks for deadlock prevention
-- Convenience field getters/setters
-
-```cpp
-// Usage patterns from AppInfoManager.h (lines 37-55)
-// Single-field read:
-std::string id = AppInfoManager::getInstance().getAppInstanceId(appId);
-
-// Multi-field atomic read:
-AppInfo snap;
-if (AppInfoManager::getInstance().get(appId, snap)) { ... }
-
-// Multi-field update (insert-or-update):
-AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
-    a.setAppInstanceId(instanceId);
-    a.setTargetAppState(state);
-});
-```
-
-#### LifecycleInterfaceConnector.h / LifecycleInterfaceConnector.cpp
-
-**Purpose**: Bridge between AppManager and LifecycleManager for lifecycle operations.
-
-The launch configuration crosses manager boundaries as a flat, opaque JSON string. AppManager parses the package payload to set `unpackedPath`; for preload requests it preserves the existing behavior of appending strings from `launchArgs.env` to the `envVariables` JSON array. It then reserializes the payload without dropping unknown properties.
-
-**Key Methods**:
-```cpp
-Core::hresult launch(const string& appId, const string& intent, const string& launchArgs,
-                     std::string& runtimeConfigPayload);
-Core::hresult preLoadApp(const string& appId, const string& intent, const string& launchArgs,
-                         std::string& runtimeConfigPayload, string& error);
-Core::hresult closeApp(const string& appId);
-Core::hresult terminateApp(const string& appId);
-Core::hresult killApp(const string& appId);
-Core::hresult sendIntent(const string& appId, const string& intent);
-```
-
----
-
-## 4. Class & Interface Documentation
-
-### Exchange::IAppManager Interface
-
-The primary interface implemented by AppManagerImplementation:
-
-```cpp
-// Key interface methods
-Core::hresult Register(Exchange::IAppManager::INotification *notification);
-Core::hresult Unregister(Exchange::IAppManager::INotification *notification);
-Core::hresult LaunchApp(const string& appId, const string& intent, const string& launchArgs);
-Core::hresult CloseApp(const string& appId);
-Core::hresult TerminateApp(const string& appId);
-Core::hresult KillApp(const string& appId);
-Core::hresult GetLoadedApps(Exchange::IAppManager::ILoadedAppInfoIterator*& appData);
-Core::hresult SendIntent(const string& appId, const string& intent);
-Core::hresult PreloadApp(const string& appId, const string& intent, const string& launchArgs, string& error);
-Core::hresult GetAppProperty(const string& appId, const string& key, string& value);
-Core::hresult SetAppProperty(const string& appId, const string& key, const string& value);
-Core::hresult GetInstalledApps(string& apps);
-Core::hresult IsInstalled(const string& appId, bool& installed);
-Core::hresult ClearAppData(const string& appId);
-Core::hresult ClearAllAppData();
-```
-
-### INotification Interface
-
-Event notification interface for clients:
-
-```cpp
-class INotification {
-    void OnAppInstalled(const string& appId, const string& version);
-    void OnAppUninstalled(const string& appId);
-    void OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId,
-                                    AppLifecycleState newState, AppLifecycleState oldState,
-                                    AppErrorReason errorReason);
-    void OnAppLaunchRequest(const string& appId, const string& intent, const string& source);
-    void OnAppUnloaded(const string& appId, const string& appInstanceId);
+    virtual Core::hresult Register(INotification* notification) = 0;
+    virtual Core::hresult Unregister(INotification* notification) = 0;
+    virtual Core::hresult Reconcile(const string& appId, uint32_t ramTargetMB, bool allowTerminate) = 0;
 };
 ```
 
-### AppLifecycleState Enumeration
+The callsign used by AppManager is:
+
+```text
+org.rdk.ResourceMonitor
+```
+
+The interface and notification IDs are reserved in `entservices-apis/apis/Ids.h`.
+
+The ResourceMonitor team's final interface must use the same callsign, method parameters, notification parameters, and interface IDs. If its final contract differs, both repositories must be updated together before integration.
+
+## Initialization and Lifetime
+
+During `AppManagerImplementation::Configure`:
+
+1. AppManager queries `org.rdk.ResourceMonitor` through `QueryInterfaceByCallsign`.
+2. It registers `ResourceMonitorNotification` for reconciliation completion events.
+3. Failure to find ResourceMonitor does not prevent AppManager initialization.
+4. Reconciliation methods retry interface discovery, allowing ResourceMonitor to activate after AppManager.
+5. The inactive-state worker is configured and started.
+
+During destruction:
+
+1. The state-transition worker is stopped first.
+2. LifecycleManager and ResourceMonitor interfaces are then unregistered and released.
+3. This ordering prevents the worker from using released COM-RPC interfaces.
+
+## Launch Flow
+
+`LaunchApp` validates the request and then calls:
 
 ```cpp
-enum AppLifecycleState {
-    INITIALIZING,   // App is loading/initializing
-    PAUSED,         // App is paused (background)
-    ACTIVE,         // App is active (foreground)
-    SUSPENDED,      // App is suspended (low memory state)
-    HIBERNATED,     // App state saved to disk
-    TERMINATING,    // App is shutting down
-    UNLOADED        // App is unloaded from memory
-};
+Reconcile(appId, ramTargetMB, true);
 ```
 
-### Class Relationships
+`ramTargetMB` is derived from the application's configured system-memory limit. `allowTerminate=true` permits ResourceMonitor to invoke victim eviction if resource headroom is insufficient.
 
-```mermaid
-classDiagram
-    class AppManager {
-        -PluginHost::IShell* mCurrentService
-        -Exchange::IAppManager* mAppManagerImpl
-        -Notification mAppManagerNotification
-        +Initialize(IShell* service)
-        +Deinitialize(IShell* service)
-    }
-
-    class AppManagerImplementation {
-        -LifecycleInterfaceConnector* mLifecycleInterfaceConnector
-        -Exchange::IStore2* mPersistentStoreRemoteStoreObject
-        -Exchange::IPackageHandler* mPackageManagerHandlerObject
-        -Exchange::IAppStorageManager* mStorageManagerRemoteObject
-        -std::thread mAppManagerWorkerThread
-        +LaunchApp()
-        +CloseApp()
-        +TerminateApp()
-        +KillApp()
-    }
-
-    class AppInfoManager {
-        -Core::CriticalSection mLock
-        -std::map~string,AppInfo~ mMap
-        +getInstance() AppInfoManager
-        +get(appId, outInfo) bool
-        +update(appId, updater) bool
-        +upsert(appId, updater)
-    }
-
-    class AppInfo {
-        -string mAppInstanceId
-        -PackageInfo mPackageInfo
-        -AppLifecycleState mAppNewState
-        -CurrentAction mCurrentAction
-        +getAppInstanceId() string
-        +setAppInstanceId(id)
-    }
-
-    class LifecycleInterfaceConnector {
-        -Exchange::ILifecycleManager* mLifecycleManagerRemoteObject
-        +launch()
-        +closeApp()
-        +terminateApp()
-    }
-
-    AppManager --> AppManagerImplementation : aggregates
-    AppManagerImplementation --> LifecycleInterfaceConnector : uses
-    AppManagerImplementation --> AppInfoManager : uses
-    AppInfoManager --> AppInfo : contains
-```
-
----
-
-## 5. Configuration & Build Integration
-
-### Plugin Configuration (AppManager.config)
-
-```cmake
-set (autostart ${PLUGIN_APP_MANAGER_AUTOSTART})
-set (preconditions Platform)
-set (callsign "org.rdk.AppManager")
-
-map()
-   key(root)
-   map()
-       kv(mode ${PLUGIN_APP_MANAGER_MODE})
-       kv(locator lib${PLUGIN_IMPLEMENTATION}.so)
-   end()
-end()
-ans(configuration)
-```
-
-### CMake Build Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `PLUGIN_APP_MANAGER_MODE` | Execution mode (Off/Local/Container) | Off |
-| `PLUGIN_APP_MANAGER_AUTOSTART` | Auto-start on Thunder boot | false |
-| `PLUGIN_APP_MANAGER_STARTUPORDER` | Plugin startup order | "" |
-| `PLUGIN_APP_MANAGER_EXTRA_LIBRARIES` | Additional link libraries | "" |
-
-### Build Targets
-
-- `${NAMESPACE}AppManager` - Shell plugin library
-- `${NAMESPACE}AppManagerImplementation` - Implementation library
-
----
-
-## 6. Internal Workflows & Execution Flow
-
-### Plugin Initialization
-
-```mermaid
-sequenceDiagram
-    participant Thunder as WPEFramework
-    participant Shell as AppManager
-    participant Impl as AppManagerImplementation
-    participant LIC as LifecycleInterfaceConnector
-
-    Thunder->>Shell: Initialize(IShell*)
-    Shell->>Impl: Instantiate via COM-RPC
-    Shell->>Impl: Configure(IShell*)
-    Impl->>Impl: createPersistentStoreRemoteStoreObject()
-    Impl->>Impl: createPackageManagerObject()
-    Impl->>Impl: createStorageManagerRemoteObject()
-    Impl->>LIC: new LifecycleInterfaceConnector(service)
-    LIC->>LIC: createLifecycleManagerRemoteObject()
-    Impl->>Impl: Start AppManagerWorkerThread
-    Shell-->>Thunder: "" (success)
-```
-
-### Application Launch Flow
+AppManager does not wait for `OnReconciliationComplete`. After the `Reconcile` method accepts the asynchronous request, the launch request is queued normally. Failure to start reconciliation is logged but does not reject the foreground launch.
 
 ```mermaid
 sequenceDiagram
     participant Client
-    participant Shell as AppManager
-    participant Impl as Implementation
-    participant AIM as AppInfoManager
-    participant LIC as LifecycleConnector
-    participant LCM as LifecycleManager
+    participant AM as AppManager
+    participant RM as ResourceMonitor
+    participant LM as LifecycleManager
 
-    Client->>Shell: LaunchApp(appId, intent, launchArgs)
-    Shell->>Impl: LaunchApp(appId, intent, launchArgs)
-    Impl->>Impl: packageLock(appId)
-    Impl->>AIM: upsert(appId, setCurrentAction=LAUNCH)
-    Impl->>Impl: Set unpackedPath and preserve unknown JSON properties
-    Impl->>LIC: launch(appId, intent, launchArgs, runtimeConfigPayload)
-    LIC->>LCM: SpawnApp(appId, intent, ACTIVE, runtimeConfigPayload)
-    LCM-->>LIC: appInstanceId
-    LIC->>AIM: setAppInstanceId(appId, appInstanceId)
-    LIC-->>Impl: Core::ERROR_NONE
-    Impl-->>Shell: Core::ERROR_NONE
-    Shell-->>Client: Success response
-    
-    Note over LCM: App starts running...
-    
-    LCM->>LIC: OnAppLifecycleStateChanged
-    LIC->>Impl: handleOnAppLifecycleStateChanged
-    Impl->>Shell: Event: OnAppLifecycleStateChanged
-    Shell->>Client: Event notification
+    Client->>AM: LaunchApp(appId, intent, args)
+    AM->>RM: Reconcile(appId, ramTargetMB, true)
+    RM-->>AM: Request accepted
+    par Launch application
+      AM->>AM: Queue launch request
+      AM->>LM: Launch application
+    and Reconciliation completes asynchronously
+      RM-->>AM: OnReconciliationComplete(appId, targetRamAchieved)
+    end
 ```
 
-### Application Close Flow
+AppManager releases its administrative lock around the COM-RPC call so ResourceMonitor and VictimSelector can call back into AppManager without causing a cross-plugin deadlock.
+
+## Preload Flow
+
+`PreloadApp` calls:
+
+```cpp
+Reconcile(appId, ramTargetMB, false);
+```
+
+`allowTerminate=false` requests an availability check without evicting applications for an optional preload.
+
+The method returns after ResourceMonitor accepts the asynchronous request. AppManager retains the preload request and waits for `OnReconciliationComplete` before acting on it:
+
+- `targetRamAchieved=true`: queue and execute the preload.
+- `targetRamAchieved=false`: report failure through `onAppLifecycleStateChanged` with `APP_ERROR_UNKNOWN`.
+- ResourceMonitor unavailable or request failure: return `Core::ERROR_GENERAL` and report failure through `onAppLifecycleStateChanged` with `APP_ERROR_UNKNOWN`.
+
+The output `error` string reports only immediate validation or reconciliation-submission failures. The lifecycle event is the result of an accepted preload request.
 
 ```mermaid
 sequenceDiagram
     participant Client
-    participant Impl as AppManagerImplementation
-    participant AIM as AppInfoManager
-    participant LIC as LifecycleConnector
-    participant LCM as LifecycleManager
+    participant AM as AppManager
+    participant RM as ResourceMonitor
+    participant LM as LifecycleManager
 
-    Client->>Impl: CloseApp(appId)
-    Impl->>AIM: getAppInstanceId(appId)
-    AIM-->>Impl: appInstanceId
-    Impl->>AIM: update(appId, setCurrentAction=CLOSE)
-    Impl->>LIC: closeApp(appId)
-    LIC->>LCM: SetTargetAppState(appInstanceId, PAUSED)
-    LCM-->>LIC: success
-    LIC-->>Impl: Core::ERROR_NONE
-    Impl-->>Client: Success
+    Client->>AM: PreloadApp(appId, intent, args)
+    AM->>RM: Reconcile(appId, ramTargetMB, false)
+    RM-->>AM: Request accepted
+    AM-->>Client: Request accepted
+    RM-->>AM: OnReconciliationComplete(appId, targetRamAchieved)
+    alt targetRamAchieved
+        AM->>AM: Queue preload request
+        AM->>LM: Preload application
+    else target not achieved or request failed
+      AM-->>Client: onAppLifecycleStateChanged(APP_ERROR_UNKNOWN)
+    end
 ```
 
-### Worker Thread Processing
+## Reconciliation Synchronization
 
-The `AppManagerWorkerThread` processes requests asynchronously:
+The ResourceMonitor contract does not include a separate request ID. Foreground reconciliation is fire-and-forget: ResourceMonitor uses `appId` for telemetry and AppManager does not wait for or process its completion event. AppManager retains pending preload requests until their callback arrives:
+
+- `mPendingPreloads`: retains accepted preload requests until their callback queues the preload or reports a lifecycle error.
+
+Foreground launches and preloads invoke `Reconcile` directly and do not block. Preload callbacks enqueue the preload after a successful resource check or send an error lifecycle event otherwise. The callback `appId` identifies the pending preload request.
+
+A request identifier in the future ResourceMonitor contract would allow safe correlation if same-app reconciliation requests can overlap.
+
+## Inactive Application State Flow
+
+`AppStateTransitionManager` runs on a dedicated worker thread. Lifecycle callbacks only update timer state; they do not sleep or perform blocking transitions.
 
 ```mermaid
 flowchart TD
-    A[Wait on mAppRequestListCV] --> B{Request Available?}
-    B -->|No| A
-    B -->|Yes| C[Pop Request from mAppRequestList]
-    C --> D{Request Type?}
-    D -->|LAUNCH| E[Process Launch]
-    D -->|PRELOAD| F[Process Preload]
-    D -->|CLOSE| G[Process Close]
-    D -->|TERMINATE| H[Process Terminate]
-    D -->|KILL| I[Process Kill]
-    E --> A
-    F --> A
-    G --> A
-    H --> A
-    I --> A
+    I[Application enters inactive state] --> P{PAUSED accepted?}
+    P -- No or timeout --> T[Terminate]
+    P -- Yes --> PS[PAUSED]
+    PS --> E{Paused timer expires or another app becomes ACTIVE/PAUSED}
+    E --> S{SUSPENDED accepted?}
+    S -- No --> T
+    S -- Yes --> SS[SUSPENDED]
+    SS --> H{Suspended timer expires}
+    H --> C{App supports hibernation and flash space is available?}
+    C -- No --> SS
+    C -- Yes --> HH[Request HIBERNATED]
 ```
 
----
+### PAUSED behavior
 
-## 7. Diagrams & Visual Aids
+When AppManager receives a confirmed PAUSED event:
 
-### State Transition Diagram (AppLifecycleState)
+- It records a deadline using `pausedToSuspendedTimeout`.
+- Only one application is tracked as the current paused application.
+- If another app becomes ACTIVE or PAUSED, the previous paused application's deadline is advanced immediately.
+- At the deadline, AppManager requests SUSPENDED through LifecycleManager.
+- If PAUSED was rejected or not confirmed by the existing close timeout, AppManager terminates the app.
+- If SUSPENDED is rejected, AppManager terminates the app.
 
-```mermaid
-stateDiagram-v2
-    [*] --> INITIALIZING: LaunchApp
-    INITIALIZING --> PAUSED: Initialized
-    INITIALIZING --> ACTIVE: Initialized (foreground)
-    PAUSED --> ACTIVE: Resume
-    ACTIVE --> PAUSED: Pause
-    PAUSED --> SUSPENDED: Suspend
-    SUSPENDED --> PAUSED: Resume
-    PAUSED --> HIBERNATED: Hibernate
-    HIBERNATED --> PAUSED: Wake
-    PAUSED --> TERMINATING: Close/Terminate
-    ACTIVE --> TERMINATING: Close/Terminate
-    SUSPENDED --> TERMINATING: Terminate
-    HIBERNATED --> TERMINATING: Terminate
-    TERMINATING --> UNLOADED: Terminated
-    UNLOADED --> [*]
-```
+### SUSPENDED behavior
 
-### Component Deployment
+When AppManager receives a confirmed SUSPENDED event:
 
-```mermaid
-graph LR
-    subgraph "Thunder Process"
-        Shell[libWPEFrameworkAppManager.so]
-    end
+- It records a deadline using `suspendedToHibernatedTimeout`.
+- At the deadline, AppManager checks the app's `APPLICATION_CAN_RUN_IN_HIBERNATE_MODE` property and available flash space.
+- HIBERNATED is requested when the app supports hibernation and enough flash space is available for its configured `dataImageSize`.
+- If flash space is unavailable, the app remains suspended and is checked again after `suspendedToHibernatedTimeout`.
+- If hibernation is unsupported, the app remains suspended without another hibernation retry.
+- If hibernation is rejected, the app remains suspended and is retried after `suspendedToHibernatedTimeout`.
 
-    subgraph "Plugin Process (if Mode=Local)"
-        Impl[libWPEFrameworkAppManagerImplementation.so]
-    end
+### Other states
 
-    Shell -.->|COM-RPC| Impl
-```
+ACTIVE, HIBERNATED, TERMINATING, UNLOADED, and unrelated states remove the application from timer tracking. App removal also explicitly clears any scheduler entry.
 
----
+## LifecycleManager Integration
 
-## 8. Testing & Quality Analysis
+`LifecycleInterfaceConnector::setTargetAppState` provides the scheduler with a generic transition path:
 
-The repository contains L0 implementation, lifecycle, component, telemetry, `AppInfo`, and `AppInfoManager` tests under [Tests/L0Tests/AppManager](../Tests/L0Tests/AppManager), with additional L1 and L2 coverage. Recommended additions are cross-service failure ordering, duplicate concurrent actions, shutdown with queued work, and explicit coverage for the optional ResourceMonitor build.
+1. Resolve `appId` to `appInstanceId` through `AppInfoManager`.
+2. Call `ILifecycleManager::SetTargetAppState`.
+3. Update AppManager's target-state bookkeeping after a successful request.
+4. Wait for normal lifecycle notifications to confirm the actual state.
 
-The exact retry and ordering guarantees of remote services are defined outside this folder by the generated exchange interfaces and deployment integration.
+The scheduler never writes lifecycle state directly.
 
-### Existing Tests
+## Configuration
 
-Located in `Tests/L1Tests/tests/test_AppManager.cpp`:
+The following CMake cache variables are available:
 
-| Test Category | Description |
-|---------------|-------------|
-| Launch Tests | Verify app launch with various parameters |
-| Close Tests | Verify graceful app closure |
-| Terminate Tests | Verify forced termination |
-| Kill Tests | Verify immediate kill |
-| Property Tests | Verify get/set app properties |
-| Installation Tests | Verify installed app queries |
-| Storage Tests | Verify clear data operations |
+| Variable | Default | Meaning |
+|---|---:|---|
+| `PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT` | `60` | Seconds an app may remain PAUSED |
+| `PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT` | `15` | Seconds before evaluating a SUSPENDED app |
+Flash-space availability is queried from ResourceMonitor, using its configured
+hibernated-app mount point and quota. RuntimeManager independently selects the
+OCI hibernation destination from its hibernation configuration; configure the
+ResourceMonitor mount point and RuntimeManager destination consistently.
 
-### Test Coverage Gaps
+## Files Changed
 
-Based on code analysis, the following areas may need additional coverage:
+### entservices-apis
 
-1. **Error Handling**: Edge cases for package lock failures
-2. **Concurrent Operations**: Multiple simultaneous launch/close requests
-3. **Notification Delivery**: Event ordering and delivery guarantees
-4. **Worker Thread**: Thread synchronization and shutdown scenarios
+- `apis/ResourceMonitor/IResourceMonitor.h`
+  - Defines reconciliation and completion notification COM-RPC contracts.
+- `apis/Ids.h`
+  - Reserves ResourceMonitor interface IDs.
 
-### Suggested Test Cases
+### entservices-appmanagers
 
-```cpp
-// Test concurrent launch attempts for same app
-TEST(AppManagerTest, ConcurrentLaunchSameApp) {
-    // Should serialize or reject duplicate launches
-}
+- `AppManager/AppManagerImplementation.h/.cpp`
+  - Owns ResourceMonitor connection, notification sink, synchronization, launch/preload integration, and scheduler lifetime.
+- `AppManager/AppStateTransitionManager.h/.cpp`
+  - Implements timer-driven inactive-state progression.
+- `AppManager/LifecycleInterfaceConnector.h/.cpp`
+  - Adds generic target-state requests and termination on failed/unconfirmed PAUSED transitions.
+- `AppManager/AppManager.conf.in`
+  - Adds modern configuration values.
+- `AppManager/AppManager.config`
+  - Adds legacy configuration values.
+- `AppManager/CMakeLists.txt`
+  - Adds state-flow configuration defaults and builds the scheduler source.
+- `Tests/L0Tests/CMakeLists.txt`
+  - Includes the scheduler source in the AppManager L0 target.
 
-// Test launch with invalid package
-TEST(AppManagerTest, LaunchNonExistentPackage) {
-    // Should return appropriate error code
-}
+## Validation and Test Coverage
 
-// Test notification delivery order
-TEST(AppManagerTest, NotificationOrder) {
-    // State changes should be delivered in order
-}
-```
+Completed locally:
 
-## 9. Beginner-to-Expert Teaching Mode
+- Editor diagnostics for new scheduler and modified lifecycle files.
+- CMake diagnostics check.
+- `git diff --check` in both repositories.
 
-**Must know first:** AppManager is an orchestration layer. Learn the difference between the Thunder plugin wrapper, `AppManagerImplementation`, application metadata, lifecycle states, and asynchronous notifications.
+A full build was not available because the local environment has no configured CMake target and lacks the Linux/Thunder development include path.
 
-**Advanced path:** trace a launch through `LifecycleInterfaceConnector`, LifecycleManager, RuntimeManager, package locking, metadata updates, and the optional ResourceMonitor reconciliation path.
+Focused tests should cover:
 
----
+1. Launch calls `Reconcile(appId, ramTargetMB, true)` and does not wait for completion.
+2. Preload returns after reconciliation submission and proceeds after `targetRamAchieved=true`.
+3. Preload failure after `targetRamAchieved=false` is reported through `onAppLifecycleStateChanged`.
+4. Preload reconciliation-submission failure reports `Core::ERROR_GENERAL` and `onAppLifecycleStateChanged`.
+5. A duplicate pending preload for the same app is rejected.
+6. PAUSED advances after its timeout.
+7. A new ACTIVE or PAUSED app immediately advances the prior paused app.
+8. Failed PAUSED or SUSPENDED requests terminate the app.
+9. SUSPENDED advances to HIBERNATED when hibernation support and flash-space checks succeed.
+10. Disabled or failed hibernation leaves the app suspended.
+11. Plugin destruction stops the worker before releasing COM-RPC dependencies.
+
+## Known Limitations
+
+- The ResourceMonitor API currently has no request correlation ID. AppManager relies on the contract that same-app reconciliation requests do not overlap.
+- Application support for PAUSED and SUSPENDED is inferred from LifecycleManager request/confirmation behavior; hibernation eligibility is determined separately from package capability metadata.
+- Hibernation support is determined from the package `configMetadata.capabilities` token `hibernate-mode` (case-insensitive, exact token match; optional `=...` parameters are allowed). If capability metadata is absent, AppManager falls back to the `APPLICATION_CAN_RUN_IN_HIBERNATE_MODE` property and then the legacy `supportsHibernation` property. A present capability field without `hibernate-mode` is authoritative and disables hibernation for that app.
+- Flash requirement is currently estimated from `RuntimeConfig.dataImageSize`; free space is queried from ResourceMonitor using its configured hibernated-app mount point and quota. That mount point should match RuntimeManager's OCI hibernation destination.
+- Unit tests for the newly added flows still need to be implemented.
+
+
