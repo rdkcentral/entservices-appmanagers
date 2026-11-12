@@ -12,4 +12,6 @@ configuration.add("root", rootobject)
 if @PLUGIN_APP_MANAGER_RESOURCE_MONITOR@:
 	configuration.add("pausedToSuspendedTimeout", @PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT@)
 	configuration.add("suspendedToHibernatedTimeout", @PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT@)
+	configuration.add("rdkAppManagersConfigFile", "@PLUGIN_RDKAPPMANAGERS_CONFIG_FILE@")
+
 

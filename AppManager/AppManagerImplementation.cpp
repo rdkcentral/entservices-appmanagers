@@ -21,6 +21,9 @@
 #include <atomic>
 #include <algorithm>
 #include <cctype>
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+#include <fstream>
+#endif
 #include <sys/stat.h>
 #include <json/json.h>
 #include "AppManagerImplementation.h"
@@ -29,6 +32,50 @@
 
 #define TIME_DATA_SIZE           200
 static std::atomic<bool> sRunning{false};
+
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+namespace {
+bool loadHibernationEnabled(const std::string& configPath)
+{
+    if (configPath.empty())
+    {
+        LOGWARN("Hibernation config path is empty; hibernation remains disabled");
+        return false;
+    }
+
+    std::ifstream configFile(configPath);
+    if (!configFile.is_open())
+    {
+        LOGWARN("Could not open '%s'; hibernation remains disabled", configPath.c_str());
+        return false;
+    }
+
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    builder["allowComments"] = true;
+    builder["strictRoot"] = false;
+    std::string errors;
+    if (!Json::parseFromStream(builder, configFile, &root, &errors))
+    {
+        LOGWARN("Could not parse '%s' for hibernation settings: %s",
+                configPath.c_str(), errors.c_str());
+        return false;
+    }
+
+    if (!root.isObject() || !root["apps"].isObject())
+    {
+        return false;
+    }
+
+    const Json::Value& hibernate = root["apps"]["hibernate"];
+    if (!hibernate.isObject() || !hibernate["enable"].isBool())
+    {
+        return false;
+    }
+    return hibernate["enable"].asBool();
+}
+} // namespace
+#endif
 
 RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
 
@@ -796,6 +843,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
 
         uint32_t pausedToSuspendedTimeout = 60;
         uint32_t suspendedToHibernatedTimeout = 15;
+        std::string hibernationConfigFile;
         JsonObject configuration;
         if (configuration.FromString(service->ConfigLine()))
         {
@@ -807,8 +855,13 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
             {
                 suspendedToHibernatedTimeout = static_cast<uint32_t>(configuration["suspendedToHibernatedTimeout"].Number());
             }
+            if (configuration.HasLabel("rdkAppManagersConfigFile"))
+            {
+                hibernationConfigFile = configuration["rdkAppManagersConfigFile"].String();
+            }
         }
 
+        mHibernationEnabled = loadHibernationEnabled(hibernationConfigFile);
         mStateTransitionManager.reset(new AppStateTransitionManager(*this));
         mStateTransitionManager->Configure(pausedToSuspendedTimeout, suspendedToHibernatedTimeout);
         mStateTransitionManager->Start();
@@ -1182,6 +1235,11 @@ bool AppManagerImplementation::SupportsHibernation(const string& appId)
 }
 
 #ifdef APP_MANAGER_RESOURCE_MONITOR
+bool AppManagerImplementation::IsHibernationEnabled() const
+{
+    return mHibernationEnabled;
+}
+
 bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId)
 {
     const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);

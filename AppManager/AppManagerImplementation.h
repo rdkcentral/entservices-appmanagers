@@ -222,6 +222,7 @@ namespace Plugin {
         Core::hresult GetMaxInactiveRamUsage(int32_t& maxInactiveRamUsage) const override;
         bool SupportsHibernation(const string& appId);
     #ifdef APP_MANAGER_RESOURCE_MONITOR
+        bool IsHibernationEnabled() const;
         Core::hresult SetInactiveTargetState(const string& appId, Exchange::ILifecycleManager::LifecycleState state);
         Core::hresult Reconcile(const string& appId, uint32_t ramTargetMB, bool allowTerminate);
         uint32_t GetAppRamTargetMB(const string& appId) const;
@@ -279,6 +280,7 @@ namespace Plugin {
     #ifdef APP_MANAGER_RESOURCE_MONITOR
         std::mutex mPendingPreloadLock;
         std::map<std::string, std::shared_ptr<AppLaunchRequestParam>> mPendingPreloads;
+        bool mHibernationEnabled{false};
         std::unique_ptr<AppStateTransitionManager> mStateTransitionManager;
     #endif
         Core::hresult fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);

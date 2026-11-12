@@ -75,10 +75,12 @@ namespace WPEFramework
                             : Core::JSON::Container()
                             , runtimeAppPortal()
                             , runtimeConfigFile()
+                            , rdkAppManagersConfigFile()
                             , hibernation()
                         {
                             Add(_T("runtimeAppPortal"), &runtimeAppPortal);
                             Add(_T("runtimeConfigFile"), &runtimeConfigFile);
+                            Add(_T("rdkAppManagersConfigFile"), &rdkAppManagersConfigFile);
                             Add(_T("hibernate"), &hibernation);
                         }
                         ~Configuration() = default;
@@ -91,6 +93,7 @@ namespace WPEFramework
                     public:
                         Core::JSON::String runtimeAppPortal;
                         Core::JSON::String runtimeConfigFile;
+                        Core::JSON::String rdkAppManagersConfigFile;
                         Hibernation hibernation;
                 };
 
@@ -275,4 +278,5 @@ namespace WPEFramework
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 

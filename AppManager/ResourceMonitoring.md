@@ -204,6 +204,7 @@ The following CMake cache variables are available:
 |---|---:|---|
 | `PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT` | `60` | Seconds an app may remain PAUSED |
 | `PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT` | `15` | Seconds before evaluating a SUSPENDED app |
+| `PLUGIN_RDKAPPMANAGERS_CONFIG_FILE` | `/etc/rdk/rdkappmanagers.json` | Shared config path used by AppManager and RuntimeManager |
 Flash-space availability is queried from ResourceMonitor, using its configured
 hibernated-app mount point and quota. RuntimeManager independently selects the
 OCI hibernation destination from its hibernation configuration; configure the
