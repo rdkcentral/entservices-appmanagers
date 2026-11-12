@@ -542,6 +542,26 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     mounts.append(createBindMount("/etc/ssl/certs", "/etc/ssl/certs",
                                (MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV)));
 
+    // Gateway is optional. Only expose an existing Unix socket to the container.
+    // Recreate the container if the socket appears later or its inode changes.
+    constexpr const char* eyilSocketPath = "/tmp/app-eyil-gateway.ipc";
+    struct stat eyilSocket {};
+    if (stat(eyilSocketPath, &eyilSocket) == 0 && S_ISSOCK(eyilSocket.st_mode))
+    {
+        mounts.append(createBindMount(eyilSocketPath, eyilSocketPath,
+                                     MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC));
+    }
+
+#ifdef RDK_APPMANAGERS_DEBUG
+    struct stat eyilDevDirectory {};
+    if (stat("/usr/lib/eyil", &eyilDevDirectory) == 0 && S_ISDIR(eyilDevDirectory.st_mode))
+    {
+        // Development images only. The bundle contains its own executable/loader/libraries.
+        mounts.append(createBindMount("/usr/lib/eyil", "/usr/lib/eyil",
+                                     MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV));
+    }
+#endif
+
     mounts.append(createPrivateDataMount(runtimeConfig));
     
     createFkpsMounts(config, runtimeConfig, mounts);

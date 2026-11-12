@@ -24,6 +24,7 @@
 #include "OCISpecConstants.h"
 #include "NetworkConfigurationHelper.h"
 #include <fstream>
+#include <sys/stat.h>
 
 #define PERSIST_STORAGE_PATH "/data"
 
@@ -89,6 +90,37 @@ namespace ralf
         addLogNameToOCIConfig(ociConfigRootNode, config.mAppStorageInfo.path, config.mAppId);
         // Add Timezone info
         addTimezoneInfo(ociConfigRootNode);
+
+        // Gateway is optional. Only expose an existing Unix socket to the container.
+        // Recreate the container if the socket appears later or its inode changes.
+        constexpr const char* eyilSocketPath = "/tmp/app-eyil-gateway.ipc";
+        struct stat eyilSocket {};
+        if (stat(eyilSocketPath, &eyilSocket) == 0 && S_ISSOCK(eyilSocket.st_mode))
+        {
+            Json::Value mount(Json::objectValue);
+            mount["source"] = eyilSocketPath;
+            mount["destination"] = eyilSocketPath;
+            mount["type"] = "bind";
+            for (const auto* option : {"bind", "ro", "nosuid", "nodev", "noexec"})
+            {
+                mount["options"].append(option);
+            }
+            ociConfigRootNode["mounts"].append(mount);
+        }
+
+#ifdef RDK_APPMANAGERS_DEBUG
+        struct stat eyilDevDirectory {};
+        if (stat("/usr/lib/eyil", &eyilDevDirectory) == 0 && S_ISDIR(eyilDevDirectory.st_mode))
+        {
+            Json::Value mount(Json::objectValue);
+            mount["source"] = "/usr/lib/eyil";
+            mount["destination"] = "/usr/lib/eyil";
+            mount["type"] = "bind";
+            for (const auto* option : {"bind", "ro", "nosuid", "nodev"})
+                mount["options"].append(option);
+            ociConfigRootNode["mounts"].append(mount);
+        }
+#endif
         // Finally save the modified OCI config to file
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
