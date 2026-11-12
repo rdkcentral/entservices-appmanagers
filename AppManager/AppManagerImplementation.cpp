@@ -35,6 +35,25 @@
 #define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
 static std::atomic<bool> sRunning{false};
 
+// A launch env entry must be NAME=VALUE with NAME matching [A-Za-z_][A-Za-z0-9_]* and no NUL bytes.
+static bool isValidLaunchEnvEntry(const std::string& entry)
+{
+    const size_t separator = entry.find('=');
+    if ((std::string::npos == separator) || (0 == separator) || (std::string::npos != entry.find('\0')))
+    {
+        return false;
+    }
+    for (size_t i = 0; i < separator; ++i)
+    {
+        const unsigned char c = static_cast<unsigned char>(entry[i]);
+        if (!(std::isalpha(c) || ('_' == c) || ((i > 0) && std::isdigit(c))))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 #ifdef APP_MANAGER_RESOURCE_MONITOR
 namespace {
 void loadHibernationSettings(std::string& storagePath, bool& hibernationEnabled)
@@ -329,8 +348,10 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
 
 				AppInfoManager::getInstance().setRequestedLaunchVersion(appId, packageData.version);
 
-                                // Preserve legacy behavior by appending launchArgs["env"] only for preload requests.
-                                if ((APP_ACTION_PRELOAD == action) && (Core::ERROR_NONE == status) && launchArgsObj.HasLabel("env"))
+                                // Launch upserts launchArgs["env"] into the runtime config; preload keeps appending (legacy behavior).
+                                // A launch carrying a Firebolt intent does not also apply launchArgs env (intent and launchArgs are exclusive).
+                                const bool intentLaunch = (APP_ACTION_LAUNCH == action) && !appRequestParam->intent.empty();
+                                if ((Core::ERROR_NONE == status) && launchArgsObj.HasLabel("env") && !intentLaunch)
                                 {
                                     if (launchArgsObj["env"].Content() != JsonValue::type::ARRAY)
                                     {
@@ -348,9 +369,16 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                                 payloadError = "launchArgs.env must be an array of strings";
                                                 status = Core::ERROR_INVALID_PARAMETER;
                                             }
-                                            else if (!runtimeConfig.AppendString("envVariables", it.Current().String(), payloadError))
+                                            else if ((APP_ACTION_LAUNCH == action) && !isValidLaunchEnvEntry(it.Current().String()))
                                             {
-                                                LOGERR("Failed to append launch environment for appId=%s: %s", appId.c_str(), payloadError.c_str());
+                                                payloadError = "launchArgs.env entries must be NAME=VALUE";
+                                                status = Core::ERROR_INVALID_PARAMETER;
+                                            }
+                                            else if (!((APP_ACTION_LAUNCH == action)
+                                                ? runtimeConfig.UpsertEnvironment(it.Current().String(), payloadError)
+                                                : runtimeConfig.AppendString("envVariables", it.Current().String(), payloadError)))
+                                            {
+                                                LOGERR("Failed to apply launch environment for appId=%s: %s", appId.c_str(), payloadError.c_str());
                                                 status = Core::ERROR_GENERAL;
                                             }
                                         }

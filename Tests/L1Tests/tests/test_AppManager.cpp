@@ -19,6 +19,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mntent.h>
+#include <algorithm>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -1054,6 +1055,189 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcSuccess)
     {
         releaseResources();
     }
+}
+
+/* * Test Case for LaunchAppWithLaunchArgsEnvUpsertsRuntimeConfig
+ * Launches a not-yet-loaded app with launchArgs carrying custom env variables and a debugger flag
+ * Verifies valid env entries are upserted into the runtime config passed to SpawnApp (overriding package values)
+ * and the debugger behavior is preserved
+ */
+TEST_F(AppManagerTest, LaunchAppWithLaunchArgsEnvUpsertsRuntimeConfig)
+{
+    Core::hresult status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    const std::string launchArgs =
+        R"({"debugger":"true","env":["CUSTOM_VAR=hello world","BASE=2"]})";
+    std::string capturedPayload;
+    mPreLoadSpawmCalled = false;
+    PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = FillPackageIterator();
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly([&](const string&, const string&, const Exchange::IPackageHandler::LockReason&, uint32_t& lockId, string& unpackedPath, std::string& configMetadata, Exchange::IPackageHandler::ILockIterator*&) {
+            lockId = 1;
+            unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
+            configMetadata = runtimeConfigPayload;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
+        .WillRepeatedly([&](const std::string&, bool& loaded) {
+            loaded = false;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(APPMANAGER_APP_ID, "", ::testing::_, ::testing::_, launchArgs, ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce([&](const string&, const string&, const Exchange::ILifecycleManager::LifecycleState,
+            const std::string& runtimeConfigObject, const string&, string& appInstanceId, string& errorReason, bool& success) {
+            appInstanceId = APPMANAGER_APP_INSTANCE;
+            errorReason = "";
+            success = true;
+            {
+                std::lock_guard<std::mutex> lock(mPreLoadMutex);
+                capturedPayload = runtimeConfigObject;
+                mPreLoadSpawmCalled = true;
+            }
+            mPreLoadCV.notify_one();
+            return Core::ERROR_NONE;
+        });
+
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, "", launchArgs));
+    {
+        std::unique_lock<std::mutex> lock(mPreLoadMutex);
+        ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&]{ return mPreLoadSpawmCalled; }));
+    }
+
+    JsonObject runtimeConfig;
+    ASSERT_TRUE(runtimeConfig.FromString(capturedPayload));
+    EXPECT_TRUE(runtimeConfig["enableDebugger"].Boolean());
+    std::vector<std::string> environment;
+    const JsonArray envArray = runtimeConfig["envVariables"].Array();
+    for (uint16_t index = 0; index < envArray.Length(); ++index)
+    {
+        environment.push_back(envArray[index].String());
+    }
+    auto hasEntry = [&](const std::string& entry) {
+        return std::find(environment.begin(), environment.end(), entry) != environment.end();
+    };
+    auto hasName = [&](const std::string& name) {
+        return std::any_of(environment.begin(), environment.end(), [&](const std::string& e) { return e.compare(0, name.size() + 1, name + "=") == 0; });
+    };
+    EXPECT_TRUE(hasEntry("CUSTOM_VAR=hello world"));
+    EXPECT_TRUE(hasEntry("BASE=2"));
+    EXPECT_FALSE(hasEntry("BASE=1"));
+    EXPECT_TRUE(hasName("APPLICATION_LAUNCH_PARAMETERS"));
+
+    releaseResources();
+}
+
+/* * Test Case for LaunchAppWithInvalidLaunchArgsEnvIsRejected
+ * Invalid launchArgs.env (not NAME=VALUE) must not reach the container:
+ * SpawnApp is never invoked and the failure is reported via the lifecycle state notification
+ */
+TEST_F(AppManagerTest, LaunchAppWithInvalidLaunchArgsEnvIsRejected)
+{
+    Core::hresult status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    const std::string launchArgs = R"({"env":["NO_EQUALS"]})";
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = "";
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM;
+    PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = FillPackageIterator();
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly([&](const string&, const string&, const Exchange::IPackageHandler::LockReason&, uint32_t& lockId, string& unpackedPath, std::string& configMetadata, Exchange::IPackageHandler::ILockIterator*&) {
+            lockId = 1;
+            unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
+            configMetadata = runtimeConfigPayload;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Unlock(::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Return(Core::ERROR_NONE));
+    EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
+        .WillRepeatedly([&](const std::string&, bool& loaded) {
+            loaded = false;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
+
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, "", launchArgs));
+    const uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    mAppManagerImpl->Unregister(&notification);
+
+    releaseResources();
+}
+
+/* * Test Case for LaunchAppWithIntentIgnoresLaunchArgsEnv
+ * A launch that carries a Firebolt intent must not also apply launchArgs.env
+ */
+TEST_F(AppManagerTest, LaunchAppWithIntentIgnoresLaunchArgsEnv)
+{
+    Core::hresult status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    const std::string launchArgs = R"({"env":["CUSTOM_VAR=hello"]})";
+    std::string capturedPayload;
+    mPreLoadSpawmCalled = false;
+    PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = FillPackageIterator();
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly([&](const string&, const string&, const Exchange::IPackageHandler::LockReason&, uint32_t& lockId, string& unpackedPath, std::string& configMetadata, Exchange::IPackageHandler::ILockIterator*&) {
+            lockId = 1;
+            unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
+            configMetadata = runtimeConfigPayload;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
+        .WillRepeatedly([&](const std::string&, bool& loaded) {
+            loaded = false;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce([&](const string&, const string&, const Exchange::ILifecycleManager::LifecycleState,
+            const std::string& runtimeConfigObject, const string&, string& appInstanceId, string& errorReason, bool& success) {
+            appInstanceId = APPMANAGER_APP_INSTANCE;
+            errorReason = "";
+            success = true;
+            {
+                std::lock_guard<std::mutex> lock(mPreLoadMutex);
+                capturedPayload = runtimeConfigObject;
+                mPreLoadSpawmCalled = true;
+            }
+            mPreLoadCV.notify_one();
+            return Core::ERROR_NONE;
+        });
+
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, launchArgs));
+    {
+        std::unique_lock<std::mutex> lock(mPreLoadMutex);
+        ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&]{ return mPreLoadSpawmCalled; }));
+    }
+    EXPECT_EQ(std::string::npos, capturedPayload.find("CUSTOM_VAR"));
+
+    releaseResources();
 }
 
 /* * Test Case for LaunchAppUsingJSONRpcSuccess
