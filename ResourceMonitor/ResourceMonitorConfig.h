@@ -49,7 +49,7 @@ public:
     static constexpr uint32_t DEFAULT_PSI_POST_ACTION_DELAY = 1000000;
     static constexpr char DEFAULT_PSI_PATH[] = "/proc/pressure/memory";
     static constexpr uint32_t DEFAULT_FLASH_SIZE = 300;
-    static constexpr char DEFAULT_FLASH_MOUNT_POINT[] = "/mnt/media/apps/hibernated_apps";
+    static constexpr char DEFAULT_FLASH_MOUNT_POINT[] = "/media/apps/memcr";
     static constexpr uint64_t MIN_WARNING_MEMORY = 1;
     static constexpr uint32_t MIN_POLLING_INTERVAL = 10;
     static constexpr uint32_t MAX_PERCENTAGE = 100;
