@@ -34,7 +34,9 @@ namespace WPEFramework
     PreinstallManagerImplementation *PreinstallManagerImplementation::_instance = nullptr;
 
     PreinstallManagerImplementation::PreinstallManagerImplementation()
-                : mAdminLock(), mAppPreinstallDirectory(""), mPreinstalledUpdateExclusionList(),
+                : mAdminLock(), mAppPreinstallDirectory(""),
+                    mConfigFileName("/opt/persistent/sky/PACKAGE_MANAGER.json"),
+                    mForceInstallMarker("/opt/persistent/.sceneset_factory_apps_copied"), mPreinstalledUpdateExclusionList(),
                     mPreinstallManagerNotifications(), mCurrentservice(nullptr),
           mPreinstallState(State::NOT_STARTED), mInstallThread()
     {
@@ -134,6 +136,16 @@ namespace WPEFramework
                 mAppPreinstallDirectory = config.appPreinstallDirectory.Value();
             }
             LOGINFO("appPreinstallDirectory=%s", mAppPreinstallDirectory.c_str());
+            if (!config.configFileName.Value().empty())
+            {
+                mConfigFileName = config.configFileName.Value();
+            }
+            LOGINFO("configFileName=%s", mConfigFileName.c_str());
+            if (!config.forceInstallMarker.Value().empty())
+            {
+                mForceInstallMarker = config.forceInstallMarker.Value();
+            }
+            LOGINFO("forceInstallMarker=%s", mForceInstallMarker.c_str());
             result = Core::ERROR_NONE;
             LOGINFO("PreinstallManagerImplementation service configured successfully");
         }
@@ -305,6 +317,7 @@ namespace WPEFramework
     {
         ASSERT(nullptr != packageInstaller);
         DIR *dir = opendir(mAppPreinstallDirectory.c_str());
+        LOGINFO("db982 Reading preinstall directory: %s", mAppPreinstallDirectory.c_str());
         if (!dir)
         {
             LOGINFO("Failed to open directory: %s errno=%d", mAppPreinstallDirectory.c_str(), errno);
@@ -395,6 +408,21 @@ namespace WPEFramework
 
             LOGINFO("Installing package: %s, version: %s", pkg.packageId.c_str(), pkg.version.c_str());
 
+            mAdminLock.Lock();
+            const uint32_t attempt = ++mInstallAttempts[pkg.packageId + ":" + pkg.version];
+            const uint32_t invocation = mStartPreinstallCount;
+            mAdminLock.Unlock();
+            if (attempt > 1)
+            {
+                LOGWARN("db982 Duplicate install detected: package=%s version=%s attempt=%u (StartPreinstall invocation #%u)",
+                        pkg.packageId.c_str(), pkg.version.c_str(), attempt, invocation);
+            }
+            else
+            {
+                LOGINFO("db982First install attempt: package=%s version=%s (StartPreinstall invocation #%u)",
+                        pkg.packageId.c_str(), pkg.version.c_str(), invocation);
+            }
+
             FailReason failReason;
             Exchange::IPackageInstaller::IKeyValueIterator* additionalMetadata = nullptr;
             Core::hresult installResult = packageInstaller->Install(pkg.packageId, pkg.version, additionalMetadata, pkg.fileLocator, failReason);
@@ -440,7 +468,7 @@ namespace WPEFramework
     bool PreinstallManagerImplementation::readPreinstalledUpdateExclusionList()
     {
         mPreinstalledUpdateExclusionList.clear();
-        const char *const storePath = "/opt/persistent/sky/PACKAGE_MANAGER.json";
+        const char *const storePath = mConfigFileName.c_str();
         std::ifstream input(storePath);
         if (input.is_open())
         {
@@ -488,8 +516,10 @@ namespace WPEFramework
         Core::hresult result = Core::ERROR_GENERAL;
         bool shouldJoinPreviousThread = false;
         Exchange::IPackageInstaller* packageInstaller = nullptr;
-
+        LOGINFO("db982 Starting preinstall with forceInstall=%d", forceInstall);
         mAdminLock.Lock();
+        ++mStartPreinstallCount;
+        LOGINFO("db982 StartPreinstall invocation #%u forceInstall=%d state=%d", mStartPreinstallCount, forceInstall, static_cast<int>(mPreinstallState));
         if (mInstallThread.joinable())
         {
             if (mPreinstallState != State::COMPLETED)
@@ -543,7 +573,12 @@ namespace WPEFramework
             return result;
         }
 
-        if (!readPreinstalledUpdateExclusionList())
+        if (Core::File(mForceInstallMarker).Exists())
+        {
+            LOGINFO("Force install marker present: %s, skipping exclusion list read", mForceInstallMarker.c_str());
+            mPreinstalledUpdateExclusionList.clear();
+        }
+        else if (!readPreinstalledUpdateExclusionList())
         {
             releasePackageManagerObject(packageInstaller);
             return result;
@@ -598,10 +633,35 @@ namespace WPEFramework
                 }
                 else
                 {
+                    if (!isInstalled)
+                    {
+                        LOGINFO("db982 Preinstall action: NEW INSTALL package=%s version=%s",
+                                toBeInstalledApp->packageId.c_str(), toBeInstalledApp->version.c_str());
+                    }
+                    else
+                    {
+                        const std::string &installedVersion = existingApps[toBeInstalledApp->packageId];
+                        const char *action = "REINSTALL";
+                        if (isNewerVersion(toBeInstalledApp->version, installedVersion))
+                        {
+                            action = "UPGRADE";
+                        }
+                        else if (isNewerVersion(installedVersion, toBeInstalledApp->version))
+                        {
+                            action = "DOWNGRADE";
+                        }
+                        LOGINFO("db982 Preinstall action: %s package=%s installedVersion=%s preinstallVersion=%s forceInstall=%d",
+                                action, toBeInstalledApp->packageId.c_str(), installedVersion.c_str(),
+                                toBeInstalledApp->version.c_str(), forceInstall);
+                    }
                     ++toBeInstalledApp;
                 }
             }
 
+        }
+        else
+        {
+            LOGINFO("Preinstall action: FORCE INSTALL of all %zu packages (installed version check skipped)", preinstallPackages.size());
         }
 
         // Check if all packages were filtered out after forceInstall=false filtering
