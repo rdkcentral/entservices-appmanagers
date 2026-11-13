@@ -439,22 +439,9 @@ uint32_t Test_StateHandlerTransitionEventsIncludeNavigationIntent()
         const std::string& navigationIntent = gStubEventHandler.navigationIntents[eventIndex];
         L0Test::ExpectEqStr(tr, navigationIntent, "deeplink://preload",
             "Every preload transition event carries the launch intent");
-
-        L0Test::ExpectTrue(tr, runningResult, "onFirstFrame completes the ACTIVE transition");
-
     }
 
     context->setMostRecentIntent("deeplink://state-change");
-    if ((true == context->mPendingStateTransition) &&
-
-        ("onFirstFrame" == context->mPendingEventName)) {
-
-        bool readyResult = WPEFramework::Plugin::StateHandler::changeState(activeRequest, error);
-
-        L0Test::ExpectTrue(tr, readyResult, "onFirstFrame completes the ACTIVE transition");
-
-    }
-
     WPEFramework::Plugin::StateTransitionRequest activeRequest(
         context,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
