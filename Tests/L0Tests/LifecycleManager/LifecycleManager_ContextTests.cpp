@@ -447,6 +447,11 @@ uint32_t Test_StateHandlerTransitionEventsIncludeNavigationIntent()
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
     bool activeResult = WPEFramework::Plugin::StateHandler::changeState(activeRequest, error);
     L0Test::ExpectTrue(tr, activeResult, "PAUSED->ACTIVE transition succeeds");
+    if ((true == context->mPendingStateTransition) &&
+        ("onFirstFrame" == context->mPendingEventName)) {
+        bool readyResult = WPEFramework::Plugin::StateHandler::changeState(activeRequest, error);
+        L0Test::ExpectTrue(tr, readyResult, "onFirstFrame completes the ACTIVE transition");
+    }
     L0Test::ExpectTrue(tr, 4U == gStubEventHandler.navigationIntents.size(),
         "State-change request emits a transition event");
     if (4U == gStubEventHandler.navigationIntents.size()) {
