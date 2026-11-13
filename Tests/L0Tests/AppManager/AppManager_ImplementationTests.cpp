@@ -2892,12 +2892,12 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
         if (environment.Length() == 4u) {
             L0Test::ExpectEqStr(tr, environment[0].String(), std::string("BASE=1"),
                 "Existing package environment is preserved");
-            L0Test::ExpectTrue(tr, environment[1].String().find("APPLICATION_LAUNCH_PARAMETERS=") == 0,
-                "Encoded launch parameters are appended");
-            L0Test::ExpectEqStr(tr, environment[2].String(), std::string("EXTRA_ONE=1"),
+            L0Test::ExpectEqStr(tr, environment[1].String(), std::string("EXTRA_ONE=1"),
                 "First launchArgs env entry is appended");
-            L0Test::ExpectEqStr(tr, environment[3].String(), std::string("EXTRA_TWO=two"),
+            L0Test::ExpectEqStr(tr, environment[2].String(), std::string("EXTRA_TWO=two"),
                 "Second launchArgs env entry is appended");
+            L0Test::ExpectTrue(tr, environment[3].String().find("APPLICATION_LAUNCH_PARAMETERS=") == 0,
+                "Encoded launch parameters are appended");
         }
 
         const JsonObject vendor = enrichedConfig["vendor"].Object();
