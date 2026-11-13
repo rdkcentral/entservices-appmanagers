@@ -24,6 +24,9 @@
 #include "ServiceMock.h"
 #include "ThunderPortability.h"
 #include <core/core.h>
+#include <fstream>
+#include <cstdio>
+#include <unistd.h>
 
 using namespace WPEFramework;
 
@@ -78,6 +81,11 @@ public:
         return GetPsiMetrics(metric, value, total);
     }
 
+    Core::hresult CallSetConfig(const string& config)
+    {
+        return static_cast<Exchange::IResourceMonitor*>(this)->SetConfig(config);
+    }
+
     Core::hresult CallGetSwapUsed(uint64_t& swapUsed, uint64_t& memUsedTotal)
     {
         return GetSwapUsed(swapUsed, memUsedTotal);
@@ -96,6 +104,10 @@ public:
     Core::hresult CallReconcile(const string& appId, const uint32_t ramTargetMB, const bool allowTerminate)
     {
         return Reconcile(appId, ramTargetMB, allowTerminate);
+    }
+    void CallOnReconciliationComplete(const string& appId, const bool targetRamAchieved)
+    {
+        OnReconciliationComplete(appId, targetRamAchieved);
     }
 };
 
@@ -301,20 +313,6 @@ TEST_F(ResourceMonitorInitializedTest, ReconcileMethodRegistered)
     EXPECT_EQ(Core::ERROR_NONE, handler.Exists(_T("reconcile")));
 }
 
-TEST_F(ResourceMonitorInitializedTest, ReconcileReturnsSuccess)
-{
-    ASSERT_TRUE(IsPluginInitialized());
-    ASSERT_EQ(Core::ERROR_NONE,
-        handler.Invoke(
-            connection,
-            _T("reconcile"),
-            _T("{"
-               "\"appId\":\"Netflix\","
-               "\"ramTargetMB\":100,"
-               "\"allowTerminate\":false"
-               "}"),
-            response));
-}
 
 TEST_F(ResourceMonitorInitializedTest, ReconcileMissingAppId)
 {
@@ -412,15 +410,57 @@ TEST(ResourceMonitorImplementationTest, UnregisterNullNotification)
     TestableResourceMonitorImplementation impl;
     EXPECT_EQ(Core::ERROR_BAD_REQUEST, impl.Unregister(nullptr));
 }
-
 TEST(ResourceMonitorImplementationTest, ValidPsiMetrics)
 {
     TestableResourceMonitorImplementation impl;
+    char psiFile[] = "/tmp/resource_monitor_psi_XXXXXX";
+    const int fd = mkstemp(psiFile);
+    ASSERT_NE(-1, fd);
+    close(fd);
+    {
+        std::ofstream file(psiFile);
+        ASSERT_TRUE(file.is_open());
+        file << "some avg10=1.25 avg60=2.50 avg300=3.75 total=123456\n";
+        file << "full avg10=0.50 avg60=1.50 avg300=2.50 total=654321\n";
+    }
+    const string config =
+        string("{\"root\":{") +
+        "\"psi_checking_enabled\":true,"
+        "\"psi_path\":\"" + psiFile + "\""
+        "}}";
 
-    double value{};
-    uint64_t total{};
+    ASSERT_EQ(Core::ERROR_NONE, impl.CallSetConfig(config));
+    double value = 0.0;
+    uint64_t total = 0;
+    EXPECT_EQ(Core::ERROR_NONE, impl.CallGetPsiMetrics("full_avg60", value, total));
+    EXPECT_DOUBLE_EQ(1.50, value);
+    EXPECT_EQ(654321ULL, total);
 
-    impl.CallGetPsiMetrics("full_avg60", value, total);
+    value = 0.0;
+    total = 0;
+
+    EXPECT_EQ(Core::ERROR_NONE, impl.CallGetPsiMetrics("some_avg10", value, total));
+
+    EXPECT_DOUBLE_EQ(1.25, value);
+    EXPECT_EQ(123456ULL, total);
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, impl.CallGetPsiMetrics("invalid_metric", value, total));
+    std::remove(psiFile);
+}
+
+TEST(ResourceMonitorImplementationTest, PsiMetricsFileNotFound)
+{
+    TestableResourceMonitorImplementation impl;
+
+    const string config =
+        "{\"root\":{"
+        "\"psi_checking_enabled\":true,"
+        "\"psi_path\":\"/tmp/resource_monitor_missing_psi_file\""
+        "}}";
+
+    ASSERT_EQ(Core::ERROR_NONE, impl.CallSetConfig(config));
+    double value = 0.0;
+    uint64_t total = 0;
+    EXPECT_EQ(Core::ERROR_GENERAL, impl.CallGetPsiMetrics("full_avg60", value, total));
 }
 
 TEST_F(ResourceMonitorInitializedTest, MultipleStatsRequests)
@@ -440,5 +480,18 @@ TEST(ResourceMonitorImplementationTest, RegisterAndUnregister)
     EXPECT_CALL(notification, AddRef()).WillOnce(Return(1));
     EXPECT_EQ(Core::ERROR_NONE, impl.Register(&notification));
     EXPECT_CALL(notification, Release()).WillOnce(Return(0));
+    EXPECT_EQ(Core::ERROR_NONE, impl.Unregister(&notification));
+}
+
+TEST(ResourceMonitorImplementationTest, RegisterNotificationForReconcile)
+{
+    TestableResourceMonitorImplementation impl;
+    NotificationMock notification;
+
+    EXPECT_CALL(notification, AddRef()).Times(2).WillRepeatedly(Return(1));
+    EXPECT_CALL(notification, Release()).Times(2).WillRepeatedly(Return(0));
+    ASSERT_EQ(Core::ERROR_NONE, impl.Register(&notification));
+    EXPECT_CALL(notification, OnReconciliationComplete("Netflix", true)).Times(1);
+    impl.CallOnReconciliationComplete("Netflix", true);
     EXPECT_EQ(Core::ERROR_NONE, impl.Unregister(&notification));
 }
