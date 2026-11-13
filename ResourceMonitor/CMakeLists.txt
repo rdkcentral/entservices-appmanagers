@@ -66,6 +66,8 @@ install(TARGETS ${MODULE_NAME}
 add_library(${PLUGIN_IMPLEMENTATION} SHARED
     ResourceMonitorImplementation.cpp
     ResourceMonitorConfig.cpp
+    AppLifecycleConfig.cpp
+    PackageLifecycleConfigProvider.cpp
     Module.cpp
 )
 
@@ -101,12 +103,14 @@ if (RDK_SERVICES_L1_TEST OR RDK_SERVICE_L2_TEST)
         PRIVATE
             CompileSettingsDebug::CompileSettingsDebug
             ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+            AppManagersHelpers
             ${PLUGIN_RESOURCE_MANAGER_EXTRA_LIBRARIES})
 else()
     target_link_libraries(${PLUGIN_IMPLEMENTATION}
         PRIVATE
             CompileSettingsDebug::CompileSettingsDebug
             ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+            AppManagersHelpers
             ${PLUGIN_RESOURCE_MANAGER_EXTRA_LIBRARIES})
 endif()
 

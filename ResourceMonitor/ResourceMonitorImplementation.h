@@ -25,7 +25,9 @@
 #include <interfaces/IVictimSelector.h>
 #include <interfaces/IConfiguration.h>
 #include "ResourceMonitorConfig.h"
+#include "PackageLifecycleConfigProvider.h"
 #include <atomic>
+#include <memory>
 #include <thread>
 #include <list>
 #include <string>
@@ -58,6 +60,16 @@ namespace Plugin {
         Core::hresult Reconcile(const string& appId, const uint32_t ramTargetMB, const bool allowTerminate) override;
         Core::hresult Register(Exchange::IResourceMonitor::INotification* notification) override;
         Core::hresult Unregister(Exchange::IResourceMonitor::INotification* notification) override;
+
+        // Lifecycle capabilities from Package Manager (internal; not exposed over COM-RPC or JSON-RPC).
+        // See PackageLifecycleConfigProvider for the usage contract. Do not call while holding
+        // _adminLock, _reconcileMutex or _reactiveMonitorMutex.
+        Core::hresult GetAppLifecycleCapabilities(const string& appId, AppLifecycleCapabilities& capabilities,
+            const string& version = string());
+        Core::hresult IsAppLifecycleStateSupported(const string& appId, const AppLifecycleState state, bool& supported,
+            const string& version = string());
+        Core::hresult GetAppSuspendedStateConfig(const string& appId, SuspendedStateConfig& config,
+            const string& version = string());
         static ResourceMonitorImplementation* _instance;
 
     private:
@@ -138,6 +150,7 @@ namespace Plugin {
         std::atomic<EvictionOwner> _evictionOwner;
         Exchange::IVictimSelector* _victimSelector;
         Core::Sink<VictimSelectorNotification> _victimSelectorNotification;
+        std::unique_ptr<PackageLifecycleConfigProvider> _lifecycleConfigProvider;
 
     protected:
         mutable Core::CriticalSection _adminLock;

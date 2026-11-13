@@ -25,7 +25,9 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <mutex>
+#include <sstream>
 #include <sys/statvfs.h>
 #include <utility>
 #include <vector>
@@ -944,6 +946,9 @@ namespace Plugin {
                     // save the new config in state
                     string runtimeConfigPayload;
                     if (getRuntimeConfig(config, runtimeConfigPayload)) {
+                        if (!config.ralfPkgPath.empty()) {
+                            addApplicationLifecycle(packageId, config.ralfPkgPath, runtimeConfigPayload);
+                        }
                         state.runtimeConfigPayload = std::move(runtimeConfigPayload);
                         lockId = ++state.mLockCount;
                         LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
@@ -1005,6 +1010,78 @@ namespace Plugin {
         }
         runtimeConfigPayload = std::move(updatedPayload);
         return true;
+    }
+
+    namespace {
+        bool readJsonObjectFile(const string &path, JsonObject &object)
+        {
+            std::ifstream file(path);
+            if (!file.is_open()) {
+                return false;
+            }
+            std::stringstream contents;
+            contents << file.rdbuf();
+            return object.FromString(contents.str());
+        }
+    }
+
+    // Copies the locked package's urn:rdk:config:application-lifecycle metadata, unchanged,
+    // into the payload as "applicationLifecycle". Failures leave the payload untouched.
+    void PackageManagerImplementation::addApplicationLifecycle(const string &packageId, const string &ralfPkgPath, string &runtimeConfigPayload)
+    {
+        static const char *kLifecycleUrn = "urn:rdk:config:application-lifecycle";
+
+        JsonObject packageList;
+        if (!readJsonObjectFile(ralfPkgPath, packageList) || !packageList.HasLabel("packages") ||
+            (packageList["packages"].Content() != JsonValue::type::ARRAY)) {
+            LOGWARN("Lifecycle metadata unavailable for %s: cannot read package list '%s'", packageId.c_str(), ralfPkgPath.c_str());
+            return;
+        }
+
+        const JsonArray packages = packageList["packages"].Array();
+        for (uint16_t index = 0; index < packages.Length(); ++index) {
+            if (packages[index].Content() != JsonValue::type::OBJECT) {
+                continue;
+            }
+            const JsonObject entry = packages[index].Object();
+            if (!entry.HasLabel("pkgMetaDataPath") || (entry["pkgMetaDataPath"].Content() != JsonValue::type::STRING)) {
+                continue;
+            }
+            const string metadataPath = entry["pkgMetaDataPath"].String();
+            JsonObject metadata;
+            if (!readJsonObjectFile(metadataPath, metadata)) {
+                LOGWARN("Lifecycle metadata: cannot read package metadata '%s'", metadataPath.c_str());
+                continue;
+            }
+            if (!metadata.HasLabel("id") || (metadata["id"].Content() != JsonValue::type::STRING) ||
+                (metadata["id"].String() != packageId)) {
+                continue;
+            }
+            if (!metadata.HasLabel("configuration") || (metadata["configuration"].Content() != JsonValue::type::OBJECT)) {
+                return;
+            }
+            const JsonObject configuration = metadata["configuration"].Object();
+            if (!configuration.HasLabel(kLifecycleUrn)) {
+                return;
+            }
+            if (configuration[kLifecycleUrn].Content() != JsonValue::type::OBJECT) {
+                LOGWARN("Lifecycle metadata for %s is not an object; ignoring", packageId.c_str());
+                return;
+            }
+
+            string lifecycle;
+            Utils::RuntimeConfigPayload payload;
+            string updatedPayload;
+            string error;
+            if (!configuration[kLifecycleUrn].Object().ToString(lifecycle) || !payload.Parse(runtimeConfigPayload, error) ||
+                !payload.SetObject("applicationLifecycle", lifecycle, error) || !payload.Serialize(updatedPayload, error)) {
+                LOGWARN("Failed to add lifecycle metadata for %s: %s", packageId.c_str(), error.c_str());
+                return;
+            }
+            runtimeConfigPayload = std::move(updatedPayload);
+            return;
+        }
+        LOGWARN("Lifecycle metadata unavailable for %s: no metadata with a matching id in '%s'", packageId.c_str(), ralfPkgPath.c_str());
     }
 
     // copy values from libpackage
