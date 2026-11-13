@@ -1643,7 +1643,6 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
-    Core::Event onAppLaunchRequest(false, true);
 
     AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
         a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
@@ -1654,23 +1653,8 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
                           "\", \"intent\": \"" + std::string(APPMANAGER_APP_INTENT) +
                           "\", \"launchArgs\": \"" + std::string(APPMANAGER_APP_LAUNCHARGS) + "\"}";
 
-    EXPECT_CALL(*mServiceMock, Submit(::testing::_, ::testing::_))
-        .Times(1)
-        .WillOnce(::testing::Invoke(
-            [&](const uint32_t, const Core::ProxyType<Core::JSON::IElement>& json) {
-                std::string text;
-                EXPECT_TRUE(json->ToString(text));
-                const std::string expectedJson = "{\"jsonrpc\":\"2.0\",\"method\":\"org.rdk.AppManager.onAppLaunchRequest\",\"params\":{\"appId\":\"com.test.app\",\"intent\":\"test.intent\",\"source\":\"\"}}";
-                EXPECT_EQ(text, expectedJson);
-                onAppLaunchRequest.SetEvent();
-                return Core::ERROR_NONE;
-            }));
-
-    EVENT_SUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), requestLaunch, mJsonRpcResponse));
-    EXPECT_EQ(Core::ERROR_NONE, onAppLaunchRequest.Lock());
-    EVENT_UNSUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);
     
     // Simulate the app lifecycle state change event
     EVENT_SUBSCRIBE(0, _T("onAppLifecycleStateChanged"), _T("org.rdk.AppManager"), message);

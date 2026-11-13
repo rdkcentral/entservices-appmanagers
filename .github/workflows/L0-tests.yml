@@ -375,6 +375,7 @@ jobs:
             -DCMAKE_MODULE_PATH="$CMAKE_MODULE_PATH" \
             -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
             -DPREFIX="$PREFIX" \
+            -Dyaml-cpp_DIR=/usr/lib/x86_64-linux-gnu/cmake/yaml-cpp \
             -DPLUGIN_RUNTIME_MANAGER=ON \
             -DENABLE_RDKAPPMANAGERS_RUNTIMECONFIG=ON \
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
