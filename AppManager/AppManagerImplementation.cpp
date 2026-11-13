@@ -122,7 +122,11 @@ AppManagerImplementation::~AppManagerImplementation()
 {
     LOGINFO("Delete AppManagerImplementation Instance");
     _instance = nullptr;
-    sRunning.store(false);
+    {
+        /* Hold the lock so the worker cannot miss the wakeup between its predicate check and wait() */
+        std::lock_guard<std::mutex> lock(mAppManagerLock);
+        sRunning.store(false);
+    }
     mAppRequestListCV.notify_all();
 #ifdef APP_MANAGER_RESOURCE_MONITOR
     {
