@@ -97,6 +97,16 @@ target_include_directories(${PLUGIN_IMPLEMENTATION}
 
 if(APP_MANAGER_RESOURCE_MONITOR)
     target_compile_definitions(${PLUGIN_IMPLEMENTATION} PRIVATE APP_MANAGER_RESOURCE_MONITOR)
+
+    find_library(APP_MANAGER_RFC_LIBRARY NAMES rfcapi)
+    if(APP_MANAGER_RFC_LIBRARY)
+        find_path(APP_MANAGER_RFC_INCLUDE_DIR NAMES rfcapi.h REQUIRED)
+        target_include_directories(${PLUGIN_IMPLEMENTATION} PRIVATE ${APP_MANAGER_RFC_INCLUDE_DIR})
+        target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE ${APP_MANAGER_RFC_LIBRARY})
+        target_compile_definitions(${PLUGIN_IMPLEMENTATION} PRIVATE WITH_RFC)
+    else()
+        message(WARNING "rfcapi not found; Resource Monitor RFC control will use its default-enabled value")
+    endif()
 endif()
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
