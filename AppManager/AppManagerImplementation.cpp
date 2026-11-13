@@ -2001,7 +2001,6 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
                 }
             }
         }
-        }
     }
     if(status == Core::ERROR_NONE)
     {
