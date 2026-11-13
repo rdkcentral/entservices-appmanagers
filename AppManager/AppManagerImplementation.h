@@ -282,6 +282,7 @@ namespace Plugin {
         std::map<std::string, std::shared_ptr<AppLaunchRequestParam>> mPendingPreloads;
         std::string mHibernationStoragePath;
         bool mHibernationEnabled{false};
+        bool mResourceMonitorEnabled{true};
         std::unique_ptr<AppStateTransitionManager> mStateTransitionManager;
     #endif
         Core::hresult fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);

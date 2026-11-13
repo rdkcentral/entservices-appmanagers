@@ -30,6 +30,9 @@
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
+#ifdef WITH_RFC
+#include "UtilsRFCConfig.h"
+#endif
 
 #define TIME_DATA_SIZE           200
 #define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
@@ -37,6 +40,22 @@ static std::atomic<bool> sRunning{false};
 
 #ifdef APP_MANAGER_RESOURCE_MONITOR
 namespace {
+const char* const RFC_RESOURCE_MONITOR_ENABLE =
+    "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Resourcemonitor.Enable";
+
+bool loadResourceMonitorEnabled()
+{
+    bool enabled = true;
+#ifdef WITH_RFC
+    if (!Utils::ApplyRFCBool(RFC_RESOURCE_MONITOR_ENABLE, enabled))
+    {
+        LOGWARN("Unable to read %s; defaulting Resource Monitor to enabled",
+                RFC_RESOURCE_MONITOR_ENABLE);
+    }
+#endif
+    return enabled;
+}
+
 void loadHibernationSettings(std::string& storagePath, bool& hibernationEnabled)
 {
     std::ifstream configFile(AICONFIGURATION_JSON_PATH);
@@ -831,31 +850,39 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         }
 
     #ifdef APP_MANAGER_RESOURCE_MONITOR
-        if (Core::ERROR_NONE != createResourceMonitorRemoteObject())
+        mResourceMonitorEnabled = loadResourceMonitorEnabled();
+        if (mResourceMonitorEnabled && Core::ERROR_NONE != createResourceMonitorRemoteObject())
         {
             LOGWARN("ResourceMonitor is unavailable; reconciliation requests will fail");
         }
 
-        uint32_t pausedToSuspendedTimeout = 60;
-        uint32_t suspendedToHibernatedTimeout = 15;
-        JsonObject configuration;
-        if (configuration.FromString(service->ConfigLine()))
+        if (mResourceMonitorEnabled)
         {
-            if (configuration.HasLabel("pausedToSuspendedTimeout"))
+            uint32_t pausedToSuspendedTimeout = 60;
+            uint32_t suspendedToHibernatedTimeout = 15;
+            JsonObject configuration;
+            if (configuration.FromString(service->ConfigLine()))
             {
-                pausedToSuspendedTimeout = static_cast<uint32_t>(configuration["pausedToSuspendedTimeout"].Number());
+                if (configuration.HasLabel("pausedToSuspendedTimeout"))
+                {
+                    pausedToSuspendedTimeout = static_cast<uint32_t>(configuration["pausedToSuspendedTimeout"].Number());
+                }
+                if (configuration.HasLabel("suspendedToHibernatedTimeout"))
+                {
+                    suspendedToHibernatedTimeout = static_cast<uint32_t>(configuration["suspendedToHibernatedTimeout"].Number());
+                }
             }
-            if (configuration.HasLabel("suspendedToHibernatedTimeout"))
-            {
-                suspendedToHibernatedTimeout = static_cast<uint32_t>(configuration["suspendedToHibernatedTimeout"].Number());
-            }
+
+            loadHibernationSettings(mHibernationStoragePath, mHibernationEnabled);
+
+            mStateTransitionManager.reset(new AppStateTransitionManager(*this));
+            mStateTransitionManager->Configure(pausedToSuspendedTimeout, suspendedToHibernatedTimeout);
+            mStateTransitionManager->Start();
         }
-
-        loadHibernationSettings(mHibernationStoragePath, mHibernationEnabled);
-
-        mStateTransitionManager.reset(new AppStateTransitionManager(*this));
-        mStateTransitionManager->Configure(pausedToSuspendedTimeout, suspendedToHibernatedTimeout);
-        mStateTransitionManager->Start();
+        else
+        {
+            LOGINFO("Resource Monitor integration is disabled by RFC");
+        }
     #endif
         RDKAM_TELEMETRY_INIT(service);
         sRunning.store(true);
@@ -1038,6 +1065,11 @@ void AppManagerImplementation::releaseResourceMonitorRemoteObject()
 
 Core::hresult AppManagerImplementation::Reconcile(const string& appId, uint32_t ramTargetMB, bool allowTerminate)
 {
+    if (!mResourceMonitorEnabled)
+    {
+        return Core::ERROR_NONE;
+    }
+
     Exchange::IResourceMonitor* resourceMonitor = nullptr;
     {
         std::lock_guard<std::mutex> resourceMonitorLock(mResourceMonitorLock);
@@ -1899,71 +1931,76 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
     else if (nullptr != mLifecycleInterfaceConnector)
     {
 #ifdef APP_MANAGER_RESOURCE_MONITOR
-        status = Core::ERROR_NONE;
-        const std::shared_ptr<AppLaunchRequestParam> preloadRequest = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent, packageData.version});
-        if (nullptr == preloadRequest)
+        if (mResourceMonitorEnabled)
         {
-            error = "Failed to perform operation due to no memory";
-            status = Core::ERROR_GENERAL;
-        }
-        else
-        {
-            std::lock_guard<std::mutex> preloadLock(mPendingPreloadLock);
-            if (mPendingPreloads.end() != mPendingPreloads.find(appId))
+            status = Core::ERROR_NONE;
+            const std::shared_ptr<AppLaunchRequestParam> preloadRequest = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent, packageData.version});
+            if (nullptr == preloadRequest)
             {
-                error = "Preload reconciliation already pending";
+                error = "Failed to perform operation due to no memory";
                 status = Core::ERROR_GENERAL;
             }
             else
-            {
-                mPendingPreloads[appId] = preloadRequest;
-            }
-        }
-
-        if (Core::ERROR_NONE == status)
-        {
-            mAdminLock.Unlock();
-            const Core::hresult reconcileStatus = Reconcile(appId, GetAppRamTargetMB(appId), false);
-            mAdminLock.Lock();
-
-            if (Core::ERROR_NONE != reconcileStatus)
             {
                 std::lock_guard<std::mutex> preloadLock(mPendingPreloadLock);
-                mPendingPreloads.erase(appId);
-                LOGERR("Unable to start resource reconciliation for preload of appId %s", appId.c_str());
-                error = "Unable to start resource reconciliation";
-                status = Core::ERROR_GENERAL;
-                handleOnAppLifecycleStateChanged(appId, "", Exchange::IAppManager::APP_STATE_UNKNOWN,
-                    Exchange::IAppManager::APP_STATE_UNLOADED, Exchange::IAppManager::APP_ERROR_UNKNOWN);
+                if (mPendingPreloads.end() != mPendingPreloads.find(appId))
+                {
+                    error = "Preload reconciliation already pending";
+                    status = Core::ERROR_GENERAL;
+                }
+                else
+                {
+                    mPendingPreloads[appId] = preloadRequest;
+                }
             }
-            else
-            {
-                status = Core::ERROR_NONE;
-            }
-        }
-#else
-        std::shared_ptr<AppManagerRequest> request = std::make_shared<AppManagerRequest>();
 
-        if (nullptr != request)
-        {
-            LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
-            request->mRequestAction = APP_ACTION_PRELOAD;
-            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent, packageData.version});
-            if (request->mRequestParam != nullptr)
+            if (Core::ERROR_NONE == status)
             {
-                mAppManagerLock.lock();
-                mAppRequestList.push_back(std::move(request));
-                mAppManagerLock.unlock();
-                mAppRequestListCV.notify_one();
-                status = Core::ERROR_NONE;
-            }
-            else
-            {
-                LOGERR("Failed to perform operation due to no memory");
-                error = "Failed to perform operation due to no memory";
+                mAdminLock.Unlock();
+                const Core::hresult reconcileStatus = Reconcile(appId, GetAppRamTargetMB(appId), false);
+                mAdminLock.Lock();
+
+                if (Core::ERROR_NONE != reconcileStatus)
+                {
+                    std::lock_guard<std::mutex> preloadLock(mPendingPreloadLock);
+                    mPendingPreloads.erase(appId);
+                    LOGERR("Unable to start resource reconciliation for preload of appId %s", appId.c_str());
+                    error = "Unable to start resource reconciliation";
+                    status = Core::ERROR_GENERAL;
+                    handleOnAppLifecycleStateChanged(appId, "", Exchange::IAppManager::APP_STATE_UNKNOWN,
+                        Exchange::IAppManager::APP_STATE_UNLOADED, Exchange::IAppManager::APP_ERROR_UNKNOWN);
+                }
+                else
+                {
+                    status = Core::ERROR_NONE;
+                }
             }
         }
+        else
 #endif
+        {
+            std::shared_ptr<AppManagerRequest> request = std::make_shared<AppManagerRequest>();
+
+            if (nullptr != request)
+            {
+                LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
+                request->mRequestAction = APP_ACTION_PRELOAD;
+                request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent, packageData.version});
+                if (request->mRequestParam != nullptr)
+                {
+                    mAppManagerLock.lock();
+                    mAppRequestList.push_back(std::move(request));
+                    mAppManagerLock.unlock();
+                    mAppRequestListCV.notify_one();
+                    status = Core::ERROR_NONE;
+                }
+                else
+                {
+                    LOGERR("Failed to perform operation due to no memory");
+                    error = "Failed to perform operation due to no memory";
+                }
+            }
+        }
     }
     if(status == Core::ERROR_NONE)
     {
