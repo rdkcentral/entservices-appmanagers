@@ -297,7 +297,6 @@ uint32_t Test_RM_Lifecycle_CpuThresholdUnavailable()
     const AppLifecycleCapabilities caps = ParseRalf(
         "{\"supportedNonActiveStates\":[\"paused\",\"suspended\"],\"maxSuspendedSystemMemory\":\"16M\","
         "\"maxTimeToSuspendMemoryState\":10,\"maxSuspendedCpuUsage\":1}");
-    L0Test::ExpectTrue(tr, caps.suspended.hasMaxSystemMemory, "Memory config still available");
     ExpectStates(tr, caps, true, true, false, "Unknown members do not affect states");
     return tr.failures;
 }

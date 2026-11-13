@@ -7,7 +7,7 @@ on:
     branches: [ main, 'sprint/**', 'release/**', topic/RDK*, develop ]
 
 env:
-  INTERFACES_REF: "c404659d"
+  INTERFACES_REF: "d5347e5ab3e63c5ea99a36a3dc0977021737e55e"
 
 jobs:
   build-entservices-on-pr:
