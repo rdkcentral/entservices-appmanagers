@@ -24,14 +24,19 @@
 #include <interfaces/IResourceMonitor.h>
 #include <interfaces/IVictimSelector.h>
 #include <interfaces/IConfiguration.h>
+#include <interfaces/IAppManager.h>
+#include <interfaces/IRuntimeManager.h>
 #include "ResourceMonitorConfig.h"
+#include "PackageLifecycleConfigProvider.h"
 #include <atomic>
+#include <memory>
 #include <thread>
 #include <list>
 #include <string>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+#include <map>
 
 namespace WPEFramework {
 namespace Plugin {
@@ -58,6 +63,16 @@ namespace Plugin {
         Core::hresult Reconcile(const string& appId, const uint32_t ramTargetMB, const bool allowTerminate) override;
         Core::hresult Register(Exchange::IResourceMonitor::INotification* notification) override;
         Core::hresult Unregister(Exchange::IResourceMonitor::INotification* notification) override;
+
+        // Lifecycle capabilities from Package Manager (internal; not exposed over COM-RPC or JSON-RPC).
+        // See PackageLifecycleConfigProvider for the usage contract. Do not call while holding
+        // _adminLock, _reconcileMutex or _reactiveMonitorMutex.
+        Core::hresult GetAppLifecycleCapabilities(const string& appId, AppLifecycleCapabilities& capabilities,
+            const string& version = string());
+        Core::hresult IsAppLifecycleStateSupported(const string& appId, const AppLifecycleState state, bool& supported,
+            const string& version = string());
+        Core::hresult GetAppSuspendedStateConfig(const string& appId, SuspendedStateConfig& config,
+            const string& version = string());
         static ResourceMonitorImplementation* _instance;
 
     private:
@@ -79,10 +94,50 @@ namespace Plugin {
             ResourceMonitorImplementation& _parent;
         };
 
+        class AppManagerNotification : public Exchange::IAppManager::INotification {
+        public:
+            explicit AppManagerNotification(ResourceMonitorImplementation* parent) : _parent(*parent)
+            {
+                ASSERT(parent != nullptr);
+            }
+            BEGIN_INTERFACE_MAP(AppManagerNotification)
+                INTERFACE_ENTRY(Exchange::IAppManager::INotification)
+            END_INTERFACE_MAP
+
+            void OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId,
+                const Exchange::IAppManager::AppLifecycleState newState,
+                const Exchange::IAppManager::AppLifecycleState oldState,
+                const Exchange::IAppManager::AppErrorReason errorReason) override
+            {
+                _parent.OnAppLifecycleStateChanged(appId, appInstanceId, newState, oldState, errorReason);
+            }
+        private:
+            ResourceMonitorImplementation& _parent;
+        };
+
         enum class EvictionOwner {
             NONE,
             REACTIVE,
             RECONCILE
+        };
+
+        // Lifecycle enforcement timer state per app instance
+        struct AppTimerState {
+            uint64_t pausedTimerExpiryMs;  // Expiry time in milliseconds (0 = inactive)
+            uint64_t suspendedTimerExpiryMs;  // Expiry time in milliseconds (0 = inactive)
+            AppLifecycleCapabilities lifecycleSnapshot;
+            bool hasSnapshot;
+            Exchange::IAppManager::AppLifecycleState pausedExpectedState;  // State when PAUSED timer started
+            Exchange::IAppManager::AppLifecycleState suspendedExpectedState;  // State when SUSPENDED timer started
+            
+            AppTimerState()
+                : pausedTimerExpiryMs(0)
+                , suspendedTimerExpiryMs(0)
+                , hasSnapshot(false)
+                , pausedExpectedState(Exchange::IAppManager::APP_STATE_UNKNOWN)
+                , suspendedExpectedState(Exchange::IAppManager::APP_STATE_UNKNOWN)
+            {
+            }
         };
 
         Core::hresult SetConfig(const string& config);
@@ -94,9 +149,30 @@ namespace Plugin {
         uint32_t CalculateSwapPercentage(uint64_t swapFree, uint64_t swapTotal) const;
         void OnReconciliationComplete(const string& appId, const bool targetRamAchieved);
         void OnEvictComplete(const bool evicted, const Exchange::IVictimSelector::EvictErrorReason errorCode);
+        void OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId,
+            const Exchange::IAppManager::AppLifecycleState newState,
+            const Exchange::IAppManager::AppLifecycleState oldState,
+            const Exchange::IAppManager::AppErrorReason errorReason);
         Core::hresult Evict(const std::string& reason, const std::string& action, EvictionOwner owner);
         Core::hresult Configure(PluginHost::IShell* service);
         Core::hresult CalculateDirectorySize(const std::string& path, uint64_t& totalSize);
+
+        // Timer management
+        void OnPausedTimerExpired(const string& appInstanceId);
+        void OnSuspendedTimerExpired(const string& appInstanceId);
+        void StartPausedTimer(const string& appInstanceId, const AppLifecycleCapabilities& capabilities);
+        void StartSuspendedTimer(const string& appInstanceId);
+        void CancelPausedTimer(const string& appInstanceId);
+        void CancelSuspendedTimer(const string& appInstanceId);
+        void CancelAllTimers(const string& appInstanceId);
+
+        // Enforcement helpers
+        void RequestSuspendedTransition(const string& appInstanceId);
+        void RequestHibernatedTransition(const string& appInstanceId);
+        void RequestAppTermination(const string& appInstanceId, const string& reason);
+        bool IsNonAppWorkload(const string& appInstanceId);
+        Exchange::IAppManager::AppLifecycleState GetAppState(const string& appInstanceId);
+        uint64_t GetGPUMemoryUsage(const string& appInstanceId);
 
         struct ReconcileRequest {
             string appId;
@@ -138,6 +214,26 @@ namespace Plugin {
         std::atomic<EvictionOwner> _evictionOwner;
         Exchange::IVictimSelector* _victimSelector;
         Core::Sink<VictimSelectorNotification> _victimSelectorNotification;
+        std::unique_ptr<PackageLifecycleConfigProvider> _lifecycleConfigProvider;
+
+        // AppManager lifecycle event subscription
+        Exchange::IAppManager* _appManager;
+        Core::Sink<AppManagerNotification> _appManagerNotification;
+
+        // RuntimeManager for querying container info (GPU/memory stats)
+        Exchange::IRuntimeManager* _runtimeManager;
+
+        // Per-app timer state for lifecycle enforcement
+        std::map<std::string, AppTimerState> _appTimers;
+        std::mutex _appTimersMutex;
+
+        // Timer worker for lifecycle enforcement
+        std::atomic<bool> _timerWorkerRunning;
+        std::thread _timerWorkerThread;
+        std::condition_variable _timerWorkerCv;
+        std::mutex _timerWorkerMutex;
+
+        void TimerWorkerLoop();
 
     protected:
         mutable Core::CriticalSection _adminLock;

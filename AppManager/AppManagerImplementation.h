@@ -87,6 +87,7 @@ namespace Plugin {
         static constexpr CurrentAction APP_ACTION_TERMINATE = AppManagerTypes::APP_ACTION_TERMINATE;
         static constexpr CurrentAction APP_ACTION_HIBERNATE = AppManagerTypes::APP_ACTION_HIBERNATE;
         static constexpr CurrentAction APP_ACTION_KILL      = AppManagerTypes::APP_ACTION_KILL;
+        static constexpr CurrentAction APP_ACTION_SET_TARGET_STATE = AppManagerTypes::APP_ACTION_SET_TARGET_STATE;
 
          enum CurrentActionError{
             ERROR_NONE,
@@ -202,6 +203,7 @@ namespace Plugin {
         Core::hresult Unregister(Exchange::IAppManager::INotification *notification) override ;
         Core::hresult LaunchApp(const string& appId , const string& intent , const string& launchArgs) override;
         Core::hresult CloseApp(const string& appId) override;
+        Core::hresult SetTargetAppState(const string& appId, const Exchange::IAppManager::AppLifecycleState targetState) override;
         Core::hresult TerminateApp(const string& appId) override;
         Core::hresult KillApp(const string& appId) override;
         Core::hresult GetLoadedApps(Exchange::IAppManager::ILoadedAppInfoIterator*& appData) override;

@@ -24,6 +24,8 @@
 #include <string>
 #include <vector>
 #include <cstdio>
+#include <cstdlib>
+#include <unistd.h>
 #include <mutex>
 #include <chrono>
 #include <condition_variable>
@@ -1811,6 +1813,131 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
     EXPECT_EQ(runtimeConfigJson, lockRuntimeConfigJson);
 
     EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
+
+    deinitforComRpc();
+}
+
+namespace {
+    // Writes the libpackage RALF metadata files for the dummy "YouTube" package and points
+    // the IPackageImplDummy Lock() at them through PACKAGEMANAGER_TEST_RALF_PKG_PATH.
+    class RalfLifecycleFixture {
+    public:
+        explicit RalfLifecycleFixture(const string& configurationMembers)
+        {
+            char tmpl[] = "/tmp/pm_l1_lifecycle_XXXXXX";
+            const char* created = mkdtemp(tmpl);
+            mDir = (created != nullptr) ? created : "";
+            const string metadataPath = mDir + "/config.json";
+            std::ofstream(metadataPath) << "{\"id\":\"YouTube\",\"version\":\"100.1.24\",\"packageType\":\"application\",\"configuration\":{"
+                                        << configurationMembers << "}}";
+            mListPath = mDir + "/YouTube_100.1.24_metadata.json";
+            std::ofstream(mListPath) << "{\"packages\":[{\"pkgMountPath\":\"" << mDir << "/rootfs\",\"pkgMetaDataPath\":\"" << metadataPath << "\"}]}";
+            setenv("PACKAGEMANAGER_TEST_RALF_PKG_PATH", mListPath.c_str(), 1);
+        }
+        ~RalfLifecycleFixture()
+        {
+            unsetenv("PACKAGEMANAGER_TEST_RALF_PKG_PATH");
+            if (!mDir.empty()) {
+                std::remove((mDir + "/config.json").c_str());
+                std::remove(mListPath.c_str());
+                rmdir(mDir.c_str());
+            }
+        }
+        const string& ListPath() const { return mListPath; }
+
+    private:
+        string mDir;
+        string mListPath;
+    };
+}
+
+/* Test Case for the applicationLifecycle runtime payload member using ComRpc (RDKEMW-28030)
+ *
+ * Point the dummy libpackage at RALF metadata that defines urn:rdk:config:application-lifecycle
+ * Call Lock() and GetLockedInfo() and verify both payloads carry the block unchanged
+ */
+
+TEST_F(PackageManagerTest, lockAddsApplicationLifecycleusingComRpc) {
+
+    RalfLifecycleFixture fixture("\"urn:rdk:config:application-lifecycle\":{\"supportedNonActiveStates\":[\"paused\",\"suspended\"],"
+                                 "\"maxSuspendedSystemMemory\":\"16M\",\"maxTimeToSuspendMemoryState\":10,\"vendorFuture\":true}");
+
+    initforComRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    uint32_t lockId = 0;
+    string unpackedPath;
+    string runtimeConfig;
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    EXPECT_EQ(Core::ERROR_NONE,
+              pkghandlerInterface->Lock("YouTube", "100.1.24", Exchange::IPackageHandler::LockReason::LAUNCH,
+                                        lockId, unpackedPath, runtimeConfig, appMetadata));
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+        appMetadata = nullptr;
+    }
+
+    Json::Value lockJson;
+    Json::Reader reader;
+    ASSERT_TRUE(reader.parse(runtimeConfig, lockJson));
+    ASSERT_TRUE(lockJson.isMember("applicationLifecycle"));
+    const Json::Value& lifecycle = lockJson["applicationLifecycle"];
+    ASSERT_TRUE(lifecycle["supportedNonActiveStates"].isArray());
+    EXPECT_EQ(2u, lifecycle["supportedNonActiveStates"].size());
+    EXPECT_EQ("16M", lifecycle["maxSuspendedSystemMemory"].asString());
+    EXPECT_EQ(10, lifecycle["maxTimeToSuspendMemoryState"].asInt());
+    EXPECT_TRUE(lifecycle["vendorFuture"].asBool());
+    EXPECT_EQ(fixture.ListPath(), lockJson["ralfPkgPath"].asString());
+
+    bool locked = false;
+    string gatewayMetadataPath;
+    string lockedInfoConfig;
+    EXPECT_EQ(Core::ERROR_NONE,
+              pkghandlerInterface->GetLockedInfo("YouTube", "100.1.24", unpackedPath, lockedInfoConfig, gatewayMetadataPath, locked));
+    EXPECT_TRUE(locked);
+    Json::Value lockedInfoJson;
+    ASSERT_TRUE(reader.parse(lockedInfoConfig, lockedInfoJson));
+    EXPECT_EQ(lifecycle, lockedInfoJson["applicationLifecycle"]);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock("YouTube", "100.1.24"));
+
+    deinitforComRpc();
+}
+
+/* Test Case for a RALF package without lifecycle metadata using ComRpc (RDKEMW-28030)
+ *
+ * Point the dummy libpackage at RALF metadata without urn:rdk:config:application-lifecycle
+ * Call Lock() and verify the payload has no applicationLifecycle and the lock succeeds
+ */
+
+TEST_F(PackageManagerTest, lockWithoutApplicationLifecycleusingComRpc) {
+
+    RalfLifecycleFixture fixture("\"urn:rdk:config:memory\":{\"system\":\"256M\"}");
+
+    initforComRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    uint32_t lockId = 0;
+    string unpackedPath;
+    string runtimeConfig;
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    EXPECT_EQ(Core::ERROR_NONE,
+              pkghandlerInterface->Lock("YouTube", "100.1.24", Exchange::IPackageHandler::LockReason::LAUNCH,
+                                        lockId, unpackedPath, runtimeConfig, appMetadata));
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+        appMetadata = nullptr;
+    }
+
+    Json::Value lockJson;
+    Json::Reader reader;
+    ASSERT_TRUE(reader.parse(runtimeConfig, lockJson));
+    EXPECT_FALSE(lockJson.isMember("applicationLifecycle"));
+    EXPECT_EQ(fixture.ListPath(), lockJson["ralfPkgPath"].asString());
+
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock("YouTube", "100.1.24"));
 
     deinitforComRpc();
 }

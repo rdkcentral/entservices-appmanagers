@@ -871,7 +871,6 @@ namespace WPEFramework
             return result;
         }
 
-    #ifdef APP_MANAGER_RESOURCE_MONITOR
         Core::hresult LifecycleInterfaceConnector::setTargetAppState(const string& appId, Exchange::ILifecycleManager::LifecycleState state)
         {
             Core::hresult status = Core::ERROR_GENERAL;
@@ -902,7 +901,6 @@ namespace WPEFramework
             mAdminLock.Unlock();
             return status;
         }
-#endif
 
         /* Send Intent invokes it */
         Core::hresult LifecycleInterfaceConnector::sendIntent(const string& appId, const string& intent)

@@ -56,6 +56,7 @@ public:
     static constexpr uint32_t DEFAULT_MIN_POST_WARNING_DELAY = 60;
     static constexpr uint32_t DEFAULT_SOFT_THRESHOLD_DELTA = 10;
     static constexpr uint32_t DEFAULT_HARD_THRESHOLD_DELTA = 20;
+    static constexpr uint32_t DEFAULT_PAUSED_TO_SUSPENDED_TIMEOUT = 60;
     static constexpr const char* RFC_POLLING_INTERVAL = "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Resourcemonitor.PollingInterval";
     static constexpr const char* RFC_LOW_MEMORY_WARNING = "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Resourcemonitor.LowMemoryWarningEnabled";
     static constexpr const char* RFC_WARNING_MIN_MEM = "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Resourcemonitor.WarningThresholdMinMemory";
@@ -182,6 +183,11 @@ public:
         return _minPostWarningDelay;
     }
 
+    uint32_t PausedToSuspendedTimeout() const
+    {
+        return _pausedToSuspendedTimeout;
+    }
+
 private:
 
     void SetDefaults();
@@ -235,6 +241,8 @@ private:
 
     double _softThresholdMaxPsi;
     double _hardThresholdMaxPsi;
+
+    uint32_t _pausedToSuspendedTimeout;
 };
 
 // This represents the values coming from ResourceMonitor.conf.
@@ -261,6 +269,7 @@ public:
             , SoftThresholdDeltaPercentage(ResourceMonitorConfig::DEFAULT_SOFT_THRESHOLD_DELTA)
             , HardThresholdDeltaPercentage(ResourceMonitorConfig::DEFAULT_HARD_THRESHOLD_DELTA)
             , MinPostWarningDelay(ResourceMonitorConfig::DEFAULT_MIN_POST_WARNING_DELAY)
+            , PausedToSuspendedTimeout(ResourceMonitorConfig::DEFAULT_PAUSED_TO_SUSPENDED_TIMEOUT)
         {
             Add(_T("psi_checking_enabled"), &PsiCheckingEnabled);
             Add(_T("zram_checking_enabled"), &ZramCheckingEnabled);
@@ -284,6 +293,7 @@ public:
             Add(_T("soft_threshold_delta_percentage"), &SoftThresholdDeltaPercentage);
             Add(_T("hard_threshold_delta_percentage"), &HardThresholdDeltaPercentage);
             Add(_T("min_post_warning_delay"), &MinPostWarningDelay);
+            Add(_T("paused_to_suspended_timeout"), &PausedToSuspendedTimeout);
         }
 
         Core::JSON::Boolean PsiCheckingEnabled;
@@ -308,6 +318,7 @@ public:
         Core::JSON::DecUInt32 SoftThresholdDeltaPercentage;
         Core::JSON::DecUInt32 HardThresholdDeltaPercentage;
         Core::JSON::DecUInt32 MinPostWarningDelay;
+        Core::JSON::DecUInt32 PausedToSuspendedTimeout;
     };
 
     ResourceMonitorConfigJSON()

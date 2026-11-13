@@ -402,6 +402,20 @@ sequenceDiagram
     PKG-->>AM: lockId, unpackedPath, opaque JSON payload
 ```
 
+**Application lifecycle metadata.** On the first lock of a RALF package, PackageManager reads the package list that libpackage reports in `ralfPkgPath`, then reads the metadata file of the package whose `id` matches the locked package. If that metadata defines `configuration["urn:rdk:config:application-lifecycle"]` as an object, PackageManager copies it unchanged, including unknown members, into the payload as `applicationLifecycle`:
+
+```json
+{"ralfPkgPath":"/tmp/com.example.app_1.0.0_metadata.json",
+ "applicationLifecycle":{"supportedNonActiveStates":["paused","suspended"],"maxSuspendedSystemMemory":"16M","maxTimeToSuspendMemoryState":10}}
+```
+
+The member is omitted in these cases, each of which logs a warning without changing the lock result:
+- the block is absent;
+- the package is not a RALF package;
+- the metadata cannot be read or does not match the package.
+
+`Lock` and `GetLockedInfo` return the same payload. ResourceMonitor uses this member to report lifecycle capabilities.
+
 ### Download Queue Processing
 
 ```mermaid

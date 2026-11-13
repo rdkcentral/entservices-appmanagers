@@ -75,6 +75,18 @@ void RuntimeConfigPayload::SetStringArray(const std::string& key, const std::vec
     mImpl->object[key.c_str()] = array;
 }
 
+bool RuntimeConfigPayload::SetObject(const std::string& key, const std::string& serializedObject, std::string& error)
+{
+    JsonObject parsed;
+    if (serializedObject.empty() || !parsed.FromString(serializedObject)) {
+        error = key + " must be a JSON object";
+        return false;
+    }
+    mImpl->object[key.c_str()] = parsed;
+    error.clear();
+    return true;
+}
+
 bool RuntimeConfigPayload::AppendString(const std::string& key, const std::string& value, std::string& error)
 {
     JsonArray array;
@@ -236,6 +248,25 @@ bool RuntimeConfigPayload::GetStringArray(const std::string& key, std::vector<st
         parsed.emplace_back(array[index].String());
     }
     values = std::move(parsed);
+    return true;
+}
+
+bool RuntimeConfigPayload::GetObject(const std::string& key, std::string& serializedObject, bool& present, std::string& error) const
+{
+    present = mImpl->object.HasLabel(key.c_str());
+    if (!present) {
+        return true;
+    }
+    if (mImpl->object[key.c_str()].Content() != JsonValue::type::OBJECT) {
+        error = key + " must be an object";
+        return false;
+    }
+    std::string serialized;
+    if (!mImpl->object[key.c_str()].Object().ToString(serialized)) {
+        error = key + " could not be serialized";
+        return false;
+    }
+    serializedObject = std::move(serialized);
     return true;
 }
 
