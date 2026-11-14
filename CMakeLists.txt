@@ -113,6 +113,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 
 # Product configuration dir
 set(PRODUCT_CONFIG_DIR "/etc/entservices")
+set(PLUGIN_RDKAPPMANAGERS_CONFIG_FILE "/etc/rdk/rdkappmanagers.json" CACHE FILEPATH "Path to the shared RDK AppManagers JSON configuration")
 
 # Library installation section
 string(TOLOWER ${NAMESPACE} STORAGE_DIRECTORY)
@@ -200,3 +201,4 @@ if(WPEFRAMEWORK_CREATE_IPKG_TARGETS)
 
     include(CPack)
 endif()
+

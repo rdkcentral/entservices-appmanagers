@@ -35,8 +35,6 @@
 #include <yaml-cpp/yaml.h>
 #endif
 
-#define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
-
 namespace WPEFramework
 {
 namespace Plugin
@@ -77,10 +75,10 @@ namespace Plugin
     {
     }
 
-    void AIConfiguration::initialize(const std::string& runtimeConfigFile)
+    void AIConfiguration::initialize(const std::string& runtimeConfigFile, const std::string& rdkAppManagersConfigFile)
     {
         mExtraMounts.clear();
-        readFromConfigFile();
+        readFromConfigFile(rdkAppManagersConfigFile);
 #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
         readFromYamlConfigFile(runtimeConfigFile);
 #endif
@@ -629,12 +627,19 @@ namespace Plugin
             mHibernateCompression = compression;
     }
 
-    void AIConfiguration::readFromConfigFile()
+    void AIConfiguration::readFromConfigFile(const std::string& configFilePath)
     {
-        std::ifstream configFile(AICONFIGURATION_JSON_PATH);
+        if (configFilePath.empty())
+        {
+            LOGINFO("RDK AppManagers config path is empty; populating custom values");
+            readFromCustomData();
+            return;
+        }
+
+        std::ifstream configFile(configFilePath);
         if (!configFile.is_open())
         {
-            LOGINFO("Populating custom values for AIConfiguration from readFromCustomData()");
+            LOGINFO("Could not open '%s'; populating custom values for AIConfiguration", configFilePath.c_str());
             readFromCustomData();
             return;
         }
@@ -646,7 +651,7 @@ namespace Plugin
         std::string errs;
         if (!Json::parseFromStream(builder, configFile, &root, &errs))
         {
-            LOGERR("JSON parse error in '%s': %s", AICONFIGURATION_JSON_PATH, errs.c_str());
+            LOGERR("JSON parse error in '%s': %s", configFilePath.c_str(), errs.c_str());
             readFromCustomData();
             return;
         }
@@ -786,4 +791,5 @@ namespace Plugin
     }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 

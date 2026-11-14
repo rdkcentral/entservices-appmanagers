@@ -204,8 +204,11 @@ The following CMake cache variables are available:
 |---|---:|---|
 | `PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT` | `60` | Seconds an app may remain PAUSED |
 | `PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT` | `15` | Seconds before evaluating a SUSPENDED app |
-The flash-space check and RuntimeManager hibernate destination both use
-`apps.hibernate.flashStoragePath` from `/etc/rdk/rdkappmanagers.json`.
+| `PLUGIN_RDKAPPMANAGERS_CONFIG_FILE` | `/etc/rdk/rdkappmanagers.json` | Shared config path used by AppManager and RuntimeManager |
+Flash-space availability is queried from ResourceMonitor, using its configured
+hibernated-app mount point and quota. RuntimeManager independently selects the
+OCI hibernation destination from its hibernation configuration; configure the
+ResourceMonitor mount point and RuntimeManager destination consistently.
 
 ## Files Changed
 
@@ -262,6 +265,7 @@ Focused tests should cover:
 - The ResourceMonitor API currently has no request correlation ID. AppManager relies on the contract that same-app reconciliation requests do not overlap.
 - Application support for PAUSED and SUSPENDED is inferred from LifecycleManager request/confirmation behavior; hibernation eligibility is determined separately from package capability metadata.
 - Hibernation support is determined from the package `configMetadata.capabilities` token `hibernate-mode` (case-insensitive, exact token match; optional `=...` parameters are allowed). If capability metadata is absent, AppManager falls back to the `APPLICATION_CAN_RUN_IN_HIBERNATE_MODE` property and then the legacy `supportsHibernation` property. A present capability field without `hibernate-mode` is authoritative and disables hibernation for that app.
-- Flash requirement is currently estimated from `RuntimeConfig.dataImageSize`, and free space is checked with `statvfs` on the same `apps.hibernate.flashStoragePath` destination RuntimeManager passes to OCI.
+- Flash requirement is currently estimated from `RuntimeConfig.dataImageSize`; free space is queried from ResourceMonitor using its configured hibernated-app mount point and quota. That mount point should match RuntimeManager's OCI hibernation destination.
 - Unit tests for the newly added flows still need to be implemented.
+
 

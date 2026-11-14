@@ -21,27 +21,34 @@
 #include <atomic>
 #include <algorithm>
 #include <cctype>
-#include <fstream>
-#include <sys/stat.h>
 #ifdef APP_MANAGER_RESOURCE_MONITOR
-#include <sys/statvfs.h>
+#include <fstream>
 #endif
+#include <sys/stat.h>
 #include <json/json.h>
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
 
 #define TIME_DATA_SIZE           200
-#define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
 static std::atomic<bool> sRunning{false};
 
 #ifdef APP_MANAGER_RESOURCE_MONITOR
 namespace {
-void loadHibernationSettings(std::string& storagePath, bool& hibernationEnabled)
+bool loadHibernationEnabled(const std::string& configPath)
 {
-    std::ifstream configFile(AICONFIGURATION_JSON_PATH);
+    if (configPath.empty())
+    {
+        LOGWARN("Hibernation config path is empty; hibernation remains disabled");
+        return false;
+    }
+
+    std::ifstream configFile(configPath);
     if (!configFile.is_open())
-        return;
+    {
+        LOGWARN("Could not open '%s'; hibernation remains disabled", configPath.c_str());
+        return false;
+    }
 
     Json::Value root;
     Json::CharReaderBuilder builder;
@@ -51,20 +58,21 @@ void loadHibernationSettings(std::string& storagePath, bool& hibernationEnabled)
     if (!Json::parseFromStream(builder, configFile, &root, &errors))
     {
         LOGWARN("Could not parse '%s' for hibernation settings: %s",
-                AICONFIGURATION_JSON_PATH, errors.c_str());
-        return;
+                configPath.c_str(), errors.c_str());
+        return false;
     }
 
     if (!root.isObject() || !root["apps"].isObject())
-        return;
-    const Json::Value& hibernate = root["apps"]["hibernate"];
-    if (!hibernate.isObject())
-        return;
+    {
+        return false;
+    }
 
-    if (hibernate["enable"].isBool())
-        hibernationEnabled = hibernate["enable"].asBool();
-    if (hibernate["flashStoragePath"].isString())
-        storagePath = hibernate["flashStoragePath"].asString();
+    const Json::Value& hibernate = root["apps"]["hibernate"];
+    if (!hibernate.isObject() || !hibernate["enable"].isBool())
+    {
+        return false;
+    }
+    return hibernate["enable"].asBool();
 }
 } // namespace
 #endif
@@ -95,9 +103,6 @@ AppManagerImplementation::AppManagerImplementation()
 #endif
 , mEnhancedLoggingEnabled(false)
 , mAppManagerWorkerThread()
-#ifdef APP_MANAGER_RESOURCE_MONITOR
-, mHibernationStoragePath("/media/apps/memcr")
-#endif
 {
     LOGINFO("Create AppManagerImplementation Instance");
 #ifdef APP_INFRA_ENHANCED_LOGGING_INDICATOR
@@ -838,6 +843,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
 
         uint32_t pausedToSuspendedTimeout = 60;
         uint32_t suspendedToHibernatedTimeout = 15;
+        std::string hibernationConfigFile;
         JsonObject configuration;
         if (configuration.FromString(service->ConfigLine()))
         {
@@ -849,10 +855,13 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
             {
                 suspendedToHibernatedTimeout = static_cast<uint32_t>(configuration["suspendedToHibernatedTimeout"].Number());
             }
+            if (configuration.HasLabel("rdkAppManagersConfigFile"))
+            {
+                hibernationConfigFile = configuration["rdkAppManagersConfigFile"].String();
+            }
         }
 
-        loadHibernationSettings(mHibernationStoragePath, mHibernationEnabled);
-
+        mHibernationEnabled = loadHibernationEnabled(hibernationConfigFile);
         mStateTransitionManager.reset(new AppStateTransitionManager(*this));
         mStateTransitionManager->Configure(pausedToSuspendedTimeout, suspendedToHibernatedTimeout);
         mStateTransitionManager->Start();
@@ -1231,7 +1240,7 @@ bool AppManagerImplementation::IsHibernationEnabled() const
     return mHibernationEnabled;
 }
 
-bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId) const
+bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId)
 {
     const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);
     
@@ -1263,13 +1272,28 @@ bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId) con
         return false;
     }
 
-    struct statvfs filesystemInfo;
-    if (mHibernationStoragePath.empty() || statvfs(mHibernationStoragePath.c_str(), &filesystemInfo) != 0)
+    Exchange::IResourceMonitor* resourceMonitor = nullptr;
+    {
+        std::lock_guard<std::mutex> resourceMonitorLock(mResourceMonitorLock);
+        if (nullptr == mResourceMonitorRemoteObject &&
+            Core::ERROR_NONE != createResourceMonitorRemoteObjectLocked())
+        {
+            return false;
+        }
+        mResourceMonitorRemoteObject->AddRef();
+        resourceMonitor = mResourceMonitorRemoteObject;
+    }
+
+    uint64_t total = 0;
+    uint64_t used = 0;
+    uint64_t available = 0;
+    const Core::hresult status = resourceMonitor->GetFlashSpace(total, used, available);
+    resourceMonitor->Release();
+    if (Core::ERROR_NONE != status)
     {
         return false;
     }
-    const uint64_t availableBytes = static_cast<uint64_t>(filesystemInfo.f_bavail) * filesystemInfo.f_frsize;
-    return availableBytes >= requiredBytes;
+    return available >= requiredBytes;
 }
 
 Core::hresult AppManagerImplementation::SetInactiveTargetState(const string& appId, Exchange::ILifecycleManager::LifecycleState state)
@@ -2506,3 +2530,4 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
 }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+

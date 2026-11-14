@@ -178,3 +178,4 @@ void AppStateTransitionManager::Process(const std::string& appId, Exchange::IApp
 } // namespace Plugin
 } // namespace WPEFramework
 
+

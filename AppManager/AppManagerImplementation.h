@@ -222,11 +222,11 @@ namespace Plugin {
         Core::hresult GetMaxInactiveRamUsage(int32_t& maxInactiveRamUsage) const override;
         bool SupportsHibernation(const string& appId);
     #ifdef APP_MANAGER_RESOURCE_MONITOR
+        bool IsHibernationEnabled() const;
         Core::hresult SetInactiveTargetState(const string& appId, Exchange::ILifecycleManager::LifecycleState state);
         Core::hresult Reconcile(const string& appId, uint32_t ramTargetMB, bool allowTerminate);
         uint32_t GetAppRamTargetMB(const string& appId) const;
-        bool IsHibernationEnabled() const;
-        bool HasHibernationFlashSpace(const string& appId) const;
+        bool HasHibernationFlashSpace(const string& appId);
     #endif
         void handleOnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::IAppManager::AppLifecycleState newState,
                                         const Exchange::IAppManager::AppLifecycleState oldState, const Exchange::IAppManager::AppErrorReason errorReason);
@@ -280,7 +280,6 @@ namespace Plugin {
     #ifdef APP_MANAGER_RESOURCE_MONITOR
         std::mutex mPendingPreloadLock;
         std::map<std::string, std::shared_ptr<AppLaunchRequestParam>> mPendingPreloads;
-        std::string mHibernationStoragePath;
         bool mHibernationEnabled{false};
         std::unique_ptr<AppStateTransitionManager> mStateTransitionManager;
     #endif
@@ -309,6 +308,7 @@ namespace Plugin {
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
 
 
