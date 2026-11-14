@@ -31,6 +31,7 @@
 #include <plugins/plugins.h>
 #include <mutex>
 #include <map>
+#include <set>
 #include <thread>
 
 namespace WPEFramework
@@ -50,8 +51,12 @@ namespace WPEFramework
                     Configuration()
                         : Core::JSON::Container()
                         , appPreinstallDirectory()
+                        , configFileName()
+                        , forceInstallMarker()
                     {
                         Add(_T("appPreinstallDirectory"), &appPreinstallDirectory);
+                        Add(_T("configFileName"), &configFileName);
+                        Add(_T("forceInstallMarker"), &forceInstallMarker);
                     }
                     ~Configuration() = default;
 
@@ -62,6 +67,8 @@ namespace WPEFramework
 
                 public:
                     Core::JSON::String appPreinstallDirectory;
+                    Core::JSON::String configFileName;
+                    Core::JSON::String forceInstallMarker;
             };
 
         public:
@@ -158,11 +165,17 @@ namespace WPEFramework
             bool isValidSemVer(const std::string &version);
             bool isNewerVersion(const std::string &v1, const std::string &v2);
             bool readPreinstallDirectory(Exchange::IPackageInstaller* packageInstaller, std::list<PackageInfo> &packages);
+            bool readPreinstalledUpdateExclusionList();
             string getFailReason(FailReason reason);
 
         private:
             mutable Core::CriticalSection mAdminLock;
             std::string mAppPreinstallDirectory;
+            std::string mConfigFileName;
+            std::string mForceInstallMarker;
+            std::set<std::string> mPreinstalledUpdateExclusionList;
+            uint32_t mStartPreinstallCount = 0;
+            std::map<std::string, uint32_t> mInstallAttempts; // "packageId:version" -> attempts
             std::list<Exchange::IPreinstallManager::INotification*> mPreinstallManagerNotifications;
             PluginHost::IShell *mCurrentservice;
             State mPreinstallState;
