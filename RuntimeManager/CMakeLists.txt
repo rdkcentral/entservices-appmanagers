@@ -40,14 +40,19 @@ add_definitions(-DRUNTIME_MANAGER_API_VERSION_NUMBER_PATCH=0)
 set(RUNTIME_MANAGER_IMPLEMENTATION ${PLUGIN_NAME}Implementation)
 add_definitions(-DPLUGIN_RUNTIME_MANAGER_IMPLEMENTATION_NAME="${RUNTIME_MANAGER_IMPLEMENTATION}")
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
 
 find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(${NAMESPACE}Definitions REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
 if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
-    find_package(yaml-cpp CONFIG REQUIRED)
+    # Some distributions (e.g. Ubuntu's libyaml-cpp-dev) do not install a
+    # yaml-cpp CMake package configuration file, only headers/library and
+    # pkg-config data. Do not force CONFIG mode here so the repository's
+    # Findyaml-cpp.cmake (added to CMAKE_MODULE_PATH above) can be used as
+    # a fallback when no yaml-cpp config package is available.
+    find_package(yaml-cpp REQUIRED)
 endif(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
 
 add_library(${MODULE_NAME} SHARED

@@ -54,6 +54,12 @@ set(NAMESPACE "${NAMESPACE}" CACHE STRING "Thunder framework namespace (Thunder 
 string(TOLOWER "${NAMESPACE}" STORAGE_DIRECTORY)
 message(STATUS "Using NAMESPACE='${NAMESPACE}', STORAGE_DIRECTORY='${STORAGE_DIRECTORY}'")
 
+# Make the repository's custom Find modules (e.g. Findyaml-cpp.cmake)
+# available. Some distributions (e.g. Ubuntu's libyaml-cpp-dev) only install
+# headers/library + pkg-config data and no CMake package config, so relying
+# solely on Config-mode find_package() is not reliable.
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../../cmake")
+
 # ---------------------------------------------------------------------------
 # Source lists
 # ---------------------------------------------------------------------------
