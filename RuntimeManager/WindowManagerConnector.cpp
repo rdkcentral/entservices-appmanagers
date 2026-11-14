@@ -139,13 +139,20 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
         }
         xdgDirectory = "/tmp";
     }
+#ifdef RDK_APPMANAGERS_DEBUG
     std::ifstream f("/tmp/specchange1");
     if (f.good())
     {
         waylandDisplayName = "testdisplay";
         f.close();
+        LOGINFO("Debug mode: using testdisplay from /tmp/specchange1");
+        if (xdgRuntimeDirFd >= 0 && close(xdgRuntimeDirFd) < 0)
+        {
+             LOGERR("failed to close XDG_RUNTIME_DIR (errno=%d)", errno);
+        }
+        return;
     }
-    else
+#endif
     {
         // generate name as wst-appInstanceId and sanity check
         string displayName = "wst-" + appInstanceId;
