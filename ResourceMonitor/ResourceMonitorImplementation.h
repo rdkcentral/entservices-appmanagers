@@ -172,7 +172,7 @@ namespace Plugin {
         void RequestAppTermination(const string& appInstanceId, const string& reason);
         bool IsNonAppWorkload(const string& appInstanceId);
         Exchange::IAppManager::AppLifecycleState GetAppState(const string& appInstanceId);
-        uint64_t GetGPUMemoryUsage(const string& appInstanceId);
+        bool GetGPUMemoryUsage(const string& appInstanceId, uint64_t& gpuMemoryBytes);
 
         struct ReconcileRequest {
             string appId;
@@ -228,12 +228,29 @@ namespace Plugin {
         std::mutex _appTimersMutex;
 
         // Timer worker for lifecycle enforcement
-        std::atomic<bool> _timerWorkerRunning;
-        std::thread _timerWorkerThread;
-        std::condition_variable _timerWorkerCv;
-        std::mutex _timerWorkerMutex;
+        class LifecycleTimer : public Core::IDispatch {
+        public:
+            explicit LifecycleTimer(ResourceMonitorImplementation* parent) : _parent(parent) {}
+            ~LifecycleTimer() override = default;
 
-        void TimerWorkerLoop();
+            void Dispatch() override { _parent->OnLifecycleTimerExpired(); }
+            uint64_t Timed(const uint64_t)
+            {
+                Dispatch();
+                return 0;
+            }
+            bool operator==(const LifecycleTimer& other) const { return _parent == other._parent; }
+            bool operator!=(const LifecycleTimer& other) const { return !(*this == other); }
+
+        private:
+            ResourceMonitorImplementation* _parent;
+        };
+
+        void OnLifecycleTimerExpired();
+        void ScheduleNextTimerLocked();
+        bool _timerStopping;
+        Core::ProxyType<LifecycleTimer> _timer;
+        Core::TimerType<LifecycleTimer> _timerHandler;
 
     protected:
         mutable Core::CriticalSection _adminLock;

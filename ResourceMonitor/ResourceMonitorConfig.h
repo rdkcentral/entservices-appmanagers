@@ -57,6 +57,7 @@ public:
     static constexpr uint32_t DEFAULT_SOFT_THRESHOLD_DELTA = 10;
     static constexpr uint32_t DEFAULT_HARD_THRESHOLD_DELTA = 20;
     static constexpr uint32_t DEFAULT_PAUSED_TO_SUSPENDED_TIMEOUT = 60;
+    static constexpr uint32_t DEFAULT_SUSPENDED_GPU_GRACE_PERIOD = 10;
     static constexpr const char* RFC_POLLING_INTERVAL = "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Resourcemonitor.PollingInterval";
     static constexpr const char* RFC_LOW_MEMORY_WARNING = "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Resourcemonitor.LowMemoryWarningEnabled";
     static constexpr const char* RFC_WARNING_MIN_MEM = "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Resourcemonitor.WarningThresholdMinMemory";
@@ -188,6 +189,11 @@ public:
         return _pausedToSuspendedTimeout;
     }
 
+    uint32_t SuspendedGpuGracePeriod() const
+    {
+        return _suspendedGpuGracePeriod;
+    }
+
 private:
 
     void SetDefaults();
@@ -243,6 +249,7 @@ private:
     double _hardThresholdMaxPsi;
 
     uint32_t _pausedToSuspendedTimeout;
+    uint32_t _suspendedGpuGracePeriod;
 };
 
 // This represents the values coming from ResourceMonitor.conf.
@@ -270,6 +277,7 @@ public:
             , HardThresholdDeltaPercentage(ResourceMonitorConfig::DEFAULT_HARD_THRESHOLD_DELTA)
             , MinPostWarningDelay(ResourceMonitorConfig::DEFAULT_MIN_POST_WARNING_DELAY)
             , PausedToSuspendedTimeout(ResourceMonitorConfig::DEFAULT_PAUSED_TO_SUSPENDED_TIMEOUT)
+            , SuspendedGpuGracePeriod(ResourceMonitorConfig::DEFAULT_SUSPENDED_GPU_GRACE_PERIOD)
         {
             Add(_T("psi_checking_enabled"), &PsiCheckingEnabled);
             Add(_T("zram_checking_enabled"), &ZramCheckingEnabled);
@@ -294,6 +302,7 @@ public:
             Add(_T("hard_threshold_delta_percentage"), &HardThresholdDeltaPercentage);
             Add(_T("min_post_warning_delay"), &MinPostWarningDelay);
             Add(_T("paused_to_suspended_timeout"), &PausedToSuspendedTimeout);
+            Add(_T("suspended_gpu_grace_period"), &SuspendedGpuGracePeriod);
         }
 
         Core::JSON::Boolean PsiCheckingEnabled;
@@ -319,6 +328,7 @@ public:
         Core::JSON::DecUInt32 HardThresholdDeltaPercentage;
         Core::JSON::DecUInt32 MinPostWarningDelay;
         Core::JSON::DecUInt32 PausedToSuspendedTimeout;
+        Core::JSON::DecUInt32 SuspendedGpuGracePeriod;
     };
 
     ResourceMonitorConfigJSON()

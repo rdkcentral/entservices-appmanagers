@@ -211,6 +211,8 @@ set(VICTIM_SELECTOR_L0_SOURCES
 )
 
 set(RESOURCE_MONITOR_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../ResourceMonitor/ResourceMonitorImplementation.cpp
+    ${CMAKE_SOURCE_DIR}/../../ResourceMonitor/ResourceMonitorConfig.cpp
     ${CMAKE_SOURCE_DIR}/../../ResourceMonitor/Module.cpp
     ${CMAKE_SOURCE_DIR}/../../ResourceMonitor/AppLifecycleConfig.cpp
     ${CMAKE_SOURCE_DIR}/../../ResourceMonitor/PackageLifecycleConfigProvider.cpp

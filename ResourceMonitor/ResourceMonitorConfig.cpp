@@ -64,6 +64,7 @@ void ResourceMonitorConfig::SetDefaults()
     _softThresholdDeltaPercentage = ResourceMonitorConfig::DEFAULT_SOFT_THRESHOLD_DELTA;
     _hardThresholdDeltaPercentage = ResourceMonitorConfig::DEFAULT_HARD_THRESHOLD_DELTA;
     _pausedToSuspendedTimeout = ResourceMonitorConfig::DEFAULT_PAUSED_TO_SUSPENDED_TIMEOUT;
+    _suspendedGpuGracePeriod = ResourceMonitorConfig::DEFAULT_SUSPENDED_GPU_GRACE_PERIOD;
     _pollingIntervalRfcValue = ResourceMonitorConfig::RFC_POLLING_INTERVAL;
     CalculateMemoryThresholds();
     CalculateSwapThresholds();
@@ -317,6 +318,9 @@ bool ResourceMonitorConfig::Load(const ResourceMonitorConfigJSON& json)
         LOGWARN("Invalid paused_to_suspended_timeout. Using default: %u", ResourceMonitorConfig::DEFAULT_PAUSED_TO_SUSPENDED_TIMEOUT);
         _pausedToSuspendedTimeout = ResourceMonitorConfig::DEFAULT_PAUSED_TO_SUSPENDED_TIMEOUT;
     }
+
+    _suspendedGpuGracePeriod = root.SuspendedGpuGracePeriod.Value() > 0
+        ? root.SuspendedGpuGracePeriod.Value() : ResourceMonitorConfig::DEFAULT_SUSPENDED_GPU_GRACE_PERIOD;
 
     #ifdef WITH_RFC
         uint32_t rfcPollingInterval = _pollingInterval;

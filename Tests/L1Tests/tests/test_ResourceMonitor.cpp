@@ -20,7 +20,14 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "ResourceMonitor.h"
+#include "ResourceMonitorConfig.h"
+#include "PackageLifecycleConfigProvider.h"
+#include <queue>
+#include <condition_variable>
+#define private public
 #include "ResourceMonitorImplementation.h"
+#undef private
+#include "../../mocks/ResourceMonitorEnforcementTestSupport.h"
 #include "ServiceMock.h"
 #include "PackageManagerMock.h"
 #include "ThunderPortability.h"
@@ -105,6 +112,70 @@ public:
 };
 
 
+class ResourceMonitorTimerTest : public ::testing::Test {
+protected:
+    std::unique_ptr<TestableResourceMonitorImplementation> implementation { new TestableResourceMonitorImplementation() };
+
+    void SetDeadline(const string& id, bool paused, uint64_t delayMs)
+    {
+        std::lock_guard<std::mutex> lock(implementation->_appTimersMutex);
+        const uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        auto& state = implementation->_appTimers.at(id);
+        (paused ? state.pausedTimerExpiryMs : state.suspendedTimerExpiryMs) = now + delayMs;
+        implementation->ScheduleNextTimerLocked();
+    }
+
+    bool WaitForExpiry(const string& id, bool paused)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while (std::chrono::steady_clock::now() < deadline) {
+            {
+                std::lock_guard<std::mutex> lock(implementation->_appTimersMutex);
+                const auto& state = implementation->_appTimers.at(id);
+                if ((paused ? state.pausedTimerExpiryMs : state.suspendedTimerExpiryMs) == 0) {
+                    return true;
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        return false;
+    }
+};
+
+TEST_F(ResourceMonitorTimerTest, IdleWakeAndEarlierDeadline)
+{
+    implementation->StartPausedTimer("later", Plugin::AppLifecycleCapabilities());
+    SetDeadline("later", true, 10000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    implementation->StartSuspendedTimer("earlier");
+    SetDeadline("earlier", false, 20);
+    EXPECT_TRUE(WaitForExpiry("earlier", false));
+    {
+        std::lock_guard<std::mutex> lock(implementation->_appTimersMutex);
+        EXPECT_NE(0u, implementation->_appTimers.at("later").pausedTimerExpiryMs);
+    }
+    implementation->CancelAllTimers("later");
+    EXPECT_FALSE(implementation->_timerHandler.HasEntry(*implementation->_timer));
+    implementation->StartPausedTimer("next", Plugin::AppLifecycleCapabilities());
+    SetDeadline("next", true, 20);
+    EXPECT_TRUE(WaitForExpiry("next", true));
+}
+
+TEST_F(ResourceMonitorTimerTest, CancellationAndPendingShutdown)
+{
+    implementation->StartPausedTimer("app", Plugin::AppLifecycleCapabilities());
+    implementation->StartSuspendedTimer("app");
+    implementation->CancelPausedTimer("app");
+    EXPECT_TRUE(implementation->_timerHandler.HasEntry(*implementation->_timer));
+    implementation->CancelSuspendedTimer("app");
+    EXPECT_FALSE(implementation->_timerHandler.HasEntry(*implementation->_timer));
+    implementation->StartPausedTimer("app", Plugin::AppLifecycleCapabilities());
+    const auto start = std::chrono::steady_clock::now();
+    implementation.reset();
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds(2));
+}
+
 class ResourceMonitorTest : public ::testing::Test {
 
 protected:
@@ -181,6 +252,221 @@ public:
         delete mockAuth;
     }
 };
+
+class ResourceMonitorAcceptanceTest : public ResourceMonitorTest {
+protected:
+    NiceMock<ServiceMock> service;
+    NiceMock<MockAuthenticate> authentication;
+    ResourceMonitorTestSupport::AppManager* apps { new ResourceMonitorTestSupport::AppManager() };
+    ResourceMonitorTestSupport::RuntimeManager* runtime { new ResourceMonitorTestSupport::RuntimeManager() };
+    std::unique_ptr<ResourceMonitorTestSupport::Session> session;
+    bool initialized { false };
+
+    virtual string Configuration() const { return "{\"root\":{\"low_memory_warnings_enabled\":false}}"; }
+
+    void SetUp() override
+    {
+        ON_CALL(service, ConfigLine()).WillByDefault(Return(Configuration()));
+        ON_CALL(service, QueryInterfaceByCallsign(_, _)).WillByDefault(
+            [this](const uint32_t, const string& name) -> void* {
+                if (name == "org.rdk.AppManager") {
+                    apps->AddRef();
+                    return static_cast<Exchange::IAppManager*>(apps);
+                }
+                if (name == "org.rdk.RuntimeManager") {
+                    runtime->AddRef();
+                    return static_cast<Exchange::IRuntimeManager*>(runtime);
+                }
+                if (name == "SecurityAgent") { return &authentication; }
+                return nullptr;
+            });
+        const auto error = plugin->Initialize(&service);
+        initialized = error.empty();
+        ASSERT_TRUE(initialized) << error;
+        ASSERT_NE(nullptr, Plugin::ResourceMonitorImplementation::_instance);
+        session.reset(new ResourceMonitorTestSupport::Session(Plugin::ResourceMonitorImplementation::_instance));
+    }
+
+    void TearDown() override
+    {
+        session.reset();
+        if (initialized) { plugin->Deinitialize(&service); }
+        apps->Release();
+        runtime->Release();
+    }
+};
+
+TEST_F(ResourceMonitorAcceptanceTest, AC1_ActiveToPausedStartsSixtySecondTimer)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    EXPECT_GT(session->Remaining("app", true), 59000u);
+    EXPECT_LE(session->Remaining("app", true), 60000u);
+    EXPECT_TRUE(apps->Transitions().empty());
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC2_DeadlineDeterminesNextAction)
+{
+    session->Add("supported");
+    session->Add("unsupported", "\"paused\"");
+    session->Emit("supported", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Emit("unsupported", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->monitor->OnLifecycleTimerExpired();
+    EXPECT_TRUE(apps->Transitions().empty());
+    EXPECT_TRUE(apps->Terminations().empty());
+    session->Expire("supported", true);
+    session->Expire("unsupported", true);
+    const auto transitions = apps->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ("supported", transitions[0].first);
+    EXPECT_EQ(std::vector<string>({ "unsupported" }), apps->Terminations());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC3_RequestsSuspendedThroughAppManager)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Expire("app", true);
+    const auto transitions = apps->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ("app", transitions[0].first);
+    EXPECT_EQ(Exchange::IAppManager::APP_STATE_SUSPENDED, transitions[0].second);
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC4_QueriesGpuOnlyAfterGraceExpires)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+    session->monitor->OnLifecycleTimerExpired();
+    EXPECT_EQ(0u, runtime->calls.load());
+    session->Expire("app", false);
+    EXPECT_EQ(1u, runtime->calls.load());
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC5_TerminatesAnyRemainingGpuConsumer)
+{
+    for (const uint64_t usage : { uint64_t(1), uint64_t(20 * 1024 * 1024), uint64_t(32 * 1024 * 1024) }) {
+        const string id = "app" + std::to_string(usage);
+        session->Add(id);
+        session->Emit(id, Exchange::IAppManager::APP_STATE_PAUSED);
+        session->Emit(id, Exchange::IAppManager::APP_STATE_SUSPENDED);
+        runtime->SetInfo(id + ".instance", "{\"gpu\":{\"memory\":{\"usage\":" + std::to_string(usage) + "}}}");
+        session->Expire(id, false);
+    }
+    EXPECT_EQ(3u, apps->Terminations().size());
+    EXPECT_TRUE(apps->Transitions().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC6_DefaultGraceIsTenSeconds)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    EXPECT_GT(session->Remaining("app", false), 9000u);
+    EXPECT_LE(session->Remaining("app", false), 10000u);
+}
+
+class ResourceMonitorConfiguredGraceTest : public ResourceMonitorAcceptanceTest {
+protected:
+    string Configuration() const override
+    {
+        return "{\"root\":{\"low_memory_warnings_enabled\":false,\"suspended_gpu_grace_period\":7}}";
+    }
+};
+
+TEST_F(ResourceMonitorConfiguredGraceTest, AC6_PluginUsesConfiguredGrace)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    EXPECT_GT(session->Remaining("app", false), 6000u);
+    EXPECT_LE(session->Remaining("app", false), 7000u);
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC7_RequestsHibernatedWhenSupportedAndGpuReleased)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+    session->Expire("app", false);
+    const auto transitions = apps->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ("app", transitions[0].first);
+    EXPECT_EQ(Exchange::IAppManager::APP_STATE_HIBERNATED, transitions[0].second);
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC8_DoesNotRequestUnsupportedStates)
+{
+    session->Add("pausedOnly", "\"paused\"");
+    session->Emit("pausedOnly", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Expire("pausedOnly", true);
+    session->Add("noHibernate", "\"paused\",\"suspended\"");
+    session->Emit("noHibernate", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Emit("noHibernate", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    runtime->SetInfo("noHibernate.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+    session->Expire("noHibernate", false);
+    EXPECT_TRUE(apps->Transitions().empty());
+    EXPECT_EQ(2u, apps->Terminations().size());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC9_TerminatesNonAppInsteadOfSuspending)
+{
+    session->Add("service", "\"paused\",\"suspended\",\"hibernated\"", "SYSTEM_APP");
+    session->Emit("service", Exchange::IAppManager::APP_STATE_PAUSED);
+    EXPECT_GT(session->Remaining("service", true), 59000u);
+    session->Expire("service", true);
+    EXPECT_EQ(std::vector<string>({ "service" }), apps->Terminations());
+    EXPECT_TRUE(apps->Transitions().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, UnknownGpuUsageDoesNotAuthorizeHibernation)
+{
+    uint32_t index = 0;
+    for (const auto& info : { "{}", "not-json", "{\"gpu\":{\"memory\":{\"usage\":-1}}}",
+        "{\"gpu\":{\"memory\":{\"usage\":1.5}}}", "{\"gpu\":{\"memory\":{\"usage\":\"unknown\"}}}" }) {
+        const string id = "app" + std::to_string(index++);
+        session->Add(id);
+        session->Emit(id, Exchange::IAppManager::APP_STATE_PAUSED);
+        session->Emit(id, Exchange::IAppManager::APP_STATE_SUSPENDED);
+        runtime->SetInfo(id + ".instance", info);
+        session->Expire(id, false);
+    }
+    EXPECT_TRUE(apps->Transitions().empty());
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, ThunderTimerDispatchesSuspensionRequest)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    {
+        std::lock_guard<std::mutex> lock(session->monitor->_appTimersMutex);
+        session->monitor->_appTimers.at("app.instance").pausedTimerExpiryMs = session->Now() + 20;
+        session->monitor->ScheduleNextTimerLocked();
+    }
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (apps->Transitions().empty() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    const auto transitions = apps->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ(Exchange::IAppManager::APP_STATE_SUSPENDED, transitions[0].second);
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, StateChangeCancelsEnforcement)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Emit("app", Exchange::IAppManager::APP_STATE_ACTIVE);
+    EXPECT_EQ(0u, session->Remaining("app", true));
+    session->monitor->OnLifecycleTimerExpired();
+    EXPECT_TRUE(apps->Transitions().empty());
+    EXPECT_TRUE(apps->Terminations().empty());
+}
 
 // Notification Mock
 class NotificationMock : public Exchange::IResourceMonitor::INotification

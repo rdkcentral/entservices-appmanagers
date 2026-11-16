@@ -21,6 +21,7 @@
 #include "ResourceMonitorImplementation.h"
 #include "ResourceMonitorConfig.h"
 #include "UtilsLogging.h"
+#include "UtilsMemorySize.h"
 #include <tracing/Logging.h>
 
 #include <stdlib.h>
@@ -68,10 +69,11 @@ namespace WPEFramework {
             , _lifecycleConfigProvider()
             , _appManager(nullptr)
             , _appManagerNotification(this)
+            , _runtimeManager(nullptr)
             , _appTimersMutex()
-            , _timerWorkerRunning(false)
-            , _timerWorkerMutex()
-            , _timerWorkerCv()
+            , _timerStopping(false)
+            , _timer(Core::ProxyType<LifecycleTimer>::Create(this))
+            , _timerHandler(1024 * 64, _T("ResourceLifecycleTimer"))
             , _adminLock()
             , _rservice(nullptr)
             {
@@ -82,6 +84,11 @@ namespace WPEFramework {
         ResourceMonitorImplementation::~ResourceMonitorImplementation() 
         {
             LOGINFO("ResourceMonitorImplementation Destructor");
+            {
+                std::lock_guard<std::mutex> lock(_appTimersMutex);
+                _timerStopping = true;
+            }
+            _timerHandler.Revoke(*_timer);
             {
                 std::lock_guard<std::mutex> lock(_reactiveMonitorMutex);
                 _reactiveMonitorRunning = false;
@@ -115,14 +122,6 @@ namespace WPEFramework {
             if (_runtimeManager != nullptr) {
                 _runtimeManager->Release();
                 _runtimeManager = nullptr;
-            }
-            {
-                std::lock_guard<std::mutex> lock(_timerWorkerMutex);
-                _timerWorkerRunning = false;
-            }
-            _timerWorkerCv.notify_all();
-            if (_timerWorkerThread.joinable()) {
-                _timerWorkerThread.join();
             }
 			std::list<Exchange::IResourceMonitor::INotification*> notifications;
             {
@@ -202,10 +201,6 @@ namespace WPEFramework {
 
             if (!_reconcileThread.joinable()) {
                 _reconcileThread = std::thread(&ResourceMonitorImplementation::ReconcileWorker, this);
-            }
-            if (!_timerWorkerRunning) {
-                _timerWorkerRunning = true;
-                _timerWorkerThread = std::thread(&ResourceMonitorImplementation::TimerWorkerLoop, this);
             }
             _initialized.store(true);
             SYSLOG(Logging::Startup, (_T("VictimSelector exit: result=%d"), result));
@@ -1103,13 +1098,13 @@ namespace WPEFramework {
             timerState.pausedExpectedState = Exchange::IAppManager::APP_STATE_PAUSED;
             
             // Set expiry time
-            const uint32_t timeoutMs = _config.PausedToSuspendedTimeout() * 1000;
+            const uint64_t timeoutMs = static_cast<uint64_t>(_config.PausedToSuspendedTimeout()) * 1000;
             auto now = std::chrono::steady_clock::now();
             auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
             timerState.pausedTimerExpiryMs = nowMs + timeoutMs;
             
             // Wake up timer worker
-            _timerWorkerCv.notify_one();
+            ScheduleNextTimerLocked();
             
             LOGINFO("Started PAUSED timer for appInstanceId=%s, timeout=%u seconds",
                 appInstanceId.c_str(), _config.PausedToSuspendedTimeout());
@@ -1123,17 +1118,17 @@ namespace WPEFramework {
             // Store expected state (the state when timer started)
             timerState.suspendedExpectedState = Exchange::IAppManager::APP_STATE_SUSPENDED;
             
-            // Set expiry time (GPU grace period: 15 seconds from HLA)
-            const uint32_t timeoutMs = 15 * 1000;
+            // Set expiry time (configured GPU grace period)
+            const uint64_t timeoutMs = static_cast<uint64_t>(_config.SuspendedGpuGracePeriod()) * 1000;
             auto now = std::chrono::steady_clock::now();
             auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
             timerState.suspendedTimerExpiryMs = nowMs + timeoutMs;
             
             // Wake up timer worker
-            _timerWorkerCv.notify_one();
+            ScheduleNextTimerLocked();
             
-            LOGINFO("Started SUSPENDED timer (GPU grace period) for appInstanceId=%s, timeout=15 seconds",
-                appInstanceId.c_str());
+            LOGINFO("Started SUSPENDED timer (GPU grace period) for appInstanceId=%s, timeout=%u seconds",
+                appInstanceId.c_str(), _config.SuspendedGpuGracePeriod());
         }
 
         void ResourceMonitorImplementation::CancelPausedTimer(const string& appInstanceId)
@@ -1143,6 +1138,7 @@ namespace WPEFramework {
             if (it != _appTimers.end()) {
                 if (it->second.pausedTimerExpiryMs != 0) {
                     it->second.pausedTimerExpiryMs = 0;
+                    ScheduleNextTimerLocked();
                     LOGINFO("Cancelled PAUSED timer for appInstanceId=%s", appInstanceId.c_str());
                 }
             }
@@ -1155,6 +1151,7 @@ namespace WPEFramework {
             if (it != _appTimers.end()) {
                 if (it->second.suspendedTimerExpiryMs != 0) {
                     it->second.suspendedTimerExpiryMs = 0;
+                    ScheduleNextTimerLocked();
                     LOGINFO("Cancelled SUSPENDED timer for appInstanceId=%s", appInstanceId.c_str());
                 }
             }
@@ -1171,80 +1168,77 @@ namespace WPEFramework {
                 if (it->second.suspendedTimerExpiryMs != 0) {
                     it->second.suspendedTimerExpiryMs = 0;
                 }
+                ScheduleNextTimerLocked();
                 LOGINFO("Cancelled all timers for appInstanceId=%s", appInstanceId.c_str());
             }
         }
 
-        // Timer worker loop - checks for expired timers and triggers callbacks
-        void ResourceMonitorImplementation::TimerWorkerLoop()
+        void ResourceMonitorImplementation::ScheduleNextTimerLocked()
         {
-            LOGINFO("Lifecycle enforcement timer worker started");
-            while (_timerWorkerRunning) {
-                std::vector<std::pair<std::string, bool>> expiredTimers; // pair: appInstanceId, isPaused
-                uint64_t nextExpiryMs = 0;
-                
-                {
-                    std::lock_guard<std::mutex> lock(_appTimersMutex);
-                    auto now = std::chrono::steady_clock::now();
-                    auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-                    
-                    for (std::map<std::string, AppTimerState>::iterator it = _appTimers.begin(); it != _appTimers.end(); ++it) {
-                        const std::string& appInstanceId = it->first;
-                        AppTimerState& timerState = it->second;
-                        
-                        // Check PAUSED timer
-                        if (timerState.pausedTimerExpiryMs != 0 && nowMs >= timerState.pausedTimerExpiryMs) {
-                            expiredTimers.push_back(std::make_pair(appInstanceId, true));
-                            timerState.pausedTimerExpiryMs = 0;
-                        }
-                        // Check SUSPENDED timer
-                        if (timerState.suspendedTimerExpiryMs != 0 && nowMs >= timerState.suspendedTimerExpiryMs) {
-                            expiredTimers.push_back(std::make_pair(appInstanceId, false));
-                            timerState.suspendedTimerExpiryMs = 0;
-                        }
-                        
-                        // Find next expiry
-                        if (timerState.pausedTimerExpiryMs != 0) {
-                            if (nextExpiryMs == 0 || timerState.pausedTimerExpiryMs < nextExpiryMs) {
-                                nextExpiryMs = timerState.pausedTimerExpiryMs;
-                            }
-                        }
-                        if (timerState.suspendedTimerExpiryMs != 0) {
-                            if (nextExpiryMs == 0 || timerState.suspendedTimerExpiryMs < nextExpiryMs) {
-                                nextExpiryMs = timerState.suspendedTimerExpiryMs;
-                            }
-                        }
-                    }
+            if (_timerStopping) {
+                return;
+            }
+            uint64_t nextExpiryMs = 0;
+            for (const auto& entry : _appTimers) {
+                const AppTimerState& timerState = entry.second;
+                // Find next expiry
+                if (timerState.pausedTimerExpiryMs != 0 &&
+                    (nextExpiryMs == 0 || timerState.pausedTimerExpiryMs < nextExpiryMs)) {
+                    nextExpiryMs = timerState.pausedTimerExpiryMs;
                 }
-                
-                // Trigger callbacks for expired timers (outside lock)
-                for (std::vector<std::pair<std::string, bool>>::const_iterator it = expiredTimers.begin(); it != expiredTimers.end(); ++it) {
-                    const std::string& appInstanceId = it->first;
-                    bool isPaused = it->second;
-                    if (isPaused) {
-                        OnPausedTimerExpired(appInstanceId);
-                    } else {
-                        OnSuspendedTimerExpired(appInstanceId);
-                    }
-                }
-                
-                // Wait until next expiry or shutdown
-                std::unique_lock<std::mutex> lock(_timerWorkerMutex);
-                if (!_timerWorkerRunning) {
-                    break;
-                }
-                
-                if (nextExpiryMs != 0) {
-                    auto now = std::chrono::steady_clock::now();
-                    auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-                    uint64_t waitMs = (nextExpiryMs > nowMs) ? (nextExpiryMs - nowMs) : 0;
-                    _timerWorkerCv.wait_for(lock, std::chrono::milliseconds(waitMs),
-                        [this] { return !_timerWorkerRunning; });
-                } else {
-                    _timerWorkerCv.wait(lock, [this] { return !_timerWorkerRunning; });
+                if (timerState.suspendedTimerExpiryMs != 0 &&
+                    (nextExpiryMs == 0 || timerState.suspendedTimerExpiryMs < nextExpiryMs)) {
+                    nextExpiryMs = timerState.suspendedTimerExpiryMs;
                 }
             }
-            LOGINFO("Lifecycle enforcement timer worker stopped");
+            if (nextExpiryMs != 0) {
+                const uint64_t nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()).count();
+                const uint64_t waitMs = nextExpiryMs > nowMs ? nextExpiryMs - nowMs : 0;
+                const uint32_t delayMs = static_cast<uint32_t>(std::min<uint64_t>(waitMs, 86400000));
+                _timerHandler.Trigger(Core::Time::Now().Add(delayMs).Ticks(), *_timer);
+            } else {
+                _timerHandler.Revoke(*_timer);
+            }
+        }
+
+        // Timer worker loop - checks for expired timers and triggers callbacks
+        void ResourceMonitorImplementation::OnLifecycleTimerExpired()
+        {
+            std::vector<std::pair<std::string, bool>> expiredTimers; // pair: appInstanceId, isPaused
+            {
+                std::lock_guard<std::mutex> lock(_appTimersMutex);
+                if (_timerStopping) {
+                    return;
+                }
+                const uint64_t nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()).count();
+                for (auto& entry : _appTimers) {
+                    const std::string& appInstanceId = entry.first;
+                    AppTimerState& timerState = entry.second;
+                    // Check PAUSED timer
+                    if (timerState.pausedTimerExpiryMs != 0 && nowMs >= timerState.pausedTimerExpiryMs) {
+                        expiredTimers.emplace_back(appInstanceId, true);
+                        timerState.pausedTimerExpiryMs = 0;
+                    }
+                    // Check SUSPENDED timer
+                    if (timerState.suspendedTimerExpiryMs != 0 && nowMs >= timerState.suspendedTimerExpiryMs) {
+                        expiredTimers.emplace_back(appInstanceId, false);
+                        timerState.suspendedTimerExpiryMs = 0;
+                    }
+                }
+            }
+            // Trigger callbacks for expired timers (outside lock)
+            for (const auto& timer : expiredTimers) {
+                if (timer.second) {
+                    OnPausedTimerExpired(timer.first);
+                } else {
+                    OnSuspendedTimerExpired(timer.first);
+                }
+            }
+            // Wait until next expiry or shutdown
+            std::lock_guard<std::mutex> lock(_appTimersMutex);
+            ScheduleNextTimerLocked();
         }
 
         // Timer callbacks
@@ -1312,55 +1306,40 @@ namespace WPEFramework {
         }
 
         // Helper to parse GPU memory from RuntimeManager GetInfo JSON
-        uint64_t ResourceMonitorImplementation::GetGPUMemoryUsage(const string& appInstanceId)
+        bool ResourceMonitorImplementation::GetGPUMemoryUsage(const string& appInstanceId, uint64_t& gpuMemoryBytes)
         {
+            gpuMemoryBytes = 0;
             if (_runtimeManager == nullptr) {
                 LOGWARN("RuntimeManager unavailable, cannot query GPU memory for appInstanceId=%s", appInstanceId.c_str());
-                return 0;
+                return false;
             }
-            
             string infoJson;
             const Core::hresult result = _runtimeManager->GetInfo(appInstanceId, infoJson);
             if (result != Core::ERROR_NONE) {
                 LOGWARN("Failed to get container info for appInstanceId=%s, error=%d", appInstanceId.c_str(), static_cast<int>(result));
-                return 0;
+                return false;
             }
-            
+            JsonObject info;
+            if (!info.FromString(infoJson)) {
+                return false;
+            }
+            if (info.HasLabel("gpu")) {
+                if (info["gpu"].Content() != JsonValue::type::OBJECT) { return false; }
+                const JsonObject gpu = info["gpu"].Object();
+                if (!gpu.HasLabel("memory") || gpu["memory"].Content() != JsonValue::type::OBJECT) { return false; }
+                const JsonObject memory = gpu["memory"].Object();
+                if (!memory.HasLabel("usage") || memory["usage"].Content() != JsonValue::type::NUMBER) { return false; }
+                return Utils::ParseMemorySize(memory["usage"].Value(), gpuMemoryBytes);
+            }
             // Parse JSON: {"ramUsage": "150MB","cpuUsage": "20%","gpuMemory": "32MB","uptime": "45s"}
             // Extract gpuMemory value
-            const string gpuMemoryKey = "\"gpuMemory\"";
-            const size_t gpuMemoryPos = infoJson.find(gpuMemoryKey);
-            if (gpuMemoryPos == string::npos) {
-                LOGINFO("No gpuMemory field in container info for appInstanceId=%s", appInstanceId.c_str());
-                return 0;
+            if (!info.HasLabel("gpuMemory") || info["gpuMemory"].Content() != JsonValue::type::STRING) {
+                return false;
             }
-            
-            const size_t colonPos = infoJson.find(":", gpuMemoryPos);
-            if (colonPos == string::npos) {
-                LOGWARN("Malformed gpuMemory field in container info for appInstanceId=%s", appInstanceId.c_str());
-                return 0;
-            }
-            
-            const size_t valueStart = infoJson.find("\"", colonPos) + 1;
-            const size_t valueEnd = infoJson.find("\"", valueStart);
-            if (valueStart == string::npos || valueEnd == string::npos) {
-                LOGWARN("Malformed gpuMemory value in container info for appInstanceId=%s", appInstanceId.c_str());
-                return 0;
-            }
-            
-            const string gpuMemoryStr = infoJson.substr(valueStart, valueEnd - valueStart);
+            string gpuMemoryStr = info["gpuMemory"].String();
             // Parse value like "32MB" or "32 MB"
-            uint64_t gpuMemoryMB = 0;
-            size_t valueLen = 0;
-            try {
-                gpuMemoryMB = std::stoull(gpuMemoryStr, &valueLen);
-            } catch (const std::exception& e) {
-                LOGWARN("Failed to parse gpuMemory value '%s' for appInstanceId=%s", gpuMemoryStr.c_str(), appInstanceId.c_str());
-                return 0;
-            }
-            
-            LOGINFO("GPU memory usage for appInstanceId=%s: %llu MB", appInstanceId.c_str(), static_cast<unsigned long long>(gpuMemoryMB));
-            return gpuMemoryMB;
+            gpuMemoryStr.erase(std::remove(gpuMemoryStr.begin(), gpuMemoryStr.end(), ' '), gpuMemoryStr.end());
+            return Utils::ParseMemorySize(gpuMemoryStr, gpuMemoryBytes);
         }
 
         void ResourceMonitorImplementation::OnSuspendedTimerExpired(const string& appInstanceId)
@@ -1387,16 +1366,19 @@ namespace WPEFramework {
             }
             
             // GPU grace period check (RDKEMW-28031 requirement)
-            const uint64_t maxGPUAllowedMB = 20; // Default from HLA
-            const uint64_t gpuMemoryMB = GetGPUMemoryUsage(appInstanceId);
-            if (gpuMemoryMB > maxGPUAllowedMB) {
-                LOGWARN("GPU grace period check failed for appInstanceId=%s: GPU=%llu MB exceeds limit=%llu MB, requesting termination",
-                    appInstanceId.c_str(), static_cast<unsigned long long>(gpuMemoryMB), static_cast<unsigned long long>(maxGPUAllowedMB));
+            const uint64_t maxGPUAllowedBytes = 0; // AC4/AC5 require released GPU resources
+            uint64_t gpuMemoryBytes = 0;
+            if (!GetGPUMemoryUsage(appInstanceId, gpuMemoryBytes)) {
+                LOGWARN("GPU usage unavailable for appInstanceId=%s; deferring lifecycle action", appInstanceId.c_str());
+                return;
+            }
+            if (gpuMemoryBytes > maxGPUAllowedBytes) {
+                LOGWARN("GPU grace period check failed for appInstanceId=%s: GPU=%llu bytes, requesting termination",
+                    appInstanceId.c_str(), static_cast<unsigned long long>(gpuMemoryBytes));
                 RequestAppTermination(appInstanceId, "suspended-gpu-grace-period-violation");
                 return;
             }
-            LOGINFO("GPU grace period check passed for appInstanceId=%s: GPU=%llu MB within limit=%llu MB",
-                appInstanceId.c_str(), static_cast<unsigned long long>(gpuMemoryMB), static_cast<unsigned long long>(maxGPUAllowedMB));
+            LOGINFO("GPU grace period check passed for appInstanceId=%s: GPU released", appInstanceId.c_str());
             
             // Check app hibernation support via RDKEMW-28030 metadata
             bool appSupportsHibernation = false;
@@ -1441,8 +1423,8 @@ namespace WPEFramework {
             uint32_t index = 0;
             while (true) {
                 Exchange::IAppManager::LoadedAppInfo info;
-                const Core::hresult nextResult = loadedApps->Next(info);
-                if (nextResult != Core::ERROR_NONE) {
+                const bool hasNext = loadedApps->Next(info);
+                if (!hasNext) {
                     break;
                 }
                 
@@ -1493,8 +1475,8 @@ namespace WPEFramework {
             uint32_t index = 0;
             while (true) {
                 Exchange::IAppManager::LoadedAppInfo info;
-                const Core::hresult nextResult = loadedApps->Next(info);
-                if (nextResult != Core::ERROR_NONE) {
+                const bool hasNext = loadedApps->Next(info);
+                if (!hasNext) {
                     break;
                 }
                 
@@ -1545,8 +1527,8 @@ namespace WPEFramework {
             uint32_t index = 0;
             while (true) {
                 Exchange::IAppManager::LoadedAppInfo info;
-                const Core::hresult nextResult = loadedApps->Next(info);
-                if (nextResult != Core::ERROR_NONE) {
+                const bool hasNext = loadedApps->Next(info);
+                if (!hasNext) {
                     break;
                 }
                 
@@ -1597,8 +1579,8 @@ namespace WPEFramework {
             uint32_t index = 0;
             while (true) {
                 Exchange::IAppManager::LoadedAppInfo info;
-                const Core::hresult nextResult = loadedApps->Next(info);
-                if (nextResult != Core::ERROR_NONE) {
+                const bool hasNext = loadedApps->Next(info);
+                if (!hasNext) {
                     break;
                 }
                 
@@ -1618,9 +1600,9 @@ namespace WPEFramework {
             }
             
             // Check if type indicates a non-app workload
-            // Based on HLA, non-app workloads might have type "SYSTEM" or similar
-            // For now, check if type is not empty and not "APPLICATION"
-            const bool isNonApp = !workloadType.empty() && workloadType != "APPLICATION";
+            // AppManager reports system workloads as "SYSTEM_APP"; retain the "SYSTEM" alias
+            // Unknown workload types follow the application capability checks
+            const bool isNonApp = workloadType == "SYSTEM_APP" || workloadType == "SYSTEM";
             if (isNonApp) {
                 LOGINFO("Detected non-app workload: appInstanceId=%s type=%s", appInstanceId.c_str(), workloadType.c_str());
             }
@@ -1650,8 +1632,8 @@ namespace WPEFramework {
             uint32_t index = 0;
             while (true) {
                 Exchange::IAppManager::LoadedAppInfo info;
-                const Core::hresult nextResult = loadedApps->Next(info);
-                if (nextResult != Core::ERROR_NONE) {
+                const bool hasNext = loadedApps->Next(info);
+                if (!hasNext) {
                     break;
                 }
                 

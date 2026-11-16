@@ -26,12 +26,25 @@ extern uint32_t Test_RM_Lifecycle_ProductionSourceWithoutService();
 extern uint32_t Test_RM_Lifecycle_ConcurrentQueries();
 extern uint32_t Test_RM_Lifecycle_SlowPackageManagerDoesNotSerializeCallers();
 extern uint32_t Test_RM_Enforcement_CapabilitySnapshot();
+extern uint32_t Test_RM_Enforcement_GpuStatsValidation();
 extern uint32_t Test_RM_Enforcement_SuspendedConfigParsing();
 extern uint32_t Test_RM_Enforcement_GPUMemoryParsing();
 extern uint32_t Test_RM_Enforcement_GPUMemoryValueExtraction();
 extern uint32_t Test_RM_Enforcement_SuspendedSupportCheck();
 extern uint32_t Test_RM_Enforcement_HibernatedSupportCheck();
 extern uint32_t Test_RM_Enforcement_ConfigurationParsing();
+extern uint32_t Test_RM_Enforcement_TimerScheduling();
+extern uint32_t Test_RM_Enforcement_TimerCancellationAndShutdown();
+
+extern uint32_t Test_RM_AC1_ActiveToPausedStartsTimer();
+extern uint32_t Test_RM_AC2_PausedTimeoutSelectsAction();
+extern uint32_t Test_RM_AC3_RequestsSuspended();
+extern uint32_t Test_RM_AC4_GpuReleasedAfterGrace();
+extern uint32_t Test_RM_AC5_TerminatesGpuConsumer();
+extern uint32_t Test_RM_AC6_ConfigurableGpuGrace();
+extern uint32_t Test_RM_AC7_RequestsHibernated();
+extern uint32_t Test_RM_AC8_RejectsUnsupportedStates();
+extern uint32_t Test_RM_AC9_TerminatesNonApp();
 
 int main()
 {
@@ -41,6 +54,15 @@ int main()
         const char* name;
         uint32_t (*function)();
     } tests[] = {
+        { "AC1_ActiveToPausedStartsTimer", Test_RM_AC1_ActiveToPausedStartsTimer },
+        { "AC2_PausedTimeoutSelectsAction", Test_RM_AC2_PausedTimeoutSelectsAction },
+        { "AC3_RequestsSuspended", Test_RM_AC3_RequestsSuspended },
+        { "AC4_GpuReleasedAfterGrace", Test_RM_AC4_GpuReleasedAfterGrace },
+        { "AC5_TerminatesGpuConsumer", Test_RM_AC5_TerminatesGpuConsumer },
+        { "AC6_ConfigurableGpuGrace", Test_RM_AC6_ConfigurableGpuGrace },
+        { "AC7_RequestsHibernated", Test_RM_AC7_RequestsHibernated },
+        { "AC8_RejectsUnsupportedStates", Test_RM_AC8_RejectsUnsupportedStates },
+        { "AC9_TerminatesNonApp", Test_RM_AC9_TerminatesNonApp },
         { "Lifecycle_AllStatesConfigured", Test_RM_Lifecycle_AllStatesConfigured },
         { "Lifecycle_SubsetOfStates", Test_RM_Lifecycle_SubsetOfStates },
         { "Lifecycle_CaseInsensitiveAndUnknownStates", Test_RM_Lifecycle_CaseInsensitiveAndUnknownStates },
@@ -63,12 +85,15 @@ int main()
         { "Lifecycle_ConcurrentQueries", Test_RM_Lifecycle_ConcurrentQueries },
         { "Lifecycle_SlowPackageManagerDoesNotSerializeCallers", Test_RM_Lifecycle_SlowPackageManagerDoesNotSerializeCallers },
         { "Enforcement_CapabilitySnapshot", Test_RM_Enforcement_CapabilitySnapshot },
+        { "Enforcement_GpuStatsValidation", Test_RM_Enforcement_GpuStatsValidation },
         { "Enforcement_SuspendedConfigParsing", Test_RM_Enforcement_SuspendedConfigParsing },
         { "Enforcement_GPUMemoryParsing", Test_RM_Enforcement_GPUMemoryParsing },
         { "Enforcement_GPUMemoryValueExtraction", Test_RM_Enforcement_GPUMemoryValueExtraction },
         { "Enforcement_SuspendedSupportCheck", Test_RM_Enforcement_SuspendedSupportCheck },
         { "Enforcement_HibernatedSupportCheck", Test_RM_Enforcement_HibernatedSupportCheck },
         { "Enforcement_ConfigurationParsing", Test_RM_Enforcement_ConfigurationParsing },
+        { "Enforcement_TimerScheduling", Test_RM_Enforcement_TimerScheduling },
+        { "Enforcement_TimerCancellationAndShutdown", Test_RM_Enforcement_TimerCancellationAndShutdown },
     };
 
     uint32_t failures = 0;
