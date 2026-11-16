@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <list>
 #include <map>
 #include <mutex>
@@ -189,12 +190,18 @@ public:
     }
     Core::hresult GetLockedInfo(const string& id, const string&, bool& locked, string& payload) override
     {
+        if (onGetLockedInfo) {
+            auto callback = std::move(onGetLockedInfo);
+            onGetLockedInfo = nullptr;
+            callback();
+        }
         const auto found = payloads.find(id);
         locked = found != payloads.end();
         if (locked) { payload = found->second; }
         return Core::ERROR_NONE;
     }
     std::map<string, string> payloads;
+    std::function<void()> onGetLockedInfo;
 };
 
 class Session {

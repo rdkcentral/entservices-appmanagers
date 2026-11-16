@@ -25,6 +25,8 @@ extern uint32_t Test_RM_Lifecycle_PackageManagerErrors();
 extern uint32_t Test_RM_Lifecycle_ProductionSourceWithoutService();
 extern uint32_t Test_RM_Lifecycle_ConcurrentQueries();
 extern uint32_t Test_RM_Lifecycle_SlowPackageManagerDoesNotSerializeCallers();
+extern uint32_t Test_RM_Enforcement_ManagerLifetime();
+extern uint32_t Test_RM_Enforcement_SnapshotLifetime();
 extern uint32_t Test_RM_Enforcement_CapabilitySnapshot();
 extern uint32_t Test_RM_Enforcement_GpuStatsValidation();
 extern uint32_t Test_RM_Enforcement_SuspendedConfigParsing();
@@ -84,6 +86,8 @@ int main()
         { "Lifecycle_ProductionSourceWithoutService", Test_RM_Lifecycle_ProductionSourceWithoutService },
         { "Lifecycle_ConcurrentQueries", Test_RM_Lifecycle_ConcurrentQueries },
         { "Lifecycle_SlowPackageManagerDoesNotSerializeCallers", Test_RM_Lifecycle_SlowPackageManagerDoesNotSerializeCallers },
+        { "Enforcement_ManagerLifetime", Test_RM_Enforcement_ManagerLifetime },
+        { "Enforcement_SnapshotLifetime", Test_RM_Enforcement_SnapshotLifetime },
         { "Enforcement_CapabilitySnapshot", Test_RM_Enforcement_CapabilitySnapshot },
         { "Enforcement_GpuStatsValidation", Test_RM_Enforcement_GpuStatsValidation },
         { "Enforcement_SuspendedConfigParsing", Test_RM_Enforcement_SuspendedConfigParsing },

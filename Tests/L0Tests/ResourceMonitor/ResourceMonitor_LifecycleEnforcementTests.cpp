@@ -266,6 +266,100 @@ uint32_t Test_RM_Enforcement_GpuStatsValidation()
     return tr.failures;
 }
 
+uint32_t Test_RM_Enforcement_ManagerLifetime()
+{
+    L0Test::TestResult tr;
+    ResourceMonitorTestSupport::Session session;
+    session.Add("app");
+    session.runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+    auto app = session.monitor->AcquireAppManager();
+    auto runtime = session.monitor->AcquireRuntimeManager();
+    session.monitor->ManagerStateChanged("org.rdk.AppManager", false);
+    session.monitor->ManagerStateChanged("org.rdk.RuntimeManager", false);
+    L0Test::ExpectTrue(tr, !session.monitor->AcquireAppManager() && !session.monitor->AcquireRuntimeManager(),
+        "Deactivation detaches cached manager interfaces");
+    session.Emit("app", WPEFramework::Exchange::IAppManager::APP_STATE_PAUSED);
+    L0Test::ExpectTrue(tr, session.monitor->_appTimers.empty(), "Deactivation unregisters the lifecycle subscription");
+    WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* apps = nullptr;
+    L0Test::ExpectTrue(tr, app->GetLoadedApps(apps) == ERROR_NONE && apps != nullptr,
+        "An acquired manager reference remains alive after detachment");
+    if (apps) { apps->Release(); }
+    std::string info;
+    L0Test::ExpectTrue(tr, runtime->GetInfo("app.instance", info) == ERROR_NONE,
+        "An in-flight runtime reference remains alive after detachment");
+    return tr.failures;
+}
+
+uint32_t Test_RM_Enforcement_SnapshotLifetime()
+{
+    L0Test::TestResult tr;
+    using State = WPEFramework::Exchange::IAppManager;
+    {
+        ResourceMonitorTestSupport::Session session;
+        session.Add("app");
+        session.Emit("app", State::APP_STATE_SUSPENDED);
+        session.runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+        session.Expire("app", false);
+        const auto transitions = session.apps->Transitions();
+        L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].second == State::APP_STATE_HIBERNATED,
+            "First-observed SUSPENDED captures hibernation support");
+        L0Test::ExpectTrue(tr, session.apps->Terminations().empty(), "Missing PAUSED notification does not cause termination");
+    }
+    {
+        ResourceMonitorTestSupport::Session session;
+        session.Add("app");
+        session.Emit("app", State::APP_STATE_PAUSED);
+        session.packages->payloads.clear();
+        for (const auto state : { State::APP_STATE_ACTIVE, State::APP_STATE_HIBERNATED, State::APP_STATE_TERMINATING }) {
+            session.Emit("app", state);
+            session.Emit("app", State::APP_STATE_PAUSED);
+        }
+        session.Expire("app", true);
+        const auto transitions = session.apps->Transitions();
+        L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].second == State::APP_STATE_SUSPENDED,
+            "Re-entering PAUSED retains capabilities until unload despite unavailable metadata");
+    }
+    {
+        ResourceMonitorTestSupport::Session session;
+        session.Add("app");
+        const auto payload = session.packages->payloads.at("app");
+        session.packages->payloads.clear();
+        session.Emit("app", State::APP_STATE_PAUSED);
+        L0Test::ExpectTrue(tr, !session.monitor->_appTimers.at("app.instance").hasSnapshot,
+            "UNAVAILABLE is not frozen as a resolved snapshot");
+        session.packages->payloads["app"] = payload;
+        session.Emit("app", State::APP_STATE_SUSPENDED);
+        session.runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+        session.Expire("app", false);
+        const auto transitions = session.apps->Transitions();
+        L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].second == State::APP_STATE_HIBERNATED,
+            "Unresolved capabilities are retried before subsequent enforcement");
+    }
+    {
+        ResourceMonitorTestSupport::Session session;
+        session.Add("app");
+        session.Emit("app", State::APP_STATE_PAUSED);
+        session.monitor->_appManagerNotification.OnAppUnloaded("app", "app.instance");
+        L0Test::ExpectTrue(tr, session.monitor->_appTimers.count("app.instance") == 0,
+            "OnAppUnloaded removes the instance snapshot and deadlines");
+        session.Emit("app", State::APP_STATE_PAUSED);
+        session.Emit("app", State::APP_STATE_UNLOADED);
+        L0Test::ExpectTrue(tr, session.monitor->_appTimers.count("app.instance") == 0,
+            "UNLOADED lifecycle notification also removes the instance state");
+    }
+    {
+        ResourceMonitorTestSupport::Session session;
+        session.Add("app");
+        session.packages->onGetLockedInfo = [&session] {
+            session.monitor->_appManagerNotification.OnAppUnloaded("app", "app.instance");
+        };
+        session.Emit("app", State::APP_STATE_SUSPENDED);
+        L0Test::ExpectTrue(tr, session.monitor->_appTimers.count("app.instance") == 0,
+            "An in-flight metadata lookup cannot restore an unloaded instance");
+    }
+    return tr.failures;
+}
+
 uint32_t Test_RM_Enforcement_CapabilitySnapshot()
 {
     L0Test::TestResult tr;

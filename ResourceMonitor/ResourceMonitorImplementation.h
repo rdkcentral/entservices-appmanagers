@@ -111,9 +111,36 @@ namespace Plugin {
             {
                 _parent.OnAppLifecycleStateChanged(appId, appInstanceId, newState, oldState, errorReason);
             }
+            void OnAppUnloaded(const string&, const string& appInstanceId) override
+            {
+                _parent.OnAppUnloaded(appInstanceId);
+            }
         private:
             ResourceMonitorImplementation& _parent;
         };
+
+        class ManagerNotification : public PluginHost::IPlugin::INotification {
+        public:
+            explicit ManagerNotification(ResourceMonitorImplementation* parent) : _parent(*parent) {}
+            BEGIN_INTERFACE_MAP(ManagerNotification)
+                INTERFACE_ENTRY(PluginHost::IPlugin::INotification)
+            END_INTERFACE_MAP
+            void Activated(const string& callsign, PluginHost::IShell*) override { _parent.ManagerStateChanged(callsign, true); }
+            void Deactivated(const string& callsign, PluginHost::IShell*) override { _parent.ManagerStateChanged(callsign, false); }
+            void Unavailable(const string& callsign, PluginHost::IShell*) override { _parent.ManagerStateChanged(callsign, false); }
+        private:
+            ResourceMonitorImplementation& _parent;
+        };
+
+        template <typename INTERFACE>
+        struct ReleaseInterface {
+            void operator()(INTERFACE* value) const { value->Release(); }
+        };
+        using AppManagerReference = std::unique_ptr<Exchange::IAppManager, ReleaseInterface<Exchange::IAppManager>>;
+        using RuntimeManagerReference = std::unique_ptr<Exchange::IRuntimeManager, ReleaseInterface<Exchange::IRuntimeManager>>;
+        AppManagerReference AcquireAppManager();
+        RuntimeManagerReference AcquireRuntimeManager();
+        void ManagerStateChanged(const string& callsign, bool active);
 
         enum class EvictionOwner {
             NONE,
@@ -127,6 +154,7 @@ namespace Plugin {
             uint64_t suspendedTimerExpiryMs;  // Expiry time in milliseconds (0 = inactive)
             AppLifecycleCapabilities lifecycleSnapshot;
             bool hasSnapshot;
+            uint64_t generation;
             Exchange::IAppManager::AppLifecycleState pausedExpectedState;  // State when PAUSED timer started
             Exchange::IAppManager::AppLifecycleState suspendedExpectedState;  // State when SUSPENDED timer started
             
@@ -134,6 +162,7 @@ namespace Plugin {
                 : pausedTimerExpiryMs(0)
                 , suspendedTimerExpiryMs(0)
                 , hasSnapshot(false)
+                , generation(0)
                 , pausedExpectedState(Exchange::IAppManager::APP_STATE_UNKNOWN)
                 , suspendedExpectedState(Exchange::IAppManager::APP_STATE_UNKNOWN)
             {
@@ -159,8 +188,12 @@ namespace Plugin {
         // Timer management
         void OnPausedTimerExpired(const string& appInstanceId);
         void OnSuspendedTimerExpired(const string& appInstanceId);
+        void StartLifecycleTimer(const string& appId, const string& appInstanceId, bool paused);
+        void OnAppUnloaded(const string& appInstanceId);
         void StartPausedTimer(const string& appInstanceId, const AppLifecycleCapabilities& capabilities);
+        void StartPausedTimerLocked(const string& appInstanceId, const AppLifecycleCapabilities& capabilities);
         void StartSuspendedTimer(const string& appInstanceId);
+        void StartSuspendedTimerLocked(const string& appInstanceId);
         void CancelPausedTimer(const string& appInstanceId);
         void CancelSuspendedTimer(const string& appInstanceId);
         void CancelAllTimers(const string& appInstanceId);
@@ -223,10 +256,15 @@ namespace Plugin {
 
         // RuntimeManager for querying container info (GPU/memory stats)
         Exchange::IRuntimeManager* _runtimeManager;
+        std::mutex _managerMutex;
+        std::mutex _managerUpdateMutex;
+        bool _managerStopping;
+        Core::Sink<ManagerNotification> _managerNotification;
 
         // Per-app timer state for lifecycle enforcement
         std::map<std::string, AppTimerState> _appTimers;
         std::mutex _appTimersMutex;
+        uint64_t _nextTimerGeneration;
 
         // Timer worker for lifecycle enforcement
         class LifecycleTimer : public Core::IDispatch {

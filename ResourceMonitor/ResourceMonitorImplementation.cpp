@@ -72,7 +72,10 @@ namespace WPEFramework {
             , _appManager(nullptr)
             , _appManagerNotification(this)
             , _runtimeManager(nullptr)
+            , _managerStopping(false)
+            , _managerNotification(this)
             , _appTimersMutex()
+            , _nextTimerGeneration(0)
             , _timerStopping(false)
             , _timer(Core::ProxyType<LifecycleTimer>::Create(this))
             , _timerHandler(1024 * 64, _T("ResourceLifecycleTimer"))
@@ -86,6 +89,11 @@ namespace WPEFramework {
         ResourceMonitorImplementation::~ResourceMonitorImplementation() 
         {
             LOGINFO("ResourceMonitorImplementation Destructor");
+            {
+                std::lock_guard<std::mutex> lock(_managerMutex);
+                _managerStopping = true;
+            }
+            if (_rservice != nullptr) { _rservice->Unregister(&_managerNotification); }
             {
                 std::lock_guard<std::mutex> lock(_appTimersMutex);
                 _timerStopping = true;
@@ -115,16 +123,8 @@ namespace WPEFramework {
                 _victimSelector = nullptr;
                 LOGINFO("VictimSelector notification unregistered");
             }
-            if (_appManager != nullptr) {
-                _appManager->Unregister(&_appManagerNotification);
-                _appManager->Release();
-                _appManager = nullptr;
-                LOGINFO("AppManager notification unregistered");
-            }
-            if (_runtimeManager != nullptr) {
-                _runtimeManager->Release();
-                _runtimeManager = nullptr;
-            }
+            ManagerStateChanged("org.rdk.AppManager", false);
+            ManagerStateChanged("org.rdk.RuntimeManager", false);
 			std::list<Exchange::IResourceMonitor::INotification*> notifications;
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
@@ -140,6 +140,78 @@ namespace WPEFramework {
             }
             if (_instance == this) {
                 _instance = nullptr;
+            }
+        }
+
+        ResourceMonitorImplementation::AppManagerReference ResourceMonitorImplementation::AcquireAppManager()
+        {
+            std::lock_guard<std::mutex> lock(_managerMutex);
+            auto* manager = _managerStopping ? nullptr : _appManager;
+            if (manager != nullptr) { manager->AddRef(); }
+            return AppManagerReference(manager);
+        }
+
+        ResourceMonitorImplementation::RuntimeManagerReference ResourceMonitorImplementation::AcquireRuntimeManager()
+        {
+            std::lock_guard<std::mutex> lock(_managerMutex);
+            auto* manager = _managerStopping ? nullptr : _runtimeManager;
+            if (manager != nullptr) { manager->AddRef(); }
+            return RuntimeManagerReference(manager);
+        }
+
+        void ResourceMonitorImplementation::ManagerStateChanged(const string& callsign, bool active)
+        {
+            const bool appManager = callsign == "org.rdk.AppManager";
+            if (!appManager && callsign != "org.rdk.RuntimeManager") { return; }
+            std::lock_guard<std::mutex> update(_managerUpdateMutex);
+            if (active) {
+                {
+                    std::lock_guard<std::mutex> lock(_managerMutex);
+                    if (_managerStopping || (appManager ? _appManager != nullptr : _runtimeManager != nullptr)) { return; }
+                }
+                if (_rservice == nullptr) { return; }
+                if (appManager) {
+                    AppManagerReference candidate(_rservice->QueryInterfaceByCallsign<Exchange::IAppManager>(callsign));
+                    if (!candidate || candidate->Register(&_appManagerNotification) != Core::ERROR_NONE) { return; }
+                    {
+                        std::lock_guard<std::mutex> lock(_managerMutex);
+                        if (!_managerStopping) { _appManager = candidate.release(); }
+                    }
+                    if (candidate) {
+                        candidate->Unregister(&_appManagerNotification);
+                    } else {
+                        auto manager = AcquireAppManager();
+                        Exchange::IAppManager::ILoadedAppInfoIterator* loaded = nullptr;
+                        const auto result = manager ? manager->GetLoadedApps(loaded) : Core::ERROR_UNAVAILABLE;
+                        std::unique_ptr<Exchange::IAppManager::ILoadedAppInfoIterator,
+                            ReleaseInterface<Exchange::IAppManager::ILoadedAppInfoIterator>> apps(loaded);
+                        if (result == Core::ERROR_NONE && apps) {
+                            Exchange::IAppManager::LoadedAppInfo info;
+                            while (apps->Next(info)) {
+                                OnAppLifecycleStateChanged(info.appId, info.appInstanceId, info.lifecycleState,
+                                    Exchange::IAppManager::APP_STATE_UNKNOWN, Exchange::IAppManager::APP_ERROR_NONE);
+                            }
+                        }
+                    }
+                } else {
+                    RuntimeManagerReference candidate(_rservice->QueryInterfaceByCallsign<Exchange::IRuntimeManager>(callsign));
+                    std::lock_guard<std::mutex> lock(_managerMutex);
+                    if (!_managerStopping) { _runtimeManager = candidate.release(); }
+                }
+            } else {
+                AppManagerReference previousApp;
+                RuntimeManagerReference previousRuntime;
+                {
+                    std::lock_guard<std::mutex> lock(_managerMutex);
+                    if (appManager) {
+                        previousApp.reset(_appManager);
+                        _appManager = nullptr;
+                    } else {
+                        previousRuntime.reset(_runtimeManager);
+                        _runtimeManager = nullptr;
+                    }
+                }
+                if (previousApp) { previousApp->Unregister(&_appManagerNotification); }
             }
         }
 
@@ -174,27 +246,11 @@ namespace WPEFramework {
                     }
                 }
                 // Subscribe to AppManager lifecycle events for lifecycle enforcement
-                _appManager = _rservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppManager>("org.rdk.AppManager");
-                if (_appManager == nullptr) {
-                    LOGWARN("AppManager Interface is unavailable. Lifecycle enforcement disabled");
-                    // Continue without lifecycle enforcement - this is not a fatal error
-                } else {
-                    const auto appManagerResult = _appManager->Register(&_appManagerNotification);
-                    if (appManagerResult != Core::ERROR_NONE) {
-                        LOGWARN("AppManager notification registration failed. Lifecycle enforcement disabled");
-                        _appManager->Release();
-                        _appManager = nullptr;
-                    } else {
-                        LOGINFO("AppManager notification registered for lifecycle enforcement");
-                    }
-                }
+                _rservice->Register(&_managerNotification);
+                ManagerStateChanged("org.rdk.AppManager", true);
+                // Continue without lifecycle enforcement - this is not a fatal error
                 // Query RuntimeManager for container info (GPU/memory stats)
-                _runtimeManager = _rservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IRuntimeManager>("org.rdk.RuntimeManager");
-                if (_runtimeManager == nullptr) {
-                    LOGWARN("RuntimeManager Interface is unavailable. GPU/memory enforcement will be disabled");
-                } else {
-                    LOGINFO("RuntimeManager interface acquired for GPU/memory enforcement");
-                }
+                ManagerStateChanged("org.rdk.RuntimeManager", true);
             }
             if (!_reactiveMonitorRunning) {
                 _reactiveMonitorRunning = true;
@@ -1113,16 +1169,17 @@ namespace WPEFramework {
                 appId.c_str(), appInstanceId.c_str(), static_cast<int>(oldState),
                 static_cast<int>(newState), static_cast<int>(errorReason));
 
+            if (appInstanceId.empty()) {
+                return;
+            }
+            if (newState == Exchange::IAppManager::APP_STATE_UNLOADED) {
+                OnAppUnloaded(appInstanceId);
+                return;
+            }
+
             // Handle PAUSED entry
             if (newState == Exchange::IAppManager::APP_STATE_PAUSED) {
-                AppLifecycleCapabilities capabilities;
-                const Core::hresult result = GetAppLifecycleCapabilities(appId, capabilities);
-                if (result == Core::ERROR_NONE) {
-                    StartPausedTimer(appInstanceId, capabilities);
-                } else {
-                    LOGWARN("Failed to get lifecycle capabilities for %s, starting timer without snapshot", appId.c_str());
-                    StartPausedTimer(appInstanceId, AppLifecycleCapabilities());
-                }
+                StartLifecycleTimer(appId, appInstanceId, true);
             }
             // Handle PAUSED exit
             else if (oldState == Exchange::IAppManager::APP_STATE_PAUSED) {
@@ -1131,7 +1188,7 @@ namespace WPEFramework {
 
             // Handle SUSPENDED entry
             if (newState == Exchange::IAppManager::APP_STATE_SUSPENDED) {
-                StartSuspendedTimer(appInstanceId);
+                StartLifecycleTimer(appId, appInstanceId, false);
             }
             // Handle SUSPENDED exit
             else if (oldState == Exchange::IAppManager::APP_STATE_SUSPENDED) {
@@ -1146,16 +1203,65 @@ namespace WPEFramework {
             }
         }
 
+        void ResourceMonitorImplementation::StartLifecycleTimer(const string& appId,
+            const string& appInstanceId, bool paused)
+        {
+            AppLifecycleCapabilities capabilities;
+            uint64_t generation;
+            bool capture;
+            {
+                std::lock_guard<std::mutex> lock(_appTimersMutex);
+                if (_timerStopping) { return; }
+                auto& state = _appTimers[appInstanceId];
+                if (state.generation == 0) { state.generation = ++_nextTimerGeneration; }
+                generation = state.generation;
+                capture = !state.hasSnapshot;
+                capabilities = state.lifecycleSnapshot;
+            }
+            if (capture) {
+                GetAppLifecycleCapabilities(appId, capabilities);
+            }
+            std::lock_guard<std::mutex> lock(_appTimersMutex);
+            const auto it = _appTimers.find(appInstanceId);
+            if (_timerStopping || it == _appTimers.end() || it->second.generation != generation) {
+                return;
+            }
+            auto& state = it->second;
+            if (!state.hasSnapshot && capabilities.status != LifecycleConfigStatus::UNAVAILABLE) {
+                state.lifecycleSnapshot = capabilities;
+                state.hasSnapshot = true;
+            }
+            if (paused) {
+                StartPausedTimerLocked(appInstanceId, state.lifecycleSnapshot);
+            } else {
+                StartSuspendedTimerLocked(appInstanceId);
+            }
+        }
+
+        void ResourceMonitorImplementation::OnAppUnloaded(const string& appInstanceId)
+        {
+            std::lock_guard<std::mutex> lock(_appTimersMutex);
+            _appTimers.erase(appInstanceId);
+        }
+
         // Timer management methods
         void ResourceMonitorImplementation::StartPausedTimer(const string& appInstanceId,
             const AppLifecycleCapabilities& capabilities)
         {
             std::lock_guard<std::mutex> lock(_appTimersMutex);
+            StartPausedTimerLocked(appInstanceId, capabilities);
+        }
+
+        void ResourceMonitorImplementation::StartPausedTimerLocked(const string& appInstanceId,
+            const AppLifecycleCapabilities& capabilities)
+        {
             AppTimerState& timerState = _appTimers[appInstanceId];
             
             // Snapshot capabilities
-            timerState.lifecycleSnapshot = capabilities;
-            timerState.hasSnapshot = true;
+            if (!timerState.hasSnapshot && capabilities.status != LifecycleConfigStatus::UNAVAILABLE) {
+                timerState.lifecycleSnapshot = capabilities;
+                timerState.hasSnapshot = true;
+            }
             
             // Store expected state (the state when timer started)
             timerState.pausedExpectedState = Exchange::IAppManager::APP_STATE_PAUSED;
@@ -1176,6 +1282,11 @@ namespace WPEFramework {
         void ResourceMonitorImplementation::StartSuspendedTimer(const string& appInstanceId)
         {
             std::lock_guard<std::mutex> lock(_appTimersMutex);
+            StartSuspendedTimerLocked(appInstanceId);
+        }
+
+        void ResourceMonitorImplementation::StartSuspendedTimerLocked(const string& appInstanceId)
+        {
             AppTimerState& timerState = _appTimers[appInstanceId];
             
             // Store expected state (the state when timer started)
@@ -1372,12 +1483,13 @@ namespace WPEFramework {
         bool ResourceMonitorImplementation::GetGPUMemoryUsage(const string& appInstanceId, uint64_t& gpuMemoryBytes)
         {
             gpuMemoryBytes = 0;
-            if (_runtimeManager == nullptr) {
+            auto runtimeManager = AcquireRuntimeManager();
+            if (!runtimeManager) {
                 LOGWARN("RuntimeManager unavailable, cannot query GPU memory for appInstanceId=%s", appInstanceId.c_str());
                 return false;
             }
             string infoJson;
-            const Core::hresult result = _runtimeManager->GetInfo(appInstanceId, infoJson);
+            const Core::hresult result = runtimeManager->GetInfo(appInstanceId, infoJson);
             if (result != Core::ERROR_NONE) {
                 LOGWARN("Failed to get container info for appInstanceId=%s, error=%d", appInstanceId.c_str(), static_cast<int>(result));
                 return false;
@@ -1467,14 +1579,15 @@ namespace WPEFramework {
         void ResourceMonitorImplementation::RequestSuspendedTransition(const string& appInstanceId)
         {
             // Map appInstanceId to appId using GetLoadedApps
-            if (_appManager == nullptr) {
+            auto appManager = AcquireAppManager();
+            if (!appManager) {
                 LOGERR("AppManager unavailable, cannot request SUSPENDED transition for appInstanceId=%s", appInstanceId.c_str());
                 return;
             }
             
             string appId;
             Exchange::IAppManager::ILoadedAppInfoIterator* loadedApps = nullptr;
-            const Core::hresult result = _appManager->GetLoadedApps(loadedApps);
+            const Core::hresult result = appManager->GetLoadedApps(loadedApps);
             
             if (result != Core::ERROR_NONE || loadedApps == nullptr) {
                 LOGERR("Failed to get loaded apps for transition, appInstanceId=%s, error=%d", appInstanceId.c_str(), static_cast<int>(result));
@@ -1507,7 +1620,7 @@ namespace WPEFramework {
             }
             
             // Request SUSPENDED transition via AppManager
-            const Core::hresult transitionResult = _appManager->SetTargetAppState(appId, Exchange::IAppManager::APP_STATE_SUSPENDED);
+            const Core::hresult transitionResult = appManager->SetTargetAppState(appId, Exchange::IAppManager::APP_STATE_SUSPENDED);
             if (transitionResult == Core::ERROR_NONE) {
                 LOGINFO("Requested SUSPENDED transition for appId=%s appInstanceId=%s", appId.c_str(), appInstanceId.c_str());
             } else {
@@ -1519,14 +1632,15 @@ namespace WPEFramework {
         void ResourceMonitorImplementation::RequestHibernatedTransition(const string& appInstanceId)
         {
             // Map appInstanceId to appId using GetLoadedApps
-            if (_appManager == nullptr) {
+            auto appManager = AcquireAppManager();
+            if (!appManager) {
                 LOGERR("AppManager unavailable, cannot request HIBERNATED transition for appInstanceId=%s", appInstanceId.c_str());
                 return;
             }
             
             string appId;
             Exchange::IAppManager::ILoadedAppInfoIterator* loadedApps = nullptr;
-            const Core::hresult result = _appManager->GetLoadedApps(loadedApps);
+            const Core::hresult result = appManager->GetLoadedApps(loadedApps);
             
             if (result != Core::ERROR_NONE || loadedApps == nullptr) {
                 LOGERR("Failed to get loaded apps for transition, appInstanceId=%s, error=%d", appInstanceId.c_str(), static_cast<int>(result));
@@ -1559,7 +1673,7 @@ namespace WPEFramework {
             }
             
             // Request HIBERNATED transition via AppManager
-            const Core::hresult transitionResult = _appManager->SetTargetAppState(appId, Exchange::IAppManager::APP_STATE_HIBERNATED);
+            const Core::hresult transitionResult = appManager->SetTargetAppState(appId, Exchange::IAppManager::APP_STATE_HIBERNATED);
             if (transitionResult == Core::ERROR_NONE) {
                 LOGINFO("Requested HIBERNATED transition for appId=%s appInstanceId=%s", appId.c_str(), appInstanceId.c_str());
             } else {
@@ -1571,14 +1685,15 @@ namespace WPEFramework {
         void ResourceMonitorImplementation::RequestAppTermination(const string& appInstanceId, const string& reason)
         {
             // Map appInstanceId to appId using GetLoadedApps
-            if (_appManager == nullptr) {
+            auto appManager = AcquireAppManager();
+            if (!appManager) {
                 LOGERR("AppManager unavailable, cannot request termination for appInstanceId=%s", appInstanceId.c_str());
                 return;
             }
             
             string appId;
             Exchange::IAppManager::ILoadedAppInfoIterator* loadedApps = nullptr;
-            const Core::hresult result = _appManager->GetLoadedApps(loadedApps);
+            const Core::hresult result = appManager->GetLoadedApps(loadedApps);
             
             if (result != Core::ERROR_NONE || loadedApps == nullptr) {
                 LOGERR("Failed to get loaded apps for termination, appInstanceId=%s, error=%d", appInstanceId.c_str(), static_cast<int>(result));
@@ -1611,7 +1726,7 @@ namespace WPEFramework {
             }
             
             // Request termination via AppManager
-            const Core::hresult terminateResult = _appManager->TerminateApp(appId);
+            const Core::hresult terminateResult = appManager->TerminateApp(appId);
             if (terminateResult == Core::ERROR_NONE) {
                 LOGINFO("Requested termination for appId=%s appInstanceId=%s reason=%s", appId.c_str(), appInstanceId.c_str(), reason.c_str());
             } else {
@@ -1623,13 +1738,14 @@ namespace WPEFramework {
         bool ResourceMonitorImplementation::IsNonAppWorkload(const string& appInstanceId)
         {
             // Query GetLoadedApps to check LoadedAppInfo.type
-            if (_appManager == nullptr) {
+            auto appManager = AcquireAppManager();
+            if (!appManager) {
                 LOGWARN("AppManager unavailable, cannot check workload type for appInstanceId=%s", appInstanceId.c_str());
                 return false; // Safe default
             }
             
             Exchange::IAppManager::ILoadedAppInfoIterator* loadedApps = nullptr;
-            const Core::hresult result = _appManager->GetLoadedApps(loadedApps);
+            const Core::hresult result = appManager->GetLoadedApps(loadedApps);
             
             if (result != Core::ERROR_NONE || loadedApps == nullptr) {
                 LOGWARN("Failed to get loaded apps for workload type check, appInstanceId=%s", appInstanceId.c_str());
@@ -1676,13 +1792,14 @@ namespace WPEFramework {
         Exchange::IAppManager::AppLifecycleState ResourceMonitorImplementation::GetAppState(const string& appInstanceId)
         {
             // Query GetLoadedApps to find the current state of the app
-            if (_appManager == nullptr) {
+            auto appManager = AcquireAppManager();
+            if (!appManager) {
                 LOGWARN("AppManager unavailable, cannot get state for appInstanceId=%s", appInstanceId.c_str());
                 return Exchange::IAppManager::APP_STATE_UNKNOWN;
             }
             
             Exchange::IAppManager::ILoadedAppInfoIterator* loadedApps = nullptr;
-            const Core::hresult result = _appManager->GetLoadedApps(loadedApps);
+            const Core::hresult result = appManager->GetLoadedApps(loadedApps);
             
             if (result != Core::ERROR_NONE || loadedApps == nullptr) {
                 LOGWARN("Failed to get loaded apps for state check, appInstanceId=%s", appInstanceId.c_str());
