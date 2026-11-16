@@ -1601,6 +1601,10 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuccess)
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLaunchRequest);
     EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+    });
 
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->CloseApp(APPMANAGER_APP_ID));
     // Simulate the app lifecycle state change event
@@ -1671,7 +1675,11 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), requestLaunch, mJsonRpcResponse));
     EXPECT_EQ(Core::ERROR_NONE, onAppLaunchRequest.Lock());
     EVENT_UNSUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);
-    
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+    });
+
     // Simulate the app lifecycle state change event
     EVENT_SUBSCRIBE(0, _T("onAppLifecycleStateChanged"), _T("org.rdk.AppManager"), message);
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("closeApp"), requestClose, mJsonRpcResponse));
@@ -1812,6 +1820,10 @@ TEST_F(AppManagerTest, TerminateAppUsingComRpcSuccess)
     expectedEvent.intent = APPMANAGER_APP_INTENT;
     expectedEvent.source = "";
 
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
@@ -2087,6 +2099,10 @@ TEST_F(AppManagerTest, KillAppUsingComRpcSuccess)
     expectedEvent.intent = APPMANAGER_APP_INTENT;
     expectedEvent.source = "";
 
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
@@ -2141,6 +2157,11 @@ TEST_F(AppManagerTest, KillAppUsingJSONRpcSuccess)
             return Core::ERROR_NONE;
         }
     ));
+
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
 
     EVENT_SUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
@@ -3280,6 +3301,10 @@ TEST_F(AppManagerTest, handleOnAppUnloadedUsingComRpcSuccess)
 
     /* Notification registration*/
     Core::Sink<NotificationHandler> notification;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
     mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
@@ -4246,9 +4271,9 @@ TEST_F(AppManagerTest, HandleOnAppUnloadedEmptyInstanceId)
     /* Non-empty appId, empty appInstanceId - exercises L382 LOGERR path */
     mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, "");
 
-    /* Wait for OnAppUnloaded to be dispatched before releasing resources */
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
-    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
+    /* Empty appInstanceId is rejected, so no OnAppUnloaded notification is dispatched */
+    signalled = notification.WaitForRequestStatus(JOB_DRAIN_TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_FALSE(signalled & AppManager_onAppUnloaded);
 
     mAppManagerImpl->Unregister(&notification);
 
