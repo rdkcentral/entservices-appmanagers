@@ -36,7 +36,7 @@ namespace WPEFramework
     PreinstallManagerImplementation::PreinstallManagerImplementation()
                 : mAdminLock(), mAppPreinstallDirectory(""),
                     mConfigFileName("/opt/persistent/sky/PACKAGE_MANAGER.json"),
-                    mForceInstallMarker("/opt/persistent/.sceneset_factory_apps_copied"), mPreinstalledUpdateExclusionList(),
+                    mEnabledFactoryReset("/opt/factory_reset"), mPreinstalledUpdateExclusionList(),
                     mPreinstallManagerNotifications(), mCurrentservice(nullptr),
           mPreinstallState(State::NOT_STARTED), mInstallThread()
     {
@@ -141,11 +141,11 @@ namespace WPEFramework
                 mConfigFileName = config.configFileName.Value();
             }
             LOGINFO("configFileName=%s", mConfigFileName.c_str());
-            if (!config.forceInstallMarker.Value().empty())
+            if (!config.enabledFactoryReset.Value().empty())
             {
-                mForceInstallMarker = config.forceInstallMarker.Value();
+                mEnabledFactoryReset = config.enabledFactoryReset.Value();
             }
-            LOGINFO("forceInstallMarker=%s", mForceInstallMarker.c_str());
+            LOGINFO("enabledFactoryReset=%s", mEnabledFactoryReset.c_str());
             result = Core::ERROR_NONE;
             LOGINFO("PreinstallManagerImplementation service configured successfully");
         }
@@ -573,9 +573,9 @@ namespace WPEFramework
             return result;
         }
 
-        if (Core::File(mForceInstallMarker).Exists())
+        if (Core::File(mEnabledFactoryReset).Exists())
         {
-            LOGINFO("Force install marker present: %s, skipping exclusion list read", mForceInstallMarker.c_str());
+            LOGINFO("Factory reset marker present: %s, skipping exclusion list read", mEnabledFactoryReset.c_str());
             mPreinstalledUpdateExclusionList.clear();
         }
         else if (!readPreinstalledUpdateExclusionList())

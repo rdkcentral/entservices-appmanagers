@@ -52,11 +52,11 @@ namespace WPEFramework
                         : Core::JSON::Container()
                         , appPreinstallDirectory()
                         , configFileName()
-                        , forceInstallMarker()
+                        , enabledFactoryReset()
                     {
                         Add(_T("appPreinstallDirectory"), &appPreinstallDirectory);
                         Add(_T("configFileName"), &configFileName);
-                        Add(_T("forceInstallMarker"), &forceInstallMarker);
+                        Add(_T("enabledFactoryReset"), &enabledFactoryReset);
                     }
                     ~Configuration() = default;
 
@@ -68,7 +68,7 @@ namespace WPEFramework
                 public:
                     Core::JSON::String appPreinstallDirectory;
                     Core::JSON::String configFileName;
-                    Core::JSON::String forceInstallMarker;
+                    Core::JSON::String enabledFactoryReset;
             };
 
         public:
@@ -172,7 +172,7 @@ namespace WPEFramework
             mutable Core::CriticalSection mAdminLock;
             std::string mAppPreinstallDirectory;
             std::string mConfigFileName;
-            std::string mForceInstallMarker;
+            std::string mEnabledFactoryReset;
             std::set<std::string> mPreinstalledUpdateExclusionList;
             uint32_t mStartPreinstallCount = 0;
             std::map<std::string, uint32_t> mInstallAttempts; // "packageId:version" -> attempts
