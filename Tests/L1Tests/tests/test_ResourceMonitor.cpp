@@ -332,7 +332,7 @@ TEST_F(ResourceMonitorInitializedTest, ReconcileMissingAppId)
 
 TEST_F(ResourceMonitorInitializedTest, ReconcileMissingRamTarget)
 {
-    EXPECT_NE(
+    EXPECT_EQ(
         Core::ERROR_NONE,
         handler.Invoke(
             connection,

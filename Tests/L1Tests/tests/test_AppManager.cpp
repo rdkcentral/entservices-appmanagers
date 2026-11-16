@@ -2110,6 +2110,12 @@ TEST_F(AppManagerTest, KillAppUsingComRpcSuccess)
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLaunchRequest);
     EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
     SetupUnloadApp();
+    EXPECT_CALL(*mLifecycleManagerMock, KillApp(::testing::_, ::testing::_, ::testing::_))
+    .WillRepeatedly([&](const string&, string& errorReason, bool& success) {
+        errorReason = "";
+        success = true;
+        return Core::ERROR_NONE;
+    });
 
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->KillApp(APPMANAGER_APP_ID));
 
@@ -2168,7 +2174,13 @@ TEST_F(AppManagerTest, KillAppUsingJSONRpcSuccess)
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), requestLaunch, mJsonRpcResponse));
     EXPECT_EQ(Core::ERROR_NONE, onAppLaunchRequest.Lock());
     EVENT_UNSUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);
-    
+
+    EXPECT_CALL(*mLifecycleManagerMock, KillApp(::testing::_, ::testing::_, ::testing::_))
+    .WillRepeatedly([&](const string&, string& errorReason, bool& success) {
+        errorReason = "";
+        success = true;
+        return Core::ERROR_NONE;
+    });
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("killApp"), request, mJsonRpcResponse));
 
     if(status == Core::ERROR_NONE)
