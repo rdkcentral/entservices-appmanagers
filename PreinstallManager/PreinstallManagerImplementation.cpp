@@ -423,15 +423,17 @@ namespace WPEFramework
 
         releasePackageManagerObject(packageInstaller);
 
-        mAdminLock.Lock();
-        mPreinstallState = State::COMPLETED;
-        mAdminLock.Unlock();
-
         if (installError)
         {
             LOGWARN("Preinstall completed with failures");
         }
+        /* Dispatch before publishing COMPLETED: once COMPLETED is visible the owner may release this object,
+           and dispatching afterwards would take a reference on an object that is being destroyed. */
         sendOnPreinstallationCompleteEvent();
+
+        mAdminLock.Lock();
+        mPreinstallState = State::COMPLETED;
+        mAdminLock.Unlock();
     }
 
     /*

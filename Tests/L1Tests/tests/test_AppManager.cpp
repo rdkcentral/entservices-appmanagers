@@ -1590,7 +1590,7 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuccess)
     Core::Sink<NotificationHandler> notification;
     AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
         a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
-        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
     });
 
     /* Register the notification handler */
@@ -1647,7 +1647,7 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
 
     AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
         a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
-        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
     });
     std::string requestClose = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\"}";
     std::string requestLaunch = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) +
