@@ -147,7 +147,6 @@ namespace Plugin {
         bool IsHardThresholdExceeded(uint64_t memAvailable, uint64_t swapFree, uint64_t swapTotal, double psiFullAvg60) const;
         bool IsWarningThresholdExceeded(uint64_t memAvailable, uint64_t swapFree, uint64_t swapTotal, double psiFullAvg60) const;
         uint32_t CalculateSwapPercentage(uint64_t swapFree, uint64_t swapTotal) const;
-        void OnReconciliationComplete(const string& appId, const bool targetRamAchieved);
         void OnEvictComplete(const bool evicted, const Exchange::IVictimSelector::EvictErrorReason errorCode);
         void OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId,
             const Exchange::IAppManager::AppLifecycleState newState,
@@ -207,11 +206,13 @@ namespace Plugin {
         std::atomic<bool> _initialized;
         std::string _reconcileAppId;
         std::queue<ReconcileRequest> _reconcileRequests;
+        bool _reconcileEvictionRetryPending;
         std::thread _reconcileThread;
         std::condition_variable _reconcileConditionVariable;
         std::mutex _reconcileMutex;
 
         std::atomic<EvictionOwner> _evictionOwner;
+        std::atomic<Exchange::IVictimSelector::EvictionType> _pendingEvictionType;
         Exchange::IVictimSelector* _victimSelector;
         Core::Sink<VictimSelectorNotification> _victimSelectorNotification;
         std::unique_ptr<PackageLifecycleConfigProvider> _lifecycleConfigProvider;
@@ -253,6 +254,7 @@ namespace Plugin {
         Core::TimerType<LifecycleTimer> _timerHandler;
 
     protected:
+        void OnReconciliationComplete(const string& appId, const bool targetRamAchieved);
         mutable Core::CriticalSection _adminLock;
         PluginHost::IShell* _rservice;   
     };
