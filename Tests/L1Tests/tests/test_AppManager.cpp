@@ -1335,7 +1335,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureIsAppLoadedReturnError)
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
     EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
-    .WillOnce([&](const std::string &appId, bool &loaded) {
+    .WillRepeatedly([&](const std::string &appId, bool &loaded) {
         loaded = false;
         return Core::ERROR_GENERAL;
     });
@@ -1513,7 +1513,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureIsAppLoadedReturnError)
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
 
     EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
-    .WillOnce([&](const std::string &appId, bool &loaded) {
+    .WillRepeatedly([&](const std::string &appId, bool &loaded) {
         loaded = false;
         return Core::ERROR_GENERAL;
     });
