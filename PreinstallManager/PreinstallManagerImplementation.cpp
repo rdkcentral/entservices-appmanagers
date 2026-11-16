@@ -427,11 +427,23 @@ namespace WPEFramework
         {
             LOGWARN("Preinstall completed with failures");
         }
-        /* Dispatch before publishing COMPLETED: once COMPLETED is visible the owner may release this object,
-           and dispatching afterwards would take a reference on an object that is being destroyed. */
-        sendOnPreinstallationCompleteEvent();
-
+        /*
+         * Ordering of the completion event vs. the COMPLETED state (fixes "pure virtual method called"
+         * seen in L0 and the stale-state race reported in review):
+         *
+         * 1. Queue the completion job BEFORE publishing COMPLETED. Job::Create() takes a reference on
+         *    this object. Once COMPLETED is visible, the owner (or a test) may Release() the object; if
+         *    the job were created afterwards it could AddRef an object whose destructor is already
+         *    running, and the worker pool would then call into a partially destroyed object.
+         * 2. Hold mAdminLock across queuing AND publishing. Dispatch() takes the same lock before it
+         *    notifies listeners, so the job cannot deliver OnPreinstallationComplete until COMPLETED is
+         *    set. Listeners therefore never observe IN_PROGRESS after being told preinstall finished,
+         *    and an immediate StartPreinstall() from the callback is not rejected as "still running".
+         *    dispatchEvent() only submits to the worker pool and does not take mAdminLock, so no
+         *    self-deadlock is possible here.
+         */
         mAdminLock.Lock();
+        sendOnPreinstallationCompleteEvent();
         mPreinstallState = State::COMPLETED;
         mAdminLock.Unlock();
     }
