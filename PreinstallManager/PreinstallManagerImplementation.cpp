@@ -36,7 +36,7 @@ namespace WPEFramework
     PreinstallManagerImplementation::PreinstallManagerImplementation()
                 : mAdminLock(), mAppPreinstallDirectory(""),
                     mConfigFileName(""),
-                    mEnabledFactoryReset(""), mPreinstalledUpdateExclusionList(),
+                    mEnabledFactoryReset(""),
                     mPreinstallManagerNotifications(), mCurrentservice(nullptr),
           mPreinstallState(State::NOT_STARTED), mInstallThread()
     {
@@ -450,9 +450,9 @@ namespace WPEFramework
         sendOnPreinstallationCompleteEvent();
     }
 
-    bool PreinstallManagerImplementation::readPreinstalledUpdateExclusionList()
+    bool PreinstallManagerImplementation::readPreinstalledUpdateExclusionList(std::set<std::string> &exclusionList)
     {
-        mPreinstalledUpdateExclusionList.clear();
+        exclusionList.clear();
         const char *const storePath = mConfigFileName.c_str();
         std::ifstream input(storePath);
         if (input.is_open())
@@ -478,7 +478,7 @@ namespace WPEFramework
                 std::string appId;
                 while (appIds >> appId)
                 {
-                    mPreinstalledUpdateExclusionList.insert(appId);
+                    exclusionList.insert(appId);
                 }
             }
         }
@@ -556,20 +556,20 @@ namespace WPEFramework
             return result;
         }
 
+        std::set<std::string> exclusionList;
         if (Core::File(mEnabledFactoryReset).Exists())
         {
             LOGINFO("Factory reset marker present: %s, skipping exclusion list read", mEnabledFactoryReset.c_str());
-            mPreinstalledUpdateExclusionList.clear();
         }
-        else if (!readPreinstalledUpdateExclusionList())
+        else if (!readPreinstalledUpdateExclusionList(exclusionList))
         {
             LOGWARN("Failed to read exclusion list from %s; proceeding with preinstall without exclusions", mConfigFileName.c_str());
-            mPreinstalledUpdateExclusionList.clear();
+            exclusionList.clear();
         }
 
-        if (!forceInstall || !mPreinstalledUpdateExclusionList.empty())
+        if (!forceInstall || !exclusionList.empty())
         {
-            LOGINFO("Checking preinstall packages: forceInstall=%d exclusionListSize=%zu", forceInstall, mPreinstalledUpdateExclusionList.size());
+            LOGINFO("Checking preinstall packages: forceInstall=%d exclusionListSize=%zu", forceInstall, exclusionList.size());
             Exchange::IPackageInstaller::IPackageIterator *packageList = nullptr;
 
             // fetch installed packages
@@ -603,7 +603,7 @@ namespace WPEFramework
             // filter to-be-installed apps
             for (auto toBeInstalledApp = preinstallPackages.begin(); toBeInstalledApp != preinstallPackages.end(); /* skip */)
             {
-                const bool isAppOnExclusionList = mPreinstalledUpdateExclusionList.find(toBeInstalledApp->packageId) != mPreinstalledUpdateExclusionList.end();
+                const bool isAppOnExclusionList = exclusionList.find(toBeInstalledApp->packageId) != exclusionList.end();
                 const auto existingApp = existingApps.find(toBeInstalledApp->packageId);
                 const bool isInstalled = existingApp != existingApps.end();
                 const bool isNewer = isInstalled && isNewerVersion(toBeInstalledApp->version, existingApp->second);
