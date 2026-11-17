@@ -562,7 +562,17 @@ namespace WPEFramework
         }
 
         std::set<std::string> exclusionList;
-        if (Core::File(mEnabledFactoryReset).Exists())
+        bool factoryResetMarkerPresent = false;
+        if (mEnabledFactoryReset.empty())
+        {
+            LOGINFO("enabledFactoryReset is empty; skipping factory reset marker check");
+        }
+        else
+        {
+            factoryResetMarkerPresent = Core::File(mEnabledFactoryReset).Exists();
+        }
+
+        if (factoryResetMarkerPresent)
         {
             LOGINFO("Factory reset marker present: %s, skipping exclusion list read", mEnabledFactoryReset.c_str());
         }
