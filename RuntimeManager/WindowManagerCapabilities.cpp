@@ -44,7 +44,9 @@ std::string buildWindowManagerCapabilities(const std::string& runtimeCapabilitie
         else if ("compositor-app" == capName)
         {
             if (!result.empty()) result += ',';
-            result += "privileged-app";
+            // SkyApps requires the same app-interface access as the home app.
+            // A different token prevents Monarch's native tile requests from reaching it.
+            result += "privilegedclient";
         }
         else if (capName == "issue-notifications")  // IPackage::Capability::DisplayOverlays
         {
