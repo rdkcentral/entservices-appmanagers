@@ -35,8 +35,8 @@ namespace WPEFramework
 
     PreinstallManagerImplementation::PreinstallManagerImplementation()
                 : mAdminLock(), mAppPreinstallDirectory(""),
-                    mConfigFileName("/opt/persistent/sky/PACKAGE_MANAGER.json"),
-                    mEnabledFactoryReset("/opt/factory_reset"), mPreinstalledUpdateExclusionList(),
+                    mConfigFileName(""),
+                    mEnabledFactoryReset(""), mPreinstalledUpdateExclusionList(),
                     mPreinstallManagerNotifications(), mCurrentservice(nullptr),
           mPreinstallState(State::NOT_STARTED), mInstallThread()
     {
@@ -407,10 +407,6 @@ namespace WPEFramework
 
             LOGINFO("Installing package: %s, version: %s", pkg.packageId.c_str(), pkg.version.c_str());
 
-            mAdminLock.Lock();
-            const uint32_t attempt = ++mInstallAttempts[pkg.packageId + ":" + pkg.version];
-            const uint32_t invocation = mStartPreinstallCount;
-            mAdminLock.Unlock();
 
             FailReason failReason;
             Exchange::IPackageInstaller::IKeyValueIterator* additionalMetadata = nullptr;
