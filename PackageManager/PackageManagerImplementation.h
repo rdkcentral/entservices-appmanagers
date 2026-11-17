@@ -27,6 +27,8 @@
 #include <condition_variable>
 #include <fstream>
 #include <cstdio>
+#include <cstdint>
+#include <ftw.h>
 
 #if defined(UNIT_TEST)
 #include "IPackageImplDummy.h"
@@ -39,6 +41,8 @@
 #include "UtilsLogging.h"
 #include "TelemetryMarkers.h"
 #include <interfaces/IAppPackageManager.h>
+#include <interfaces/IAppPackageConnector.h>
+#include <interfaces/IAppPackagesStatus.h>
 #include <interfaces/IAppStorageManager.h>
 
 #include "HttpClient.h"
@@ -57,27 +61,21 @@ class PackageManagerImplementation
     , public Exchange::IPackageHandler
     , public Exchange::IAppPackageManagerConfig
     , public Exchange::IPackageCacheInitializer
+    , public Exchange::IAppPackagesStatus
+    , public Exchange::IAppPackageConnector
 {
     private:
         class State {
-            class BlockedInstallData {
-                public:
-                string version;
-                packagemanager::NameValues keyValues;
-                string fileLocator;
-            };
-
             public:
             State() {}
             InstallState installState = InstallState::UNINSTALLED;
             uint32_t mLockCount = 0;
-            Exchange::RuntimeConfig runtimeConfig {};
+            string runtimeConfigPayload;
             string digest;
             string gatewayMetadataPath;
             string unpackedPath;
             FailReason failReason = Exchange::IPackageInstaller::FailReason::NONE;
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
-            BlockedInstallData  blockedInstallData;
             string runtimeType;                             // blank for runtime package
             string packageType;                              // OCI package type (e.g. "runtime", "application")
             std::pair<std::string, std::string> runtimeApp; // runtime package id & version
@@ -91,8 +89,10 @@ class PackageManagerImplementation
                 Configuration()
                     : Core::JSON::Container()
                     , downloadDir()
+                    , enablePackageSpecifierRuntimes()
                 {
                     Add(_T("downloadDir"), &downloadDir); //
+                    Add(_T("enablePackageSpecifierRuntimes"), &enablePackageSpecifierRuntimes);
                 }
                 ~Configuration() = default;
 
@@ -103,6 +103,7 @@ class PackageManagerImplementation
 
             public:
                 Core::JSON::String downloadDir;
+                Core::JSON::Boolean enablePackageSpecifierRuntimes;
         };
 
         class DownloadInfo {
@@ -177,26 +178,34 @@ class PackageManagerImplementation
         Core::hresult Install(const string &packageId, const string &version, IPackageInstaller::IKeyValueIterator* const& additionalMetadata, const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason) override;
         Core::hresult Uninstall(const string &packageId, string &errorReason ) override;
         Core::hresult ListPackages(Exchange::IPackageInstaller::IPackageIterator*& packages);
-        Core::hresult Config(const string &packageId, const string &version, Exchange::RuntimeConfig& configMetadata) override;
+        Core::hresult Config(const string &packageId, const string &version, string& configMetadata) override;
         Core::hresult PackageState(const string &packageId, const string &version, Exchange::IPackageInstaller::InstallState &state) override;
-        Core::hresult GetConfigForPackage(const string &fileLocator, string& id, string &version, Exchange::RuntimeConfig& config) override;
+        Core::hresult GetConfigForPackage(const string &fileLocator, string& id, string &version, string& config) override;
 
         Core::hresult Register(Exchange::IPackageInstaller::INotification *sink) override;
         Core::hresult Unregister(Exchange::IPackageInstaller::INotification *sink) override;
 
         // IPackageHandler methods
         Core::hresult Lock(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
-            uint32_t &lockId, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
+            uint32_t &lockId, string &unpackedPath, string& configMetadata,
             Exchange::IPackageHandler::ILockIterator*& appMetadata
         ) override;
 
         Core::hresult Unlock(const string &packageId, const string &version) override;
-        Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
+        Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, string& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
         // IAppPackageManagerConfig methods
         Core::hresult GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */) override;
         Core::hresult GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */) override;
+
+	// IAppPackagesStatus methods
+        Core::hresult GetRunningApplicationsUsingPackage(const string &packageId, string& applicationIds) override;
+
+        // IAppPackageConnector methods
+        Core::hresult GetPackageSpecifierRuntimes(
+            Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator*& runtimes) override;
+        Core::hresult SetPackageSpecifier(const string& packageSpecifier, const string& packageId) override;
 
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
             INTERFACE_ENTRY(Exchange::IPackageDownloader)
@@ -204,11 +213,17 @@ class PackageManagerImplementation
             INTERFACE_ENTRY(Exchange::IPackageHandler)
             INTERFACE_ENTRY(Exchange::IAppPackageManagerConfig)
             INTERFACE_ENTRY(Exchange::IPackageCacheInitializer)
+            INTERFACE_ENTRY(Exchange::IAppPackagesStatus)
+            INTERFACE_ENTRY(Exchange::IAppPackageConnector)
         END_INTERFACE_MAP
 
     private:
-        void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
-        void getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig);
+        static int getSize(const char* path, const struct stat* sb, int typeflag, struct FTW* ftw);
+        static bool getDirectorySizeInBytes(const std::string& path, uint64_t& sizeBytes);
+        bool getRuntimeConfig(const packagemanager::ConfigMetaData &config, string &runtimeConfigPayload);
+        bool getRuntimeConfigString(const string &runtimeConfigPayload, const string &key, string &value);
+        bool getRuntimeConfigUnsigned(const string &runtimeConfigPayload, const string &key, uint64_t &value);
+        bool updateRuntimeConfigString(string &runtimeConfigPayload, const string &key, const string &value);
         Core::hresult LockRuntime(State &state, string &unpackedPath);
         Core::hresult LockPackage(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
             uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks);
@@ -227,7 +242,7 @@ class PackageManagerImplementation
         inline string GetInstalledVersion(const string& id) {
             for (auto const& [key, state] : mState) {
                 if ((id.compare(key.first) == 0) &&
-                    (state.installState == InstallState::INSTALLED || state.installState == InstallState::INSTALLATION_BLOCKED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
+                    (state.installState == InstallState::INSTALLED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
                     return key.second;
                 }
             }
@@ -237,14 +252,13 @@ class PackageManagerImplementation
         inline string GetBlockedVersion(const string& id) {
             for (auto const& [key, state] : mState) {
                 if ((id.compare(key.first) == 0) &&
-                    (state.installState == InstallState::INSTALLATION_BLOCKED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
+                    state.installState == InstallState::UNINSTALL_BLOCKED) {
                     return key.second;
                 }
             }
             return "";
         }
 
-        inline bool IsInstallBlocked(const string &packageId, const string &version, const packagemanager::NameValues &keyValues, const string &fileLocator);
         Core::hresult Install(const string &packageId, const string &version, const packagemanager::NameValues &keyValues, const string &fileLocator, State& state);
 
         void InitializeState();
@@ -299,6 +313,9 @@ class PackageManagerImplementation
     void populateRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata);
 
     private:
+        // nftw has no callback context; serialize access to the class-owned accumulator.
+        static std::mutex mDirSizeLock;
+        static uint64_t mDirSizeBytes;
         mutable Core::CriticalSection mAdminLock;
         std::list<Exchange::IPackageDownloader::INotification*> mDownloaderNotifications;
         std::list<Exchange::IPackageInstaller::INotification*> mInstallNotifications;
@@ -315,6 +332,7 @@ class PackageManagerImplementation
         std::recursive_mutex mtxState;
         StateMap  mState;
         bool cacheInitialized = false;
+        bool enablePackageSpecifierRuntimes = false;
 
         std::string downloadDir = "/opt/CDL/";
         string configStr;

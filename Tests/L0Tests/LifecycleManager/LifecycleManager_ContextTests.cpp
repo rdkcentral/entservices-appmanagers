@@ -34,10 +34,12 @@
 #include <atomic>
 #include <iostream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "ApplicationContext.h"
 #include "StateHandler.h"
+#include "StateTransitionHandler.h"
 #include "StateTransitionRequest.h"
 #include "State.h"
 #include "RequestHandler.h"
@@ -52,7 +54,12 @@ namespace {
         void onRuntimeManagerEvent(WPEFramework::Core::JSON::VariantContainer&) override {}
         void onWindowManagerEvent(WPEFramework::Core::JSON::VariantContainer&) override {}
         void onRippleEvent(std::string, WPEFramework::Core::JSON::VariantContainer&) override {}
-        void onStateChangeEvent(WPEFramework::Core::JSON::VariantContainer&) override {}
+        void onStateChangeEvent(WPEFramework::Core::JSON::VariantContainer& eventData) override
+        {
+            navigationIntents.push_back(eventData["navigationIntent"].String());
+        }
+
+        std::vector<std::string> navigationIntents;
     };
     static StubEventHandler  gStubEventHandler;
     static L0Test::FakeRuntimeManager gCtxTestRtm;
@@ -225,13 +232,14 @@ uint32_t Test_AppCtx_ApplicationLaunchParamsRoundTrip()
     L0Test::TestResult tr;
 
     WPEFramework::Plugin::ApplicationContext ctx("com.test.launch");
-    WPEFramework::Exchange::RuntimeConfig runtimeCfg;
+    const std::string runtimeConfigPayload =
+        R"({"envVariables":["EXISTING=value"],"logLevels":["DEBUG","INFO"],"vendor":{"nested":{"preserved":true}}})";
     ctx.setApplicationLaunchParams(
         "com.test.launch",
         "deeplink://home",
         "{\"key\":\"value\"}",
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
-        runtimeCfg);
+        runtimeConfigPayload);
 
     WPEFramework::Plugin::ApplicationLaunchParams& params = ctx.getApplicationLaunchParams();
     L0Test::ExpectEqStr(tr, params.mAppId, "com.test.launch",
@@ -244,6 +252,8 @@ uint32_t Test_AppCtx_ApplicationLaunchParamsRoundTrip()
         static_cast<uint32_t>(params.mTargetState),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED),
         "mTargetState is PAUSED");
+    L0Test::ExpectEqStr(tr, params.mRuntimeConfigPayload, runtimeConfigPayload,
+        "opaque runtime config payload, including arrays and nested properties, matches");
 
     return tr.failures;
 }
@@ -374,6 +384,83 @@ uint32_t Test_RequestHandler_NullifyStaleEventHandler()
     WPEFramework::Plugin::RequestHandler::getInstance()->initialize(&mockService, &gStubEventHandler);
     WPEFramework::Plugin::RequestHandler::getInstance()->terminate();
     return 0;
+}
+
+uint32_t Test_StateHandlerTransitionEventsIncludeNavigationIntent()
+{
+    L0Test::TestResult tr;
+
+    L0Test::LcmServiceMock mockService(L0Test::LcmServiceMock::Config(&gCtxTestRtm, &gCtxTestWm));
+    WPEFramework::Plugin::RequestHandler::getInstance()->initialize(&mockService, &gStubEventHandler);
+    WPEFramework::Plugin::StateHandler::initialize();
+    gStubEventHandler.navigationIntents.clear();
+
+    auto context = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.intent.transitions");
+    context->setMostRecentIntent("deeplink://preload");
+
+    WPEFramework::Plugin::StateTransitionRequest loadingRequest(
+        context,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING);
+    std::string error;
+    bool loadingResult = WPEFramework::Plugin::StateHandler::changeState(loadingRequest, error);
+    L0Test::ExpectTrue(tr, loadingResult, "UNLOADED->LOADING transition succeeds");
+
+    context->setApplicationLaunchParams(
+
+        context->getAppId(), "deeplink://preload", "{}",
+
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED, "{}");
+
+    WPEFramework::Plugin::StateTransitionRequest initializingRequest(
+        context,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::INITIALIZING);
+    bool initializingResult = WPEFramework::Plugin::StateHandler::changeState(initializingRequest, error);
+
+    L0Test::ExpectTrue(tr, initializingResult, "LOADING->INITIALIZING transition starts successfully");
+
+    if (initializingResult) {
+
+        bool runningResult = WPEFramework::Plugin::StateHandler::changeState(initializingRequest, error);
+
+        L0Test::ExpectTrue(tr, runningResult, "onAppRunning completes the INITIALIZING transition");
+
+    }
+    context->mPendingEventName = "onAppReady";
+
+    WPEFramework::Plugin::StateTransitionRequest pausedRequest(
+        context,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED);
+    bool pausedResult = WPEFramework::Plugin::StateHandler::changeState(pausedRequest, error);
+    L0Test::ExpectTrue(tr, pausedResult, "INITIALIZING->PAUSED transition succeeds after onAppReady");
+
+    L0Test::ExpectTrue(tr, 3U == gStubEventHandler.navigationIntents.size(),
+        "Preload emits events for LOADING, INITIALIZING, and PAUSED transitions");
+    for (size_t eventIndex = 0; eventIndex < 3U && eventIndex < gStubEventHandler.navigationIntents.size(); ++eventIndex) {
+        const std::string& navigationIntent = gStubEventHandler.navigationIntents[eventIndex];
+        L0Test::ExpectEqStr(tr, navigationIntent, "deeplink://preload",
+            "Every preload transition event carries the launch intent");
+    }
+
+    context->setMostRecentIntent("deeplink://state-change");
+    WPEFramework::Plugin::StateTransitionRequest activeRequest(
+        context,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+    bool activeResult = WPEFramework::Plugin::StateHandler::changeState(activeRequest, error);
+    L0Test::ExpectTrue(tr, activeResult, "PAUSED->ACTIVE transition succeeds");
+    if ((true == context->mPendingStateTransition) &&
+        ("onFirstFrame" == context->mPendingEventName)) {
+        bool readyResult = WPEFramework::Plugin::StateHandler::changeState(activeRequest, error);
+        L0Test::ExpectTrue(tr, readyResult, "onFirstFrame completes the ACTIVE transition");
+    }
+    L0Test::ExpectTrue(tr, 4U == gStubEventHandler.navigationIntents.size(),
+        "State-change request emits a transition event");
+    if (4U == gStubEventHandler.navigationIntents.size()) {
+        L0Test::ExpectEqStr(tr, gStubEventHandler.navigationIntents[3], "deeplink://state-change",
+            "State-change transition event carries its request intent");
+    }
+
+    WPEFramework::Plugin::RequestHandler::getInstance()->terminate();
+    return tr.failures;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1232,6 +1319,169 @@ uint32_t Test_RequestHandler_GetWindowManagerHandlerReturnsNull()
 
     L0Test::ExpectTrue(tr, handler == nullptr,
         "getWindowManagerHandler() returns nullptr before initialize()");
+
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RequestHandler::cleanupSingleton() destroys mInstance so the next
+// getInstance() call constructs a genuinely fresh object (RDKEMW-15824).
+// We prove "fresh" without relying on pointer-address reuse (the allocator
+// can legitimately hand back the same freed address) by observing that a
+// member set via initialize() reverts to its default-constructed value.
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_RequestHandler_CleanupSingletonProducesFreshInstance()
+{
+    L0Test::TestResult tr;
+
+    L0Test::LcmServiceMock mockService(L0Test::LcmServiceMock::Config(&gCtxTestRtm, &gCtxTestWm));
+    WPEFramework::Plugin::RequestHandler::getInstance()->initialize(&mockService, &gStubEventHandler);
+
+    WPEFramework::Plugin::IEventHandler* eventHandlerBeforeCleanup =
+        WPEFramework::Plugin::RequestHandler::getInstance()->getEventHandler();
+    L0Test::ExpectTrue(tr, eventHandlerBeforeCleanup != nullptr,
+        "initialize() stores the event handler on the singleton");
+
+    // Mirrors production shutdown order (LifecycleManagerImplementation::terminate()):
+    // terminate() the live instance, then destroy the singleton itself.
+    WPEFramework::Plugin::RequestHandler::getInstance()->terminate();
+    WPEFramework::Plugin::RequestHandler::cleanupSingleton();
+
+    // terminate() does not clear mEventHandler on the (now-deleted) old instance,
+    // so a non-null value here would mean cleanupSingleton() failed to delete it
+    // and getInstance() is still handing back the old object.
+    WPEFramework::Plugin::IEventHandler* eventHandlerAfterCleanup =
+        WPEFramework::Plugin::RequestHandler::getInstance()->getEventHandler();
+    L0Test::ExpectTrue(tr, eventHandlerAfterCleanup == nullptr,
+        "cleanupSingleton() deletes the old instance so getInstance() returns a freshly constructed one");
+
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RequestHandler::getInstance() is thread-safe: concurrent first-time callers
+// must all observe the same singleton instance instead of racing to allocate
+// separate objects (RDKEMW-15824).
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_RequestHandler_GetInstanceIsThreadSafe()
+{
+    L0Test::TestResult tr;
+
+    // Start from a clean slate so every thread races on first construction.
+    WPEFramework::Plugin::RequestHandler::getInstance()->terminate();
+    WPEFramework::Plugin::RequestHandler::cleanupSingleton();
+
+    constexpr int kThreadCount = 16;
+    std::vector<WPEFramework::Plugin::RequestHandler*> results(kThreadCount, nullptr);
+    std::vector<std::thread> threads;
+    threads.reserve(kThreadCount);
+
+    for (int i = 0; i < kThreadCount; ++i) {
+        threads.emplace_back([&results, i]() {
+            results[i] = WPEFramework::Plugin::RequestHandler::getInstance();
+        });
+    }
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    bool allSame = true;
+    for (int i = 1; i < kThreadCount; ++i) {
+        if (results[i] != results[0]) {
+            allSame = false;
+            break;
+        }
+    }
+
+    L0Test::ExpectTrue(tr, results[0] != nullptr,
+        "getInstance() returns a non-null pointer");
+    L0Test::ExpectTrue(tr, allSame,
+        "concurrent getInstance() calls all observe the same instance (no duplicate-allocation race)");
+
+    // Leave the singleton clean for subsequent tests.
+    WPEFramework::Plugin::RequestHandler::cleanupSingleton();
+
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// StateTransitionHandler::getInstance() returns the same instance across calls
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_StateTransitionHandler_GetInstanceReturnsSameInstance()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::StateTransitionHandler* first =
+        WPEFramework::Plugin::StateTransitionHandler::getInstance();
+    WPEFramework::Plugin::StateTransitionHandler* second =
+        WPEFramework::Plugin::StateTransitionHandler::getInstance();
+
+    L0Test::ExpectTrue(tr, first != nullptr, "getInstance() returns a non-null pointer");
+    L0Test::ExpectTrue(tr, first == second, "getInstance() returns the same instance on repeated calls");
+
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// StateTransitionHandler::cleanupSingleton() deletes mInstance and leaves the
+// singleton safe to use again via getInstance() (RDKEMW-15824).
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_StateTransitionHandler_CleanupSingletonThenGetInstanceIsSafe()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::StateTransitionHandler::getInstance();
+    WPEFramework::Plugin::StateTransitionHandler::cleanupSingleton();
+
+    WPEFramework::Plugin::StateTransitionHandler* afterCleanup =
+        WPEFramework::Plugin::StateTransitionHandler::getInstance();
+
+    L0Test::ExpectTrue(tr, afterCleanup != nullptr,
+        "getInstance() safely reconstructs the singleton after cleanupSingleton()");
+
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// StateTransitionHandler::getInstance() is thread-safe (RDKEMW-15824).
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_StateTransitionHandler_GetInstanceIsThreadSafe()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::StateTransitionHandler::cleanupSingleton();
+
+    constexpr int kThreadCount = 16;
+    std::vector<WPEFramework::Plugin::StateTransitionHandler*> results(kThreadCount, nullptr);
+    std::vector<std::thread> threads;
+    threads.reserve(kThreadCount);
+
+    for (int i = 0; i < kThreadCount; ++i) {
+        threads.emplace_back([&results, i]() {
+            results[i] = WPEFramework::Plugin::StateTransitionHandler::getInstance();
+        });
+    }
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    bool allSame = true;
+    for (int i = 1; i < kThreadCount; ++i) {
+        if (results[i] != results[0]) {
+            allSame = false;
+            break;
+        }
+    }
+
+    L0Test::ExpectTrue(tr, results[0] != nullptr,
+        "getInstance() returns a non-null pointer");
+    L0Test::ExpectTrue(tr, allSame,
+        "concurrent getInstance() calls all observe the same instance (no duplicate-allocation race)");
 
     return tr.failures;
 }

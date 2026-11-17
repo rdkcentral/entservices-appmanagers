@@ -26,6 +26,10 @@ if(PLUGIN_APP_STORAGE_MANAGER)
     set(SRC_FILES ${SRC_FILES} tests/AppStorageManager_L2Test.cpp)
 endif()
 
+if(PLUGIN_RESOURCEMONITOR)
+    set(SRC_FILES ${SRC_FILES} tests/ResourceMonitor_L2Test.cpp)
+endif()
+
 add_library(${MODULE_NAME} SHARED ${SRC_FILES})
 
 set_target_properties(${MODULE_NAME} PROPERTIES

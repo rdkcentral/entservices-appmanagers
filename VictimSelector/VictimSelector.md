@@ -1,10 +1,97 @@
 # Victim Selector
 
-## Overview
+## 1. High-Level Purpose & Architecture
 
 Victim Selector is a Thunder plugin that chooses an application to terminate when a resource-reclamation request is received. It exposes one Thunder API, `evict`, and uses the AppManager COM-RPC interface to inspect loaded applications and request termination.
 
 The current implementation covers the **system memory** path. GPU memory and hibernation flash storage are reserved in the interface but are not implemented yet.
+
+## 2. Architectural Overview
+
+```mermaid
+flowchart LR
+  Pressure[Resource pressure] --> VS[VictimSelector]
+  VS --> AM[AppManager]
+  VS --> RM[RuntimeManager]
+  VS --> Action[TerminateApp or KillApp]
+  AM --> Event[Lifecycle notification]
+  Event --> VS
+```
+
+VictimSelector is a policy layer. It does not own lifecycle state, runtime memory measurement, or termination implementation. It queries AppManager and RuntimeManager and delegates the selected action to AppManager.
+
+## 3. Code Organization (Folder & File-Level)
+
+- [VictimSelector.h](VictimSelector.h), [VictimSelector.cpp](VictimSelector.cpp): Thunder wrapper, registration, and JSON-RPC dispatch.
+- [VictimSelectorImplementation.h](VictimSelectorImplementation.h), [VictimSelectorImplementation.cpp](VictimSelectorImplementation.cpp): candidate selection, service resolution, eviction state, escalation, and completion.
+- [Module.h](Module.h), [Module.cpp](Module.cpp): module dependencies and registration support.
+- [CMakeLists.txt](CMakeLists.txt): wrapper/implementation targets and configuration generation.
+- [VictimSelector.conf.in](VictimSelector.conf.in), [VictimSelector.config](VictimSelector.config): build-time and checked-in plugin configuration.
+
+## 4. Class & Interface Documentation
+
+`VictimSelectorImplementation` implements `IVictimSelector` and `IConfiguration`. It owns AppManager and RuntimeManager interfaces, an AppManager notification sink, the pending app id, eviction type, and two mutexes for serialized selection/completion. `AppManagerNotification` forwards lifecycle changes and ignores unrelated AppManager events.
+
+Source excerpt from [VictimSelectorImplementation.h](VictimSelectorImplementation.h):
+
+```cpp
+Core::hresult Evict(const EvictionReason reason, const EvictionType type) override;
+Core::hresult Configure(PluginHost::IShell* service) override;
+```
+
+## 5. Configuration & Build Integration
+
+The plugin uses `mode`, `locator`, `autostart`, and `startuporder`. The root build enables it through `PLUGIN_VICTIM_SELECTOR`; [CMakeLists.txt](CMakeLists.txt) builds separate wrapper and implementation libraries. Candidate ranking depends on AppManager's most-recently-active ordering and the platform-defined `priority` app property.
+
+## 6. Internal Workflows & Execution Flow
+
+1. Configure and register the AppManager listener.
+2. On `Evict`, select an eligible app using lifecycle state, priority, recency, and RuntimeManager memory information.
+3. Submit `TerminateApp` for soft eviction or `KillApp` for hard eviction/hibernated selection.
+4. Escalate a pending soft eviction when a hard request targets the same app.
+5. Complete on an unloaded lifecycle event or report a termination failure.
+6. Unregister listeners and release services during teardown.
+
+## 7. Diagrams & Visual Aids
+
+```mermaid
+sequenceDiagram
+  participant P as Pressure source
+  participant V as VictimSelector
+  participant A as AppManager
+  participant R as RuntimeManager
+  P->>V: Evict(reason, type)
+  V->>A: GetLoadedApps and priority
+  V->>R: GetInfo(memory usage)
+  V->>A: TerminateApp or KillApp
+  A-->>V: lifecycle notification
+  V-->>P: onEvictComplete
+```
+
+```mermaid
+classDiagram
+  class VictimSelectorImplementation
+  class AppManagerNotification
+  VictimSelectorImplementation --> AppManagerNotification : owns sink
+  VictimSelectorImplementation ..|> IVictimSelector
+  VictimSelectorImplementation ..|> IConfiguration
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Selecting: Evict
+  Selecting --> Terminating: victim selected
+  Selecting --> Complete: no candidate
+  Terminating --> Killing: escalation
+  Terminating --> Complete: unloaded event
+  Killing --> Complete: unloaded event
+  Complete --> Idle
+```
+
+## 8. Testing & Quality Analysis
+
+L0 implementation tests are under [Tests/L0Tests/VictimSelector](../Tests/L0Tests/VictimSelector), with L1 coverage. Add focused tests for candidate ranking, malformed priority/memory data, no candidates, concurrent eviction, terminate-to-kill escalation, missing services, notification loss, and unsupported GPU/FLASH reasons.
 
 ## Public API
 
@@ -178,6 +265,10 @@ PLUGIN_VICTIM_SELECTOR_STARTUPORDER
 
 ## Validation
 
-The modified files pass VS Code diagnostics where the required project headers are available, and `git diff --check` passes in both repositories.
-
 A full CMake build could not be run in the development environment because CMake and the Thunder/WPEFramework development headers were unavailable.
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** VictimSelector chooses a victim and delegates the action; it does not terminate processes directly. Learn soft versus hard eviction and event-driven completion.
+
+**Advanced path:** trace candidate ranking through AppManager and RuntimeManager, inspect mutex/state lifetime, and verify escalation and completion under concurrent lifecycle events.

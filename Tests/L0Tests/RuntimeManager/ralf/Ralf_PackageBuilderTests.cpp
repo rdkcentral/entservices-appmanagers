@@ -72,9 +72,9 @@ static WPEFramework::Plugin::ApplicationConfiguration MakeAppConfig(
     return config;
 }
 
-static WPEFramework::Exchange::RuntimeConfig MakeRuntimeConfig(const std::string &ralfPkgPath = "")
+static WPEFramework::Plugin::RuntimeConfiguration MakeRuntimeConfig(const std::string &ralfPkgPath = "")
 {
-    WPEFramework::Exchange::RuntimeConfig cfg;
+    WPEFramework::Plugin::RuntimeConfiguration cfg;
     cfg.ralfPkgPath = ralfPkgPath;
     return cfg;
 }

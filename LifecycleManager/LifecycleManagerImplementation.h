@@ -27,7 +27,9 @@
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 #include "ApplicationContext.h"
+#include <deque>
 #include <map>
+#include <mutex>
 
 namespace WPEFramework
 {
@@ -60,10 +62,8 @@ namespace WPEFramework
                 class EXTERNAL Job : public Core::IDispatch
 	        {
                     protected:
-                         Job(LifecycleManagerImplementation *lifeCycleManagerImplementation, EventNames event, JsonValue &params)
+                                 explicit Job(LifecycleManagerImplementation *lifeCycleManagerImplementation)
                             : mLifecycleManagerImplementation(lifeCycleManagerImplementation)
-                            , _event(event)
-                            , _params(params)
 	                {
                             if (mLifecycleManagerImplementation != nullptr)
 	            	    {
@@ -84,23 +84,193 @@ namespace WPEFramework
                          }
 
                     public:
-                         static Core::ProxyType<Core::IDispatch> Create(LifecycleManagerImplementation *lifeCycleManagerImplementation, EventNames event, JsonValue params)
+                         static Core::ProxyType<Core::IDispatch> Create(LifecycleManagerImplementation *lifeCycleManagerImplementation)
 	                 {
 #ifndef  USE_THUNDER_R4
-                             return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(lifeCycleManagerImplementation, event, params)));
+                             return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(lifeCycleManagerImplementation)));
 #else
-                             return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(lifeCycleManagerImplementation, event, params)));
+                             return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(lifeCycleManagerImplementation)));
 #endif
                          }
 
                          virtual void Dispatch()
 	                 {
-                             mLifecycleManagerImplementation->Dispatch(_event, _params);
+                             mLifecycleManagerImplementation->drainEvents();
                          }
                     private:
                         LifecycleManagerImplementation *mLifecycleManagerImplementation;
-                        const EventNames _event;
-                        const JsonValue _params;
+                };
+
+                class EXTERNAL AppStateListenerJob : public Core::IDispatch
+                {
+                    protected:
+                        AppStateListenerJob(LifecycleManagerImplementation* lifecycleManager,
+                            Exchange::ILifecycleManager::INotification* notification,
+                            const string& appId,
+                            const Exchange::ILifecycleManager::LifecycleState newLifecycleState,
+                            const string& errorReason)
+                            : mLifecycleManagerImplementation(lifecycleManager)
+                            , mNotification(notification)
+                            , mAppId(appId)
+                            , mNewLifecycleState(newLifecycleState)
+                            , mErrorReason(errorReason)
+                        {
+                            if (nullptr != mLifecycleManagerImplementation)
+                            {
+                                mLifecycleManagerImplementation->AddRef();
+                            }
+                            if (nullptr != mNotification)
+                            {
+                                mNotification->AddRef();
+                            }
+                        }
+
+                    public:
+                        AppStateListenerJob() = delete;
+                        AppStateListenerJob(const AppStateListenerJob&) = delete;
+                        AppStateListenerJob& operator=(const AppStateListenerJob&) = delete;
+                        ~AppStateListenerJob() override
+                        {
+                            if (mNotification != nullptr)
+                            {
+                                mNotification->Release();
+                            }
+                            if (mLifecycleManagerImplementation != nullptr)
+                            {
+                                mLifecycleManagerImplementation->Release();
+                            }
+                        }
+
+                        static Core::ProxyType<Core::IDispatch> Create(LifecycleManagerImplementation* lifecycleManager,
+                            Exchange::ILifecycleManager::INotification* notification,
+                            const string& appId,
+                            const Exchange::ILifecycleManager::LifecycleState newLifecycleState,
+                            const string& errorReason)
+                        {
+#ifndef USE_THUNDER_R4
+                            return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<AppStateListenerJob>::Create(lifecycleManager, notification, appId, newLifecycleState, errorReason)));
+#else
+                            return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<AppStateListenerJob>::Create(lifecycleManager, notification, appId, newLifecycleState, errorReason)));
+#endif
+                        }
+
+                        void Dispatch() override
+                        {
+                            if ((mNotification == nullptr) || (mLifecycleManagerImplementation == nullptr))
+                            {
+                                return;
+                            }
+
+                            {
+                                Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManagerImplementation->mAdminLock);
+                                auto it = std::find(mLifecycleManagerImplementation->mLifecycleManagerNotification.begin(),
+                                    mLifecycleManagerImplementation->mLifecycleManagerNotification.end(),
+                                    mNotification);
+                                if (it == mLifecycleManagerImplementation->mLifecycleManagerNotification.end())
+                                {
+                                    return;
+                                }
+                            }
+
+                            mNotification->OnAppStateChanged(mAppId, mNewLifecycleState, mErrorReason);
+                        }
+
+                    private:
+                        LifecycleManagerImplementation* mLifecycleManagerImplementation;
+                        Exchange::ILifecycleManager::INotification* mNotification;
+                        const string mAppId;
+                        const Exchange::ILifecycleManager::LifecycleState mNewLifecycleState;
+                        const string mErrorReason;
+                };
+
+                class EXTERNAL LifecycleStateListenerJob : public Core::IDispatch
+                {
+                    protected:
+                        LifecycleStateListenerJob(LifecycleManagerImplementation* lifecycleManager,
+                            Exchange::ILifecycleManagerState::INotification* notification,
+                            const string& appId,
+                            const string& appInstanceId,
+                            const Exchange::ILifecycleManager::LifecycleState oldLifecycleState,
+                            const Exchange::ILifecycleManager::LifecycleState newLifecycleState,
+                            const string& navigationIntent)
+                            : mLifecycleManagerImplementation(lifecycleManager)
+                            , mNotification(notification)
+                            , mAppId(appId)
+                            , mAppInstanceId(appInstanceId)
+                            , mOldLifecycleState(oldLifecycleState)
+                            , mNewLifecycleState(newLifecycleState)
+                            , mNavigationIntent(navigationIntent)
+                        {
+                            if (mLifecycleManagerImplementation != nullptr)
+                            {
+                                mLifecycleManagerImplementation->AddRef();
+                            }
+                            if (mNotification != nullptr)
+                            {
+                                mNotification->AddRef();
+                            }
+                        }
+
+                    public:
+                        LifecycleStateListenerJob() = delete;
+                        LifecycleStateListenerJob(const LifecycleStateListenerJob&) = delete;
+                        LifecycleStateListenerJob& operator=(const LifecycleStateListenerJob&) = delete;
+                        ~LifecycleStateListenerJob() override
+                        {
+                            if (mNotification != nullptr)
+                            {
+                                mNotification->Release();
+                            }
+                            if (mLifecycleManagerImplementation != nullptr)
+                            {
+                                mLifecycleManagerImplementation->Release();
+                            }
+                        }
+
+                        static Core::ProxyType<Core::IDispatch> Create(LifecycleManagerImplementation* lifecycleManager,
+                            Exchange::ILifecycleManagerState::INotification* notification,
+                            const string& appId,
+                            const string& appInstanceId,
+                            const Exchange::ILifecycleManager::LifecycleState oldLifecycleState,
+                            const Exchange::ILifecycleManager::LifecycleState newLifecycleState,
+                            const string& navigationIntent)
+                        {
+#ifndef USE_THUNDER_R4
+                            return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<LifecycleStateListenerJob>::Create(lifecycleManager, notification, appId, appInstanceId, oldLifecycleState, newLifecycleState, navigationIntent)));
+#else
+                            return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<LifecycleStateListenerJob>::Create(lifecycleManager, notification, appId, appInstanceId, oldLifecycleState, newLifecycleState, navigationIntent)));
+#endif
+                        }
+
+                        void Dispatch() override
+                        {
+                            if ((mNotification == nullptr) || (mLifecycleManagerImplementation == nullptr))
+                            {
+                                return;
+                            }
+
+                            {
+                                Core::SafeSyncType<Core::CriticalSection> lock(mLifecycleManagerImplementation->mAdminLock);
+                                auto it = std::find(mLifecycleManagerImplementation->mLifecycleManagerStateNotification.begin(),
+                                    mLifecycleManagerImplementation->mLifecycleManagerStateNotification.end(),
+                                    mNotification);
+                                if (it == mLifecycleManagerImplementation->mLifecycleManagerStateNotification.end())
+                                {
+                                    return;
+                                }
+                            }
+
+                            mNotification->OnAppLifecycleStateChanged(mAppId, mAppInstanceId, mOldLifecycleState, mNewLifecycleState, mNavigationIntent);
+                        }
+
+                    private:
+                        LifecycleManagerImplementation* mLifecycleManagerImplementation;
+                        Exchange::ILifecycleManagerState::INotification* mNotification;
+                        const string mAppId;
+                        const string mAppInstanceId;
+                        const Exchange::ILifecycleManager::LifecycleState mOldLifecycleState;
+                        const Exchange::ILifecycleManager::LifecycleState mNewLifecycleState;
+                        const string mNavigationIntent;
                 };
 
                 LifecycleManagerImplementation ();
@@ -119,7 +289,7 @@ namespace WPEFramework
                 virtual Core::hresult Unregister(Exchange::ILifecycleManager::INotification *notification) override;
                 virtual Core::hresult GetLoadedApps(const bool verbose, string& apps) override;
                 virtual Core::hresult IsAppLoaded(const string& appId, bool& loaded) const override;
-                virtual Core::hresult SpawnApp(const string& appId, const string& launchIntent, const Exchange::ILifecycleManager::LifecycleState targetLifecycleState, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success) override;
+                virtual Core::hresult SpawnApp(const string& appId, const string& launchIntent, const Exchange::ILifecycleManager::LifecycleState targetLifecycleState, const string& runtimeConfigPayload, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success) override;
                 virtual Core::hresult SetTargetAppState(const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState targetLifecycleState, const string& launchIntent) override;
                 virtual Core::hresult UnloadApp(const string& appInstanceId, string& errorReason, bool& success) override;
                 virtual Core::hresult KillApp(const string& appInstanceId, string& errorReason, bool& success) override;
@@ -145,6 +315,9 @@ namespace WPEFramework
 
 	    private: /* members */
                 mutable Core::CriticalSection mAdminLock;
+	        std::mutex mEventQueueLock;
+                std::deque<std::pair<EventNames, JsonValue>> mEventQueue;
+                bool mEventDispatchScheduled { false };
 	        std::list<Exchange::ILifecycleManager::INotification*> mLifecycleManagerNotification;
 	        std::list<Exchange::ILifecycleManagerState::INotification*> mLifecycleManagerStateNotification;
                 std::list<std::shared_ptr<ApplicationContext>> mLoadedApplications;
@@ -154,7 +327,9 @@ namespace WPEFramework
                 bool initialize(PluginHost::IShell* service);
                 void terminate();
                 void dispatchEvent(EventNames, const JsonValue &params);
+                void drainEvents();
                 void Dispatch(EventNames event, const JsonValue params);
+                void submitStateChangeNotifications(const JsonObject& data, bool includeAppStateNotifications = true, bool includeLifecycleStateNotifications = true);
                 void handleRuntimeManagerEvent(const JsonObject &data);
                 void notifyOnFailure(const string& appInstanceId, const string& errorCode);
                 void handleStateChangeEvent(const JsonObject &data);

@@ -50,6 +50,8 @@ namespace Plugin
         , mPackageHandler(nullptr)
         , mPackageCacheInitializer(nullptr)
         , mPackageConfig(nullptr)
+        , mAppPackagesStatus(nullptr)
+        , mAppPackageConnector(nullptr)
         , mNotificationSink(*this)
     {
     }
@@ -67,6 +69,8 @@ namespace Plugin
         ASSERT(mPackageHandler == nullptr);
         ASSERT(mPackageCacheInitializer == nullptr);
         ASSERT(mPackageConfig == nullptr);
+        ASSERT(mAppPackagesStatus == nullptr);
+        ASSERT(mAppPackageConnector == nullptr);
         mService = service;
         mService->AddRef();
 
@@ -109,6 +113,19 @@ namespace Plugin
             {
                 Exchange::JAppPackageManagerConfig::Register(*this, mPackageConfig);
             }
+            mAppPackagesStatus = mPackageDownloader->QueryInterface<Exchange::IAppPackagesStatus>();
+            if (nullptr != mAppPackagesStatus) {
+                Exchange::JAppPackagesStatus::Register(*this, mAppPackagesStatus);
+            } else {
+                LOGERR("Failed to get instance of IAppPackagesStatus");
+            }
+
+            mAppPackageConnector = mPackageDownloader->QueryInterface<Exchange::IAppPackageConnector>();
+            if (nullptr != mAppPackageConnector) {
+                Exchange::JAppPackageConnector::Register(*this, mAppPackageConnector);
+            } else {
+                LOGERR("Failed to get instance of IAppPackageConnector");
+            }            
         }
         else {
             message = _T("PackageManager could not be instantiated.");
@@ -124,6 +141,19 @@ namespace Plugin
         if (mService != nullptr) {
             ASSERT(mService == service);
             mService->Unregister(&mNotificationSink);
+
+            if (nullptr != mAppPackagesStatus) {
+                Exchange::JAppPackagesStatus::Unregister(*this);
+                mAppPackagesStatus->Release();
+                mAppPackagesStatus = nullptr;
+            }
+
+
+            if (nullptr != mAppPackageConnector) {
+                Exchange::JAppPackageConnector::Unregister(*this);
+                mAppPackageConnector->Release();
+                mAppPackageConnector = nullptr;
+            }
 
             if (mPackageInstaller != nullptr) {
                 mPackageInstaller->Unregister(&mNotificationSink);

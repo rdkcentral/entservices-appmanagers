@@ -8,3 +8,6 @@ root = JSON()
 root.add("mode", "@PLUGIN_PACKAGEMANAGER_MODE@")
 configuration.add("root", root)
 configuration.add("downloadDir", "@PLUGIN_PACKAGEMANAGER_DOWNLOAD_DIR@")
+
+if @ENABLE_PKG_SPECIFIER_SUPPORT@:
+    configuration.add("enablePackageSpecifierRuntimes", "true")

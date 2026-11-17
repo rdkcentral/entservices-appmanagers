@@ -18,16 +18,56 @@
 */
 
 #include <iomanip>      /* for std::setw, std::setfill */
+#include <atomic>
+#include <algorithm>
+#include <cctype>
+#include <fstream>
 #include <sys/stat.h>
 #ifdef APP_MANAGER_RESOURCE_MONITOR
 #include <sys/statvfs.h>
 #endif
+#include <json/json.h>
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
 
 #define TIME_DATA_SIZE           200
-static bool sRunning = false;
+#define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
+static std::atomic<bool> sRunning{false};
+
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+namespace {
+void loadHibernationSettings(std::string& storagePath, bool& hibernationEnabled)
+{
+    std::ifstream configFile(AICONFIGURATION_JSON_PATH);
+    if (!configFile.is_open())
+        return;
+
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    builder["allowComments"] = true;
+    builder["strictRoot"] = false;
+    std::string errors;
+    if (!Json::parseFromStream(builder, configFile, &root, &errors))
+    {
+        LOGWARN("Could not parse '%s' for hibernation settings: %s",
+                AICONFIGURATION_JSON_PATH, errors.c_str());
+        return;
+    }
+
+    if (!root.isObject() || !root["apps"].isObject())
+        return;
+    const Json::Value& hibernate = root["apps"]["hibernate"];
+    if (!hibernate.isObject())
+        return;
+
+    if (hibernate["enable"].isBool())
+        hibernationEnabled = hibernate["enable"].asBool();
+    if (hibernate["flashStoragePath"].isString())
+        storagePath = hibernate["flashStoragePath"].asString();
+}
+} // namespace
+#endif
 
 RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
 
@@ -82,7 +122,7 @@ AppManagerImplementation::~AppManagerImplementation()
 {
     LOGINFO("Delete AppManagerImplementation Instance");
     _instance = nullptr;
-    sRunning = false;
+    sRunning.store(false);
     mAppRequestListCV.notify_all();
 #ifdef APP_MANAGER_RESOURCE_MONITOR
     {
@@ -151,14 +191,14 @@ Core::hresult AppManagerImplementation::Register(Exchange::IAppManager::INotific
 
 void AppManagerImplementation::AppManagerWorkerThread(void)
 {
-    while (sRunning)
+    while (sRunning.load())
     {
         std::shared_ptr<AppManagerRequest> request = nullptr;
         {
             std::unique_lock<std::mutex> lock(mAppManagerLock);
-            mAppRequestListCV.wait(lock, [this] { return !mAppRequestList.empty() || !sRunning; });
+            mAppRequestListCV.wait(lock, [this] { return !mAppRequestList.empty() || !sRunning.load(); });
 
-            if (!sRunning || mAppRequestList.empty()) {
+            if (!sRunning.load() || mAppRequestList.empty()) {
                 continue;
             }
 
@@ -188,59 +228,190 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                         PackageInfo packageData;
                         packageData.version = appRequestParam->packageVersion;
                         Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
+                        bool deferredReplacementLockCandidate = false;
+                        std::string deferredReplacementVersion;
+                        if ((APP_ACTION_LAUNCH == action) && (false == packageData.version.empty()) && (nullptr != mLifecycleInterfaceConnector))
+                        {
+                            bool loadedForLaunch = false;
+                            const Core::hresult loadedStatus = mLifecycleInterfaceConnector->isAppLoaded(appId, loadedForLaunch);
+                            if ((Core::ERROR_NONE == loadedStatus) && loadedForLaunch &&
+                                (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED ==
+                                 AppInfoManager::getInstance().getAppNewState(appId)))
+                            {
+                                const std::string runningVersion = AppInfoManager::getInstance().getPackageInfoVersion(appId);
+                                if ((false == runningVersion.empty()) && (0 != runningVersion.compare(packageData.version)))
+                                {
+                                    deferredReplacementLockCandidate = true;
+                                    deferredReplacementVersion = packageData.version;
+                                }
+                            }
+                        }
+                        if ((APP_ACTION_PRELOAD == action) && (false == packageData.version.empty()) && (nullptr != mLifecycleInterfaceConnector))
+                        {
+                            bool loadedForPreload = false;
+                            const Core::hresult loadedStatus = mLifecycleInterfaceConnector->isAppLoaded(appId, loadedForPreload);
+                            if ((Core::ERROR_NONE == loadedStatus) && loadedForPreload &&
+                                (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED ==
+                                 AppInfoManager::getInstance().getAppNewState(appId)))
+                            {
+                                const std::string runningVersion = AppInfoManager::getInstance().getPackageInfoVersion(appId);
+                                if ((false == runningVersion.empty()) && (0 != runningVersion.compare(packageData.version)))
+                                {
+                                    LOGINFO("Preload requested version %s for suspended loaded appId=%s running version=%s; using running version",
+                                        packageData.version.c_str(), appId.c_str(), runningVersion.c_str());
+                                    packageData.version = runningVersion;
+                                }
+                            }
+                        }
 
-                        Core::hresult status = packageLock(appId, packageData, lockReason);
+                        bool packageLockAcquired = false;
+                        Core::hresult status = packageLock(appId, packageData, lockReason, &packageLockAcquired);
+                        bool launchInvoked = false;
+                        const bool deferredReplacementLockAcquired = (deferredReplacementLockCandidate && (Core::ERROR_NONE == status) && (false == packageLockAcquired));
                         if (status == Core::ERROR_NONE)
                         {
                             // Update timestamp after packageLock succeeds (app entry now exists in mAppInfo)
                             updateCurrentActionTime(appId, actualStartTime, action);
-                            WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
-                            runtimeConfig.unpackedPath = packageData.unpackedPath;
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                            runtimeConfig.userId = packageData.userId;
-                            runtimeConfig.groupId = packageData.groupId;
-#endif // RALF_PACKAGE_SUPPORT_ENABLED
-                            getCustomValues(runtimeConfig);
-                            string launchArgs = appRequestParam->launchArgs;
-
-                            if (action == APP_ACTION_LAUNCH)
+                            std::string runtimeConfigPayload = packageData.configMetadata;
+                            std::string payloadError;
+                            Utils::RuntimeConfigPayload runtimeConfig;
+                            if (!runtimeConfig.Parse(runtimeConfigPayload, payloadError))
                             {
-                                status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfig);
-                                LOGINFO("Application Launch from thread returns with status %d", status);
-
-                                if (status != Core::ERROR_NONE)
-                                {
-                                    LOGERR("launch failed status %d", status);
-                                }
+                                LOGERR("Invalid runtime configuration payload for appId=%s: %s", appId.c_str(), payloadError.c_str());
+                                appManagerTelemetryReporting.reportTelemetryErrorData(appId, action, AppManagerImplementation::ERROR_PACKAGE_INVALID);
+                                status = Core::ERROR_INVALID_PARAMETER;
                             }
-                            else if (action == APP_ACTION_PRELOAD)
+                            else
                             {
-                                // Append any env vars from launchArgs["env"] into runtimeConfig.envVariables.
+                                runtimeConfig.SetString("unpackedPath", packageData.unpackedPath);
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                                uint64_t userId = 0;
+                                uint64_t groupId = 0;
+                                bool userIdPresent = false;
+                                bool groupIdPresent = false;
+                                if (!runtimeConfig.GetUnsigned("userId", userId, userIdPresent, payloadError)
+                                    || !runtimeConfig.GetUnsigned("groupId", groupId, groupIdPresent, payloadError))
                                 {
-                                    JsonObject launchArgsObj;
-                                    launchArgsObj.FromString(launchArgs);
-                                    if (launchArgsObj.HasLabel("env"))
+                                    LOGERR("Invalid RALF runtime configuration for appId=%s: %s", appId.c_str(), payloadError.c_str());
+                                    status = Core::ERROR_INVALID_PARAMETER;
+                                }
+                                else
+                                {
+                                    if (userIdPresent)
+                                        runtimeConfig.SetUnsigned("userId", userId);
+                                    if (groupIdPresent)
+                                        runtimeConfig.SetUnsigned("groupId", groupId);
+                                }
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
+                                getCustomValues(runtimeConfig);
+                                string launchArgs = appRequestParam->launchArgs;
+                                JsonObject launchArgsObj;
+                                launchArgsObj.FromString(launchArgs);
+                                bool debugLaunchRequested = false;
+                                if (launchArgsObj.HasLabel("debugger"))
+                                {
+                                    const JsonValue debuggerValue = launchArgsObj["debugger"];
+                                    if (JsonValue::type::BOOLEAN == debuggerValue.Content())
                                     {
-                                        JsonArray envArray;
-                                        if (!runtimeConfig.envVariables.empty())
-                                            envArray.FromString(runtimeConfig.envVariables);
-                                        const JsonArray& extraEnv = launchArgsObj["env"].Array();
-                                        auto it = extraEnv.Elements();
-                                        while (it.Next())
-                                            envArray.Add(it.Current());
-                                        string envArrayStr;
-                                        envArray.ToString(envArrayStr);
-                                        runtimeConfig.envVariables = envArrayStr;
-                                        LOGINFO("PreloadApp: appended env vars from launchArgs for appId=%s", appId.c_str());
+                                        debugLaunchRequested = debuggerValue.Boolean();
+                                    }
+                                    else if (JsonValue::type::STRING == debuggerValue.Content())
+                                    {
+                                        const std::string debuggerToken = debuggerValue.String();
+                                        debugLaunchRequested = (!debuggerToken.empty() && (debuggerToken != "false") && (debuggerToken != "0"));
                                     }
                                 }
-                                string errorReason;
-                                status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
-                                LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
-
-                                if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
+                                runtimeConfig.SetBoolean("enableDebugger", debugLaunchRequested);
+                                if (debugLaunchRequested)
                                 {
-                                    LOGERR("preLoadApp failed reason %s status %d", errorReason.c_str(), status);
+                                    LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
+                                }
+
+				AppInfoManager::getInstance().setRequestedLaunchVersion(appId, packageData.version);
+
+                                // Preserve legacy behavior by appending launchArgs["env"] only for preload requests.
+                                if ((APP_ACTION_PRELOAD == action) && (Core::ERROR_NONE == status) && launchArgsObj.HasLabel("env"))
+                                {
+                                    if (launchArgsObj["env"].Content() != JsonValue::type::ARRAY)
+                                    {
+                                        payloadError = "launchArgs.env must be an array of strings";
+                                        status = Core::ERROR_INVALID_PARAMETER;
+                                    }
+                                    else
+                                    {
+                                        const JsonArray& extraEnv = launchArgsObj["env"].Array();
+                                        auto it = extraEnv.Elements();
+                                        while (it.Next() && (status == Core::ERROR_NONE))
+                                        {
+                                            if (it.Current().Content() != JsonValue::type::STRING)
+                                            {
+                                                payloadError = "launchArgs.env must be an array of strings";
+                                                status = Core::ERROR_INVALID_PARAMETER;
+                                            }
+                                            else if (!runtimeConfig.AppendString("envVariables", it.Current().String(), payloadError))
+                                            {
+                                                LOGERR("Failed to append launch environment for appId=%s: %s", appId.c_str(), payloadError.c_str());
+                                                status = Core::ERROR_GENERAL;
+                                            }
+                                        }
+                                    }
+                                }
+                                if ((status == Core::ERROR_NONE) && !runtimeConfig.Serialize(runtimeConfigPayload, payloadError))
+                                {
+                                    LOGERR("Failed to serialize runtime configuration for appId=%s: %s", appId.c_str(), payloadError.c_str());
+                                    status = Core::ERROR_GENERAL;
+                                }
+
+                                if (status == Core::ERROR_NONE)
+                                {
+                                    mAdminLock.Lock();
+                                    if (nullptr == mLifecycleInterfaceConnector)
+                                    {
+                                        LOGERR("mLifecycleInterfaceConnector is null, cannot process app %s", appId.c_str());
+                                        status = Core::ERROR_GENERAL;
+                                    }
+                                    else if (action == APP_ACTION_LAUNCH)
+                                    {
+                                        launchInvoked = true;
+                                        status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfigPayload);
+                                        LOGINFO("Application Launch from thread returns with status %d", status);
+
+                                        if (status != Core::ERROR_NONE)
+                                        {
+                                            LOGERR("launch failed status %d", status);
+                                        }
+                                    }
+                                    else if (action == APP_ACTION_PRELOAD)
+                                    {
+                                        launchInvoked = true;
+                                        string errorReason;
+                                        status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfigPayload, errorReason);
+                                        LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
+
+                                        if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
+                                        {
+                                            LOGERR("preLoadApp failed reason %s status %d", errorReason.c_str(), status);
+                                        }
+                                    }
+                                    mAdminLock.Unlock();
+                                }
+                            }
+                            if ((Core::ERROR_NONE != status) && packageLockAcquired)
+                            {
+                                packageUnLock(appId);
+                                handleOnAppLifecycleStateChanged(appId, "",
+                                    Exchange::IAppManager::APP_STATE_UNKNOWN,
+                                    Exchange::IAppManager::APP_STATE_UNLOADED,
+                                    (Core::ERROR_INVALID_PARAMETER == status) ? Exchange::IAppManager::APP_ERROR_INVALID_PARAM : Exchange::IAppManager::APP_ERROR_UNKNOWN);
+                                removeAppInfoByAppId(appId);
+                            }
+                            else if ((Core::ERROR_NONE != status) && deferredReplacementLockAcquired && (false == launchInvoked))
+                            {
+                                const Core::hresult releaseStatus = releaseDeferredReplacementLock(appId, deferredReplacementVersion);
+                                if (Core::ERROR_NONE != releaseStatus)
+                                {
+                                    LOGERR("Failed to release deferred replacement lock after pre-launch failure for appId=%s requestedVersion=%s status=%d",
+                                        appId.c_str(), deferredReplacementVersion.c_str(), releaseStatus);
                                 }
                             }
                         }
@@ -305,7 +476,39 @@ Core::hresult AppManagerImplementation::Unregister(Exchange::IAppManager::INotif
 
 void AppManagerImplementation::dispatchEvent(EventNames event, const JsonObject &params)
 {
-    Core::IWorkerPool::Instance().Submit(Job::Create(this, event, params));
+    bool schedule = false;
+    {
+        std::lock_guard<std::mutex> lock(mEventQueueLock);
+        mEventQueue.emplace_back(event, params);
+        if (false == mEventDispatchScheduled)
+        {
+            mEventDispatchScheduled = true;
+            schedule = true;
+        }
+    }
+    if (schedule)
+    {
+        Core::IWorkerPool::Instance().Submit(Job::Create(this));
+    }
+}
+
+void AppManagerImplementation::drainEvents()
+{
+    while (true)
+    {
+        std::pair<EventNames, JsonObject> next;
+        {
+            std::lock_guard<std::mutex> lock(mEventQueueLock);
+            if (mEventQueue.empty())
+            {
+                mEventDispatchScheduled = false;
+                return;
+            }
+            next = std::move(mEventQueue.front());
+            mEventQueue.pop_front();
+        }
+        Dispatch(next.first, next.second);
+    }
 }
 
 void AppManagerImplementation::Dispatch(EventNames event, const JsonObject params)
@@ -440,27 +643,49 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         case APP_EVENT_UNLOADED:
         {
             appId = params.HasLabel("appId") ? params["appId"].String() : "";
+            appInstanceId = params.HasLabel("appInstanceId") ? params["appInstanceId"].String() : "";
             if (appId.empty())
             {
                 LOGERR("appId is missing or empty");
             }
+            else if (appInstanceId.empty())
+            {
+                LOGERR("appInstanceId is empty for Unloaded appId=%s",
+                    appId.c_str());
+            }
             else
             {
-                appInstanceId = params.HasLabel("appInstanceId") ? params["appInstanceId"].String() : "";
-                if (appInstanceId.empty())
+                const string storedAppInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
+                if (storedAppInstanceId == appInstanceId)
                 {
-                    LOGERR("appInstanceId is empty for Unloaded app");
-                }
+                    mAdminLock.Lock();
+                    Core::hresult unlockStatus = packageUnLock(appId);
 
-                mAdminLock.Lock();
-                Core::hresult unlockStatus = packageUnLock(appId);
-                LOGINFO("package unlock triggered while sending unloaded event for appId %s status %d", appId.c_str(), unlockStatus);
-                for (auto& notification : mAppManagerNotification)
-                {
-                    notification->OnAppUnloaded(appId, appInstanceId);
+                    LOGINFO("Package unlock triggered for old instance appId=%s appInstanceId=%s status=%d",
+                    appId.c_str(), appInstanceId.c_str(), unlockStatus);
+
+                   for (auto& notification : mAppManagerNotification)
+                   {
+                       notification->OnAppUnloaded(appId, appInstanceId);
+                   }
+                   mAdminLock.Unlock();
+
+                   removeAppInfoByAppId(appId);
+
+                   if (nullptr != mLifecycleInterfaceConnector)
+                   {
+                      mLifecycleInterfaceConnector->handlePendingRelaunch(appInstanceId);
+                   }
+                   else
+                   {
+                      LOGERR("Cannot process pending relaunch because mLifecycleInterfaceConnector is null for appId=%s", appId.c_str());
+                   }
                 }
-                mAdminLock.Unlock();
-                removeAppInfoByAppId(appId);
+                else
+                {
+                     LOGWARN("Skipping stale unload cleanup for appId=%s unloadedInstanceId=%s storedInstanceId=%s",
+                     appId.c_str(), appInstanceId.c_str(), storedAppInstanceId.c_str());
+                }
             }
             break;
         }
@@ -563,6 +788,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         mCurrentservice = service;
         mCurrentservice->AddRef();
 
+        mAdminLock.Lock();
         if (nullptr == (mLifecycleInterfaceConnector = new LifecycleInterfaceConnector(mCurrentservice)))
         {
             LOGERR("Failed to create LifecycleInterfaceConnector");
@@ -575,6 +801,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         {
             LOGINFO("created LifecycleManagerRemoteObject");
         }
+        mAdminLock.Unlock();
 
         if (Core::ERROR_NONE != createPersistentStoreRemoteStoreObject())
         {
@@ -622,22 +849,20 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
             {
                 suspendedToHibernatedTimeout = static_cast<uint32_t>(configuration["suspendedToHibernatedTimeout"].Number());
             }
-            if (configuration.HasLabel("hibernationStoragePath"))
-            {
-                mHibernationStoragePath = configuration["hibernationStoragePath"].String();
-            }
         }
+
+        loadHibernationSettings(mHibernationStoragePath, mHibernationEnabled);
 
         mStateTransitionManager.reset(new AppStateTransitionManager(*this));
         mStateTransitionManager->Configure(pausedToSuspendedTimeout, suspendedToHibernatedTimeout);
         mStateTransitionManager->Start();
     #endif
         RDKAM_TELEMETRY_INIT(service);
-        sRunning = true;
+        sRunning.store(true);
         /* Create the worker thread */
         try
         {
-            mAppManagerWorkerThread = std::thread(&AppManagerImplementation::AppManagerWorkerThread, AppManagerImplementation::getInstance());
+            mAppManagerWorkerThread = std::thread(&AppManagerImplementation::AppManagerWorkerThread, this);
             LOGINFO("App Manager Worker thread created");
             result = Core::ERROR_NONE;
         }
@@ -881,16 +1106,114 @@ uint32_t AppManagerImplementation::GetAppRamTargetMB(const string& appId) const
 {
     const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);
     const uint32_t bytesPerMB = 1024 * 1024;
-    if (packageInfo.configMetadata.systemMemoryLimit <= 0)
+    
+    /* Decode systemMemoryLimit from opaque configMetadata JSON string */
+    int64_t systemMemoryLimit = 0;
+    if (!packageInfo.configMetadata.empty())
+    {
+        try
+        {
+            Json::Value root;
+            Json::Reader reader;
+            if (reader.parse(packageInfo.configMetadata, root))
+            {
+                if (root.isMember("systemMemoryLimit") && root["systemMemoryLimit"].isInt64())
+                {
+                    systemMemoryLimit = root["systemMemoryLimit"].asInt64();
+                }
+            }
+        }
+        catch (...)
+        {
+            LOGERR("Failed to parse configMetadata for appId=%s", appId.c_str());
+        }
+    }
+    
+    if (systemMemoryLimit <= 0)
     {
         return 0;
     }
-    return static_cast<uint32_t>((static_cast<uint64_t>(packageInfo.configMetadata.systemMemoryLimit) + bytesPerMB - 1) / bytesPerMB);
+    return static_cast<uint32_t>((static_cast<uint64_t>(systemMemoryLimit) + bytesPerMB - 1) / bytesPerMB);
 }
+
+#endif // APP_MANAGER_RESOURCE_MONITOR
 
 bool AppManagerImplementation::SupportsHibernation(const string& appId)
 {
-    // TODO: Read the widget's hibernate-mode capability per app
+    const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);
+    if (!packageInfo.configMetadata.empty())
+    {
+        Json::Value runtimeConfig;
+        Json::Reader reader;
+        if (reader.parse(packageInfo.configMetadata, runtimeConfig) &&
+            runtimeConfig.isObject() && runtimeConfig.isMember("capabilities"))
+        {
+            const Json::Value& capabilities = runtimeConfig["capabilities"];
+            const auto hasHibernateModeToken = [](const std::string& serializedCapabilities) {
+                std::string entry;
+                bool escaped = false;
+                const auto matches = [](std::string value) {
+                    const size_t parameterStart = value.find('=');
+                    if (parameterStart != std::string::npos)
+                        value.erase(parameterStart);
+
+                    const auto notSpace = [](unsigned char ch) { return !std::isspace(ch); };
+                    value.erase(value.begin(), std::find_if(value.begin(), value.end(), notSpace));
+                    value.erase(std::find_if(value.rbegin(), value.rend(), notSpace).base(), value.end());
+                    std::transform(value.begin(), value.end(), value.begin(),
+                        [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                    return value == "hibernate-mode";
+                };
+
+                for (const char ch : serializedCapabilities)
+                {
+                    if (escaped)
+                    {
+                        entry.push_back(ch);
+                        escaped = false;
+                    }
+                    else if (ch == '\\')
+                    {
+                        escaped = true;
+                    }
+                    else if (ch == ',')
+                    {
+                        if (matches(entry))
+                            return true;
+                        entry.clear();
+                    }
+                    else
+                    {
+                        entry.push_back(ch);
+                    }
+                }
+                if (escaped)
+                    entry.push_back('\\');
+                return matches(entry);
+            };
+
+            // configMetadata is the package's RuntimeConfig. Its capabilities
+            // field is the canonical comma-separated widget capability list.
+            if (capabilities.isString())
+                return hasHibernateModeToken(capabilities.asString());
+            if (capabilities.isArray())
+            {
+                for (Json::ArrayIndex index = 0; index < capabilities.size(); ++index)
+                {
+                    const Json::Value& capability = capabilities[index];
+                    if (capability.isString() && hasHibernateModeToken(capability.asString()))
+                        return true;
+                }
+                return false;
+            }
+            // A present but malformed capability field is not affirmative
+            // evidence that this widget supports hibernation.
+            return false;
+        }
+    }
+
+    // Keep compatibility with installations that still publish capability
+    // state through PersistentStore instead of package RuntimeConfig metadata.
     string value;
     if (GetAppProperty(appId, "APPLICATION_CAN_RUN_IN_HIBERNATE_MODE", value) != Core::ERROR_NONE)
     {
@@ -902,10 +1225,39 @@ bool AppManagerImplementation::SupportsHibernation(const string& appId)
     return ("1" == value) || ("true" == value) || ("TRUE" == value);
 }
 
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+bool AppManagerImplementation::IsHibernationEnabled() const
+{
+    return mHibernationEnabled;
+}
+
 bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId) const
 {
     const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);
-    const uint64_t requiredBytes = packageInfo.configMetadata.dataImageSize;
+    
+    /* Decode dataImageSize from opaque configMetadata JSON string */
+    uint64_t dataImageSize = 0;
+    if (!packageInfo.configMetadata.empty())
+    {
+        try
+        {
+            Json::Value root;
+            Json::Reader reader;
+            if (reader.parse(packageInfo.configMetadata, root))
+            {
+                if (root.isMember("dataImageSize") && root["dataImageSize"].isUInt64())
+                {
+                    dataImageSize = root["dataImageSize"].asUInt64();
+                }
+            }
+        }
+        catch (...)
+        {
+            LOGERR("Failed to parse configMetadata for appId=%s", appId.c_str());
+        }
+    }
+    
+    const uint64_t requiredBytes = dataImageSize;
     if (requiredBytes == 0)
     {
         return false;
@@ -939,6 +1291,32 @@ bool AppManagerImplementation::createOrUpdatePackageInfoByAppId(const string& ap
     }
     else
     {
+        AppManagerTypes::ApplicationType packageType = AppManagerTypes::APPLICATION_TYPE_UNKNOWN;
+        if (!packageData.configMetadata.empty())
+        {
+            Json::Value config;
+            Json::Reader reader;
+            if (reader.parse(packageData.configMetadata, config) && config.isObject())
+            {
+                if (config["appType"].isString())
+                {
+                    const std::string appType = config["appType"].asString();
+                    if ("SYSTEM" == appType)
+                    {
+                        packageType = AppManagerTypes::APPLICATION_TYPE_SYSTEM;
+                    }
+                    else if ("INTERACTIVE" == appType)
+                    {
+                        packageType = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                    }
+                }
+            }
+            else
+            {
+                LOGWARN("Unable to parse package config metadata for appId=%s", appId.c_str());
+            }
+        }
+
         /* Atomically insert-or-update the PackageInfo for this appId */
         AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
             AppManagerTypes::PackageInfo pi = a.getPackageInfo();
@@ -947,6 +1325,10 @@ bool AppManagerImplementation::createOrUpdatePackageInfoByAppId(const string& ap
             pi.unpackedPath   = packageData.unpackedPath;
             pi.configMetadata = packageData.configMetadata;
             pi.appMetadata    = packageData.appMetadata;
+            if (AppManagerTypes::APPLICATION_TYPE_UNKNOWN != packageType)
+            {
+                pi.type = packageType;
+            }
             a.setPackageInfo(pi);
         });
         LOGINFO("Package entry upserted for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
@@ -988,14 +1370,20 @@ bool AppManagerImplementation::removeAppInfoByAppId(const string &appId)
     }
     return result;
 }
-Core::hresult AppManagerImplementation::packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason)
+Core::hresult AppManagerImplementation::packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason, bool* lockAcquired)
 {
+    if (nullptr != lockAcquired)
+    {
+        *lockAcquired = false;
+    }
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = false;
     bool installed = false;
     bool loaded = false;
     std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
+
+    mAdminLock.Lock();
 
     if (nullptr != mLifecycleInterfaceConnector)
     {
@@ -1035,8 +1423,12 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                 {
                     Exchange::IPackageHandler::ILockIterator *appMetadata = nullptr;
                     status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
-                    if (status == Core::ERROR_NONE)
+                    if (Core::ERROR_NONE == status)
                     {
+                        if (nullptr != lockAcquired)
+                        {
+                            *lockAcquired = true;
+                        }
                         LOGINFO("Fetching package entry updated for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
                                  appId.c_str(), packageData.version.c_str(), packageData.lockId, packageData.unpackedPath.c_str(), packageData.appMetadata.c_str());
                         result = createOrUpdatePackageInfoByAppId(appId, packageData);
@@ -1074,17 +1466,55 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
     else if (Core::ERROR_NONE == status)
     {
         const PackageInfo cachedPackageData = AppInfoManager::getInstance().getPackageInfo(appId);
-        packageData = cachedPackageData;
 
         if (cachedPackageData.version.empty())
         {
             LOGERR("Skipping packageLock for loaded appId %s failed: cached packageData is empty", appId.c_str());
             status = Core::ERROR_GENERAL;
         }
-        else
+        else if ((true == packageData.version.empty()) || (0 == cachedPackageData.version.compare(packageData.version)))
         {
+            packageData = cachedPackageData;
             LOGINFO("Skipping packageLock for appId %s because app is already loaded", appId.c_str());
             status = Core::ERROR_NONE;
+        }
+        else if (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED != AppInfoManager::getInstance().getAppNewState(appId))
+        {
+            packageData = cachedPackageData;
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGINFO("Loaded appId %s requested with new package version %s while running %s; locking requested version",
+                appId.c_str(), packageData.version.c_str(), cachedPackageData.version.c_str());
+
+            if ((nullptr != mPackageManagerHandlerObject) && (false == packageData.version.empty()))
+            {
+                Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+                status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
+                if (nullptr != appMetadata)
+                {
+                    appMetadata->Release();
+                    appMetadata = nullptr;
+                }
+                if (Core::ERROR_NONE == status)
+                {
+                    LOGINFO("Locked requested package version for loaded appId %s; AppInfo update deferred until replacement launch", appId.c_str());
+                }
+                else
+                {
+                    LOGERR("Failed to lock requested package version %s for loaded appId %s", packageData.version.c_str(), appId.c_str());
+                    appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_LOCK);
+                    packageData.version.clear();
+                }
+            }
+            else
+            {
+                LOGERR("PackageManager handler is %s", ((nullptr != mPackageManagerHandlerObject) ? "valid, but package version is empty" : "null"));
+                CurrentActionError errorCode = (packageData.version.empty() ? AppManagerImplementation::ERROR_PACKAGE_INVALID : AppManagerImplementation::ERROR_INTERNAL);
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, errorCode);
+                status = Core::ERROR_GENERAL;
+            }
         }
     }
     else
@@ -1092,6 +1522,8 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
         const char* failureReason = (nullptr == mLifecycleInterfaceConnector) ? "lifecycle connector missing" : "isAppLoaded failed";
         LOGERR("Failed to determine loaded state for appId %s, status: %d, reason: %s", appId.c_str(), status, failureReason);
     }
+
+    mAdminLock.Unlock();
 
     return status;
 }
@@ -1127,6 +1559,30 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
         }
         return status;
 }
+
+Core::hresult AppManagerImplementation::releaseDeferredReplacementLock(const string& appId, const string& requestedVersion)
+{
+    if (true == requestedVersion.empty())
+    {
+        return Core::ERROR_NONE;
+    }
+
+    if (nullptr == mPackageManagerHandlerObject)
+    {
+        LOGERR("Cannot release deferred replacement lock: package handler null for appId=%s version=%s", appId.c_str(), requestedVersion.c_str());
+        AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+        return Core::ERROR_GENERAL;
+    }
+
+    const Core::hresult status = mPackageManagerHandlerObject->Unlock(appId, requestedVersion);
+    if (Core::ERROR_NONE != status)
+    {
+        LOGERR("Failed to release deferred replacement lock for appId=%s version=%s status=%d", appId.c_str(), requestedVersion.c_str(), status);
+        AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+    }
+    return status;
+}
+
 /*
  * @brief Launch App requested by client.
  * @Params[in]  : const string& appId , const string& intent, const string& launchArgs
@@ -1701,7 +2157,9 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
                 JsonObject package;
                 package["appId"] = pkg.packageId;
                 package["versionString"] = pkg.version;
-                package["type"] = getInstallAppType(APPLICATION_TYPE_INTERACTIVE);
+                const ApplicationType packageType = ("system" == pkg.packageType)
+                    ? APPLICATION_TYPE_SYSTEM : APPLICATION_TYPE_INTERACTIVE;
+                package["type"] = getInstallAppType(packageType);
                 AppInfo pkgSnap;
                 if (AppInfoManager::getInstance().get(pkg.packageId, pkgSnap))
                 {
@@ -1938,7 +2396,7 @@ void AppManagerImplementation::OnAppInstallationStatus(const string& jsonrespons
     }
 }
 
-void AppManagerImplementation::getCustomValues(WPEFramework::Exchange::RuntimeConfig& runtimeConfig)
+void AppManagerImplementation::getCustomValues(Utils::RuntimeConfigPayload& runtimeConfigPayload)
 {
         FILE* fp = fopen("/tmp/aipath", "r");
         bool aipathchange = false;
@@ -1969,17 +2427,19 @@ void AppManagerImplementation::getCustomValues(WPEFramework::Exchange::RuntimeCo
             }
             fclose(fp);
         }
-        apppath.pop_back();
-        runtimepath.pop_back();
-        command.pop_back();
-
         if (aipathchange)
         {
-            runtimeConfig.appPath = std::move(apppath);
-            runtimeConfig.runtimePath = std::move(runtimepath);
-            runtimeConfig.command = std::move(command);
-            runtimeConfig.appType = 1;
-            runtimeConfig.resourceManagerClientEnabled = true;
+            if (!apppath.empty())
+                apppath.pop_back();
+            if (!runtimepath.empty())
+                runtimepath.pop_back();
+            if (!command.empty())
+                command.pop_back();
+            runtimeConfigPayload.SetString("appPath", apppath);
+            runtimeConfigPayload.SetString("runtimePath", runtimepath);
+            runtimeConfigPayload.SetString("command", command);
+            runtimeConfigPayload.SetString("appType", "INTERACTIVE");
+            runtimeConfigPayload.SetBoolean("resourceManagerClientEnabled", true);
         }
 }
 
@@ -2046,5 +2506,3 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
 }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
-
-

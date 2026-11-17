@@ -18,27 +18,60 @@
 * limitations under the License.
 **/
 
+#include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cinttypes> // Required for PRIu64
+#include <cstdint>
+#include <cstring>
 #include <filesystem>
+#include <mutex>
+#include <sys/statvfs.h>
+#include <utility>
 #include <vector>
 
 // Spec: entservices-appmanagers
 #include "PackageManagerImplementation.h"
 #include "PackageManagerTelemetryReporting.h"
+#include "RuntimeConfigPayload.h"
 #include "UtilsAppManagerTelemetry.h"
 
 /* Until we don't get it from Package configuration, use size as 1MB */
 #define STORAGE_MAX_SIZE 1024
 
+#define PACKAGES_STORAGE_PATH "/media/apps/sky/packages"
+
 namespace WPEFramework {
 namespace Plugin {
+
+    std::mutex PackageManagerImplementation::mDirSizeLock;
+    uint64_t PackageManagerImplementation::mDirSizeBytes = 0;
+
+    int PackageManagerImplementation::getSize(const char*, const struct stat* sb, int typeflag, struct FTW*)
+    {
+        if ((FTW_NS != typeflag) && (FTW_DNR != typeflag) && (nullptr != sb)) {
+            // st_blocks is always in 512-byte units, matching `du -sk`.
+            mDirSizeBytes += static_cast<uint64_t>(sb->st_blocks) * 512;
+        }
+        return 0;
+    }
+
+    bool PackageManagerImplementation::getDirectorySizeInBytes(const std::string& path, uint64_t& sizeBytes)
+    {
+        std::lock_guard<std::mutex> lock(mDirSizeLock);
+        mDirSizeBytes = 0;
+        if (0 != nftw(path.c_str(), getSize, 64, FTW_PHYS | FTW_MOUNT)) {
+            return false;
+        }
+        sizeBytes = mDirSizeBytes;
+        return true;
+    }
 
     RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::PackageManagerTelemetryReporting, "packageManagerBootstrapTime")
 
     SERVICE_REGISTRATION(PackageManagerImplementation, 1, 0);
 
-    #define CHECK_CACHE() { if ((packageImpl.get() == nullptr) || (!cacheInitialized)) { \
+    #define CHECK_CACHE() { if ((!cacheInitialized) || (packageImpl.get() == nullptr)) { \
         LOGERR("Cache is not initialized!"); \
         return Core::ERROR_UNAVAILABLE; \
     }}
@@ -137,6 +170,7 @@ namespace Plugin {
             PackageManagerImplementation::Configuration config;
             config.FromString(service->ConfigLine());
             downloadDir = config.downloadDir;
+            enablePackageSpecifierRuntimes = config.enablePackageSpecifierRuntimes.Value();
 
             // Remove trailing slashes (unless path is just "/")
             while (!downloadDir.empty() && 1 < downloadDir.size() && '/' == downloadDir.back()) {
@@ -403,8 +437,34 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::GetStorageInformation(uint32_t &quotaKB, uint32_t &usedKB)
     {
-        Core::hresult result = Core::ERROR_NONE;
-        LOGDBG();
+        Core::hresult result = Core::ERROR_GENERAL;
+        struct statvfs fsStat;
+        uint64_t usedBytes = 0;
+
+        quotaKB = 0;
+        usedKB = 0;
+
+        const string storagePath = PACKAGES_STORAGE_PATH;
+
+        memset(&fsStat, 0, sizeof(fsStat));
+        if (0 != statvfs(storagePath.c_str(), &fsStat)) {
+            LOGERR("statvfs failed for '%s' errno=%d reason=%s", storagePath.c_str(), errno, strerror(errno));
+        } else if (!getDirectorySizeInBytes(storagePath, usedBytes)) {
+            LOGERR("Failed to get size of '%s' errno=%d reason=%s", storagePath.c_str(), errno, strerror(errno));
+        } else {
+            /* f_frsize is the unit of f_bavail, fall back to f_bsize when the filesystem does not report it */
+            const uint64_t blockSize = (0 != fsStat.f_frsize) ? static_cast<uint64_t>(fsStat.f_frsize) : static_cast<uint64_t>(fsStat.f_bsize);
+            const uint64_t usedKBytes = usedBytes / 1024;
+            const uint64_t availableKB = (static_cast<uint64_t>(fsStat.f_bavail) * blockSize) / 1024;
+
+            /* quota = what the directory holds now plus how much more the partition lets it grow */
+            usedKB = static_cast<uint32_t>(std::min<uint64_t>(usedKBytes, UINT32_MAX));
+            quotaKB = static_cast<uint32_t>(std::min<uint64_t>(usedKBytes + availableKB, UINT32_MAX));
+
+            LOGDBG("path='%s' quotaKB=%u usedKB=%u", storagePath.c_str(), quotaKB, usedKB);
+            result = Core::ERROR_NONE;
+        }
+
         return result;
     }
 
@@ -479,17 +539,8 @@ namespace Plugin {
                 if (it != mState.end()) {
                     State &installedState = it->second;
                     if ( installedState.mLockCount ) {
-#ifdef ENABLE_INSTALL_WHILE_LOCKED
-                        LOGINFO("App is locked id: '%s' ver: '%s' count:%d, proceeding with install due to ENABLE_INSTALL_WHILE_LOCKED",
+                        LOGINFO("App is locked id: '%s' ver: '%s' count:%d, proceeding with install",
                             packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
-#else
-                        LOGWARN("App is locked id: '%s' ver: '%s' count:%d", packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
-                        state.installState = InstallState::INSTALLATION_BLOCKED;
-                        state.blockedInstallData.version = version;
-                        state.blockedInstallData.keyValues = keyValues;
-                        state.blockedInstallData.fileLocator = fileLocator;
-                        NotifyInstallStatus(packageId, version, state);
-#endif
                     }
                 }
             }
@@ -643,7 +694,8 @@ namespace Plugin {
             package.version = key.second.c_str();
             package.digest = state.digest.c_str();
             package.state = state.installState;
-            package.sizeKb = state.runtimeConfig.dataImageSize;
+            package.sizeKb = 0;
+            getRuntimeConfigUnsigned(state.runtimeConfigPayload, "dataImageSize", package.sizeKb);
             package.packageType = state.packageType.c_str();
             packageList.emplace_back(package);
         }
@@ -655,7 +707,7 @@ namespace Plugin {
         return result;
     }
 
-    Core::hresult PackageManagerImplementation::Config(const string &packageId, const string &version, Exchange::RuntimeConfig& runtimeConfig)
+    Core::hresult PackageManagerImplementation::Config(const string &packageId, const string &version, string& runtimeConfigPayload)
     {
         CHECK_CACHE()
         LOGDBG("id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
@@ -682,7 +734,7 @@ namespace Plugin {
         if (it != mState.end()) {
             auto &state = it->second;
             if (state.installState == InstallState::INSTALLED) {
-                getRuntimeConfig(state.runtimeConfig, runtimeConfig);
+                runtimeConfigPayload = state.runtimeConfigPayload;
                 result = Core::ERROR_NONE;
             }
         } else {
@@ -752,7 +804,7 @@ namespace Plugin {
     // IPackageHandler methods
     Core::hresult PackageManagerImplementation::Lock(
         const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
-        uint32_t &lockId, string &unpackedPath, Exchange::RuntimeConfig& runtimeConfig, Exchange::IPackageHandler::ILockIterator*& appMetadata
+        uint32_t &lockId, string &unpackedPath, string& runtimeConfigPayload, Exchange::IPackageHandler::ILockIterator*& appMetadata
         )
     {
         Core::hresult result = Core::ERROR_NONE;
@@ -774,6 +826,7 @@ namespace Plugin {
 
                 state.additionalLocks.clear();
                 string runtimeId, runtimeVersion;
+                bool runtimeLocked = false;
                 const string &rtPackageId = state.runtimeApp.first;
                 const string &rtVersion = state.runtimeApp.second;
                 if (!rtPackageId.empty() && !rtVersion.empty()) {
@@ -787,8 +840,12 @@ namespace Plugin {
                     uint32_t lockId = 0;
                     result = LockPackage(rtPackageId, rtVersion, lockReason, lockId, rtUnpackedPath, config, locks);
                     if (result == packagemanager::SUCCESS) {
-                        state.runtimeConfig.runtimePath = config.runtimePath;   // XXX: find better way
-                        LOGDBG("Locked runtime. id: %s:%s ", rtPackageId.c_str(), rtVersion.c_str());
+                        runtimeLocked = true;
+                        if (!updateRuntimeConfigString(state.runtimeConfigPayload, "runtimePath", config.runtimePath)) {   // XXX: find better way
+                            result = Core::ERROR_GENERAL;
+                        } else {
+                            LOGDBG("Locked runtime. id: %s:%s ", rtPackageId.c_str(), rtVersion.c_str());
+                        }
                     }
                     #else
                         LOGWARN("Not runtime locking in old libpackage");
@@ -809,6 +866,18 @@ namespace Plugin {
                         LOGWARN("No additional locks found for '%s:%s'", packageId.c_str(), version.c_str());
                     }
                 }
+                if (result != Core::ERROR_NONE) {
+                    if (runtimeLocked) {
+                        UnlockPackage(rtPackageId, rtVersion);
+                    }
+                    UnlockPackage(packageId, version);
+                    state.additionalLocks.clear();
+                    runtimeConfigPayload.clear();
+                    unpackedPath.clear();
+                    appMetadata = nullptr;
+                    return result;
+                }
+
                 recordAndPublishTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME,
                                                             packageId,
                                                             requestTime,
@@ -817,17 +886,29 @@ namespace Plugin {
                                                             runtimeVersion.empty() ? "" : runtimeVersion);
 
                 LOGDBG("Locked. id: %s ver: %s lock count:%d additionalLocks=%zu", packageId.c_str(), version.c_str(), state.mLockCount, state.additionalLocks.size());
-                getRuntimeConfig(state.runtimeConfig, runtimeConfig);
                 if (1 == state.mLockCount) {
                     state.unpackedPath = unpackedPath;
                 } else {
-                     unpackedPath = state.unpackedPath;
+                    unpackedPath = state.unpackedPath;
                 }
-                state.runtimeConfig.unpackedPath = state.unpackedPath;
-                runtimeConfig.unpackedPath = state.unpackedPath;
+                if (!updateRuntimeConfigString(state.runtimeConfigPayload, "unpackedPath", state.unpackedPath)) {
+                    if (runtimeLocked) {
+                        UnlockPackage(rtPackageId, rtVersion);
+                    }
+                    UnlockPackage(packageId, version);
+                    state.additionalLocks.clear();
+                    runtimeConfigPayload.clear();
+                    unpackedPath.clear();
+                    appMetadata = nullptr;
+                    return Core::ERROR_GENERAL;
+                }
+                runtimeConfigPayload = state.runtimeConfigPayload;
                 appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
-                LOGDBG("%s:%s appPath: %s runtimePath: %s", packageId.c_str(), version.c_str(),
-                    state.runtimeConfig.appPath.c_str(), state.runtimeConfig.runtimePath.c_str());
+                string appPath;
+                string runtimePath;
+                getRuntimeConfigString(state.runtimeConfigPayload, "appPath", appPath);
+                getRuntimeConfigString(state.runtimeConfigPayload, "runtimePath", runtimePath);
+                LOGDBG("%s:%s appPath: %s runtimePath: %s", packageId.c_str(), version.c_str(), appPath.c_str(), runtimePath.c_str());
             } else {
                 LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());    // This should never happen
             }
@@ -851,16 +932,25 @@ namespace Plugin {
             bool locked = (state.mLockCount > 0);
             LOGDBG("id: %s ver: %s locked: %d runtimeType: '%s'", packageId.c_str(), version.c_str(), locked, state.runtimeType.c_str());
             if (locked)  {
-                lockId = ++state.mLockCount;
-                config.runtimePath = state.runtimeConfig.runtimePath;
+                if (getRuntimeConfigString(state.runtimeConfigPayload, "runtimePath", config.runtimePath)) {
+                    lockId = ++state.mLockCount;
+                } else {
+                    result = Core::ERROR_GENERAL;
+                }
             } else {
                 packagemanager::Result pmResult = packageImpl->Lock(packageId, version, unpackedPath, config, locks);
                 LOGDBG("unpackedPath: %s PackageImpl::Lock result: %d", unpackedPath.c_str(), pmResult);
                 if (pmResult == packagemanager::SUCCESS) {
                     // save the new config in state
-                    getRuntimeConfig(config, state.runtimeConfig);
-                    lockId = ++state.mLockCount;
-                    LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
+                    string runtimeConfigPayload;
+                    if (getRuntimeConfig(config, runtimeConfigPayload)) {
+                        state.runtimeConfigPayload = std::move(runtimeConfigPayload);
+                        lockId = ++state.mLockCount;
+                        LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
+                    } else {
+                        packageImpl->Unlock(packageId, version);
+                        result = Core::ERROR_GENERAL;
+                    }
                 } else {
                     LOGERR("Lock Failed id: %s ver: %s", packageId.c_str(), version.c_str());
                     result = Core::ERROR_GENERAL;
@@ -869,94 +959,119 @@ namespace Plugin {
             LOGERR("Package: '%s:%s' lock count: %" PRIu32, packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
 
         return result;
     }
 
-    // XXX: right way to do this is via copy ctor, when we move to Thunder 5.2 and have common struct RuntimeConfig
-    void PackageManagerImplementation::getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig)
+    bool PackageManagerImplementation::getRuntimeConfigString(const string &runtimeConfigPayload, const string &key, string &value)
     {
-        runtimeConfig.dial = config.dial;
-        runtimeConfig.wanLanAccess = config.wanLanAccess;
-        runtimeConfig.thunder = config.thunder;
-        runtimeConfig.systemMemoryLimit = config.systemMemoryLimit;
-        runtimeConfig.gpuMemoryLimit = config.gpuMemoryLimit;
-        runtimeConfig.envVariables = config.envVariables;
+        Utils::RuntimeConfigPayload payload;
+        string error;
+        bool present = false;
+        if (!payload.Parse(runtimeConfigPayload, error) || !payload.GetString(key, value, present, error)) {
+            LOGERR("Failed to read runtime configuration property '%s': %s", key.c_str(), error.c_str());
+            return false;
+        }
+        return present;
+    }
 
-        runtimeConfig.userId = config.userId;
-        runtimeConfig.groupId = config.groupId;
-        runtimeConfig.dataImageSize = config.dataImageSize;
+    bool PackageManagerImplementation::getRuntimeConfigUnsigned(const string &runtimeConfigPayload, const string &key, uint64_t &value)
+    {
+        Utils::RuntimeConfigPayload payload;
+        string error;
+        bool present = false;
+        if (!payload.Parse(runtimeConfigPayload, error) || !payload.GetUnsigned(key, value, present, error)) {
+            LOGERR("Failed to read runtime configuration property '%s': %s", key.c_str(), error.c_str());
+            return false;
+        }
+        return present;
+    }
 
-        runtimeConfig.fkpsFiles = config.fkpsFiles;
-        runtimeConfig.capabilities = config.capabilities;
-        runtimeConfig.appType = config.appType;
-        runtimeConfig.appPath = config.appPath;
-        runtimeConfig.command = config.command;
-        runtimeConfig.runtimePath = config.runtimePath;
-        runtimeConfig.enableDebugger = config.enableDebugger;
-        runtimeConfig.logFileMaxSize = config.logFileMaxSize;
-        runtimeConfig.mapi = config.mapi;
-        runtimeConfig.resourceManagerClientEnabled = config.resourceManagerClientEnabled;
-        runtimeConfig.ralfPkgPath = config.ralfPkgPath;
-        runtimeConfig.logFilePath = config.logFilePath;
-        runtimeConfig.unpackedPath = config.unpackedPath;
-     }
+    bool PackageManagerImplementation::updateRuntimeConfigString(string &runtimeConfigPayload, const string &key, const string &value)
+    {
+        Utils::RuntimeConfigPayload payload;
+        string updatedPayload;
+        string error;
+        if (!payload.Parse(runtimeConfigPayload, error)) {
+            LOGERR("Failed to parse runtime configuration: %s", error.c_str());
+            return false;
+        }
+        payload.SetString(key, value);
+        if (!payload.Serialize(updatedPayload, error)) {
+            LOGERR("Failed to serialize runtime configuration: %s", error.c_str());
+            return false;
+        }
+        runtimeConfigPayload = std::move(updatedPayload);
+        return true;
+    }
 
     // copy values from libpackage
-    void PackageManagerImplementation::getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig)
+    bool PackageManagerImplementation::getRuntimeConfig(const packagemanager::ConfigMetaData &config, string &runtimeConfigPayload)
     {
-        runtimeConfig.dial = config.dial;
-        runtimeConfig.wanLanAccess = config.wanLanAccess;
-        runtimeConfig.thunder = config.thunder;
-        runtimeConfig.systemMemoryLimit = config.systemMemoryLimit;
-        runtimeConfig.gpuMemoryLimit = config.gpuMemoryLimit;
+        Utils::RuntimeConfigPayload payload;
+        payload.SetBoolean("dial", config.dial);
+        payload.SetBoolean("wanLanAccess", config.wanLanAccess);
+        payload.SetBoolean("thunder", config.thunder);
+        payload.SetInteger("systemMemoryLimit", config.systemMemoryLimit);
+        payload.SetInteger("gpuMemoryLimit", config.gpuMemoryLimit);
+        payload.SetStringArray("envVariables", config.envVars);
+        payload.SetUnsigned("userId", config.userId ? config.userId : userId);
+        payload.SetUnsigned("groupId", config.groupId ? config.groupId : groupId);
+        payload.SetUnsigned("dataImageSize", config.dataImageSize);
+        payload.SetStringArray("fkpsFiles", std::vector<string>(config.fkpsFiles.begin(), config.fkpsFiles.end()));
 
-        JsonArray vars = JsonArray();
-        for (const auto& str: config.envVars) {
-            vars.Add(str);
-        }
-        vars.ToString(runtimeConfig.envVariables);
-
-        runtimeConfig.userId = config.userId ? config.userId : userId;
-        runtimeConfig.groupId = config.groupId ? config.groupId : groupId;
-        runtimeConfig.dataImageSize = config.dataImageSize;
-
-        JsonArray list = JsonArray();
-        for (const std::string &fkpsFile : config.fkpsFiles) {
-            list.Add(fkpsFile);
-        }
-
-        if (!list.ToString(runtimeConfig.fkpsFiles)) {
-            LOGERR("Failed to  stringify fkpsFiles to JsonArray");
-        }
-        runtimeConfig.capabilities = config.capabilities;
+        string capabilities = config.capabilities;
         // Preserve legacy runtimePackage->runtime()=="runtime/html" intent without schema changes.
         if ("html" == config.runtimeType)
         {
             const std::string runtimeHtmlCapability = "runtime-html";
-            if (runtimeConfig.capabilities.find(runtimeHtmlCapability) == std::string::npos)
+            if (capabilities.find(runtimeHtmlCapability) == std::string::npos)
             {
-                if (!runtimeConfig.capabilities.empty())
+                if (!capabilities.empty())
                 {
-                    runtimeConfig.capabilities += ",";
+                    capabilities += ",";
                 }
-                runtimeConfig.capabilities += runtimeHtmlCapability;
+                capabilities += runtimeHtmlCapability;
             }
         }
-        runtimeConfig.appType = config.appType == packagemanager::ApplicationType::SYSTEM ? "SYSTEM" : "INTERACTIVE";
-        runtimeConfig.appPath = config.appPath;
-        runtimeConfig.command = config.command;
-        runtimeConfig.runtimePath = config.runtimePath;
+        payload.SetString("capabilities", capabilities);
+        payload.SetString("appType", config.appType == packagemanager::ApplicationType::SYSTEM ? "SYSTEM" : "INTERACTIVE");
+        payload.SetString("appPath", config.appPath);
+        payload.SetString("command", config.command);
+        payload.SetString("runtimePath", config.runtimePath);
 
-        runtimeConfig.logLevels = config.logLevels;
-        runtimeConfig.logFilePath = config.logFilePath;
-        runtimeConfig.enableDebugger = false;
-        runtimeConfig.logFileMaxSize = 0;
-        runtimeConfig.mapi = false;
-        runtimeConfig.resourceManagerClientEnabled = false;
-        runtimeConfig.ralfPkgPath = config.ralfPkgPath;
+        std::vector<string> logLevels;
+        if (!config.logLevels.empty()) {
+            JsonArray levels;
+            if (!levels.FromString(config.logLevels)) {
+                LOGERR("Failed to parse logLevels as JsonArray");
+                return false;
+            }
+            logLevels.reserve(levels.Length());
+            for (uint16_t index = 0; index < levels.Length(); ++index) {
+                if (levels[index].Content() != JsonValue::type::STRING) {
+                    LOGERR("Failed to parse logLevels as string array");
+                    return false;
+                }
+                logLevels.emplace_back(levels[index].String());
+            }
+        }
+        payload.SetStringArray("logLevels", logLevels);
+        payload.SetString("logFilePath", config.logFilePath);
+        payload.SetBoolean("enableDebugger", false);
+        payload.SetUnsigned("logFileMaxSize", 0);
+        payload.SetBoolean("mapi", false);
+        payload.SetBoolean("resourceManagerClientEnabled", false);
+        payload.SetString("ralfPkgPath", config.ralfPkgPath);
+
+        string error;
+        if (!payload.Serialize(runtimeConfigPayload, error)) {
+            LOGERR("Failed to serialize runtime configuration: %s", error.c_str());
+            return false;
+        }
+        return true;
     }
 
     Core::hresult PackageManagerImplementation::Unlock(const string &packageId, const string &version)
@@ -967,23 +1082,42 @@ namespace Plugin {
         LOGDBG("id: %s ver: %s", packageId.c_str(), version.c_str());
         CHECK_CACHE()
 
-        auto it = mState.find( { packageId, version } );
-        if (it != mState.end()) {
-            auto &state = it->second;
-            result = UnlockPackage(packageId, version);
-            processBlockedPackage(packageId, version);
-
-            const string &rtPackageId = state.runtimeApp.first;
-            if (!rtPackageId.empty()) {
-                const string &rtVersion = state.runtimeApp.second;
-                LOGDBG("Unlocking runtime %s:%s", rtPackageId.c_str(), rtVersion.c_str() );
-                result = UnlockPackage(rtPackageId, rtVersion);
-                processBlockedPackage(rtPackageId, rtVersion);
+#ifdef USE_LIBPACKAGE_RALF
+        string rtPackageId;
+        string rtVersion;
+#endif
+        {
+            std::lock_guard<std::recursive_mutex> lock(mtxState);
+            auto it = mState.find( { packageId, version } );
+            if (it == mState.end()) {
+                LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
+                result = Core::ERROR_INVALID_PARAMETER;
+            } else {
+#ifdef USE_LIBPACKAGE_RALF
+                rtPackageId = it->second.runtimeApp.first;
+                rtVersion = it->second.runtimeApp.second;
+#endif
             }
-        } else {
-            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
         }
+
+        if (result == Core::ERROR_NONE) {
+            result = UnlockPackage(packageId, version);
+            if (result == Core::ERROR_NONE) {
+                processBlockedPackage(packageId, version);
+            }
+        }
+
+#ifdef USE_LIBPACKAGE_RALF
+        if (!rtPackageId.empty()) {
+            LOGDBG("Unlocking runtime %s:%s", rtPackageId.c_str(), rtVersion.c_str() );
+            Core::hresult runtimeResult = UnlockPackage(rtPackageId, rtVersion);
+            if (runtimeResult == Core::ERROR_NONE) {
+                processBlockedPackage(rtPackageId, rtVersion);
+            } else if (result == Core::ERROR_NONE) {
+                result = runtimeResult;
+            }
+        }
+#endif
 
         if (Core::ERROR_NONE == result)
         {
@@ -1006,14 +1140,20 @@ namespace Plugin {
             if (state.mLockCount) {
                 LOGDBG("id: %s ver: %s lock count:%d state:%d", packageId.c_str(), version.c_str(),
                     state.mLockCount, (int) state.installState);
-                if (--state.mLockCount == 0) {
+                if (state.mLockCount == 1) {
                     packagemanager::Result pmResult = packageImpl->Unlock(packageId, version);
                     if (pmResult == packagemanager::SUCCESS) {
+                        state.mLockCount = 0;
                         LOGDBG("Unlock %s:%s Success", packageId.c_str(), version.c_str());
+                        if (!updateRuntimeConfigString(state.runtimeConfigPayload, "runtimePath", "")) {
+                            result = Core::ERROR_GENERAL;
+                        }
                     } else {
                         LOGERR("Unlock %s:%s Failed", packageId.c_str(), version.c_str());
+                        result = Core::ERROR_GENERAL;
                     }
-                    state.runtimeConfig.runtimePath = "";
+                } else {
+                    --state.mLockCount;
                 }
             } else {
                 LOGERR("Never Locked (mLockCount is 0) id: %s ver: %s", packageId.c_str(), version.c_str());
@@ -1022,7 +1162,7 @@ namespace Plugin {
             LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
 
         return result;
@@ -1043,17 +1183,7 @@ namespace Plugin {
             auto &stateBlocked = itBlocked->second;
             LOGDBG("blockedVer: '%s' state: %d", blockedVer.c_str(), (unsigned) stateBlocked.installState);
             stateBlocked.unpackedPath = "";
-            if (stateBlocked.installState == InstallState::INSTALLATION_BLOCKED) {
-                auto blockedData = stateBlocked.blockedInstallData;
-                if (Install(packageId, blockedData.version, blockedData.keyValues, blockedData.fileLocator, stateBlocked) == Core::ERROR_NONE) {
-                    LOGDBG("Blocked package installed. id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
-                    if (version.compare(blockedVer)) {  // different version(s)
-                        setState(packageId, version, InstallState::UNINSTALLED);
-                    }
-                } else {
-                    LOGERR("Blocked package installtion failed id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
-                }
-            } else if (stateBlocked.installState == InstallState::UNINSTALL_BLOCKED) {
+            if (stateBlocked.installState == InstallState::UNINSTALL_BLOCKED) {
                 string errorReason;
                 if (Uninstall(packageId, errorReason) == Core::ERROR_NONE) {
                     LOGDBG("Blocked package uninstalled id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
@@ -1066,7 +1196,7 @@ namespace Plugin {
     }
 
     Core::hresult PackageManagerImplementation::GetLockedInfo(const string &packageId, const string &version,
-        string &unpackedPath, Exchange::RuntimeConfig& runtimeConfig, string& gatewayMetadataPath, bool &locked)
+        string &unpackedPath, string& runtimeConfigPayload, string& gatewayMetadataPath, bool &locked)
     {
         CHECK_CACHE()
         Core::hresult result = Core::ERROR_NONE;
@@ -1076,19 +1206,23 @@ namespace Plugin {
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
             auto &state = it->second;
-            getRuntimeConfig(state.runtimeConfig, runtimeConfig);
             unpackedPath = state.unpackedPath;
-            runtimeConfig.unpackedPath = state.unpackedPath;
+            if (!updateRuntimeConfigString(state.runtimeConfigPayload, "unpackedPath", state.unpackedPath)) {
+                result = Core::ERROR_GENERAL;
+                runtimeConfigPayload.clear();
+            } else {
+                runtimeConfigPayload = state.runtimeConfigPayload;
+            }
             locked = (state.mLockCount > 0);
             LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
         return result;
     }
 
-    Core::hresult PackageManagerImplementation::GetConfigForPackage(const string &fileLocator, string& id, string &version, Exchange::RuntimeConfig& config)
+    Core::hresult PackageManagerImplementation::GetConfigForPackage(const string &fileLocator, string& id, string &version, string& config)
     {
         CHECK_CACHE()
         Core::hresult result = Core::ERROR_GENERAL;
@@ -1102,8 +1236,7 @@ namespace Plugin {
         packagemanager::Result pmResult = packageImpl->GetFileMetadata(fileLocator, id, version, metadata);
         if (pmResult == packagemanager::SUCCESS)
         {
-            getRuntimeConfig(metadata, config);
-            result = Core::ERROR_NONE;
+            result = getRuntimeConfig(metadata, config) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
         }
         return result;
     }
@@ -1139,10 +1272,22 @@ namespace Plugin {
             StateKey key = it->first;
             auto config = it->second;
             State state;
-            getRuntimeConfig(config, state.runtimeConfig);
+            if (!getRuntimeConfig(config, state.runtimeConfigPayload)) {
+                LOGERR("Failed to create runtime configuration payload for package %s:%s", key.first.c_str(), key.second.c_str());
+                continue;
+            }
             state.digest = config.md5Hash;
             state.installState = InstallState::INSTALLED;
             state.runtimeType = config.runtimeType;
+            if (config.mimeType.find("runtime") == 0)
+            {
+                state.packageType = "runtime";
+            }
+            else if (packagemanager::ApplicationType::SYSTEM == config.appType)
+            {
+                state.packageType = "system";
+            }
+            else
             {
                 const auto sep = config.mimeType.find('/');
                 state.packageType = (sep != std::string::npos) ? config.mimeType.substr(0, sep) : config.mimeType;
@@ -1157,12 +1302,6 @@ namespace Plugin {
             mState.insert( { key, state } );
         }
 
-        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
-        if (subSystem != nullptr) {
-            subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
-        }
-	    #endif
-
         cacheInitialized = true;
          const std::string markerFile = PACKAGE_MANAGER_MARKER_FILE;
             std::ofstream file(markerFile);
@@ -1173,6 +1312,13 @@ namespace Plugin {
             } else {
                LOGERR("Failed to create marker file: %s", markerFile.c_str());
             }
+
+
+        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
+            if (subSystem != nullptr) {
+                subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
+            }
+	    #endif
 
           const int packageCount = static_cast<int>(mState.size());
           recordAndPublishTelemetryData(TELEMETRY_MARKER_PACKAGE_CACHE_INIT_TIME,
@@ -1282,15 +1428,35 @@ namespace Plugin {
                 LOGINFO("Package installation successful, now creating storage");
 
                 // Populate state from returned config (mirrors InitializeState())
-                const uint32_t cachedDataImageSize = state.runtimeConfig.dataImageSize;
-                getRuntimeConfig(config, state.runtimeConfig);
-                if ((0U == state.runtimeConfig.dataImageSize) && (0U != cachedDataImageSize)) {
-                    LOGWARN("Install metadata omitted dataImageSize for %s:%s; preserving cached value %u",
+                uint64_t cachedDataImageSize = 0;
+                if (!state.runtimeConfigPayload.empty()) {
+                    getRuntimeConfigUnsigned(state.runtimeConfigPayload, "dataImageSize", cachedDataImageSize);
+                }
+                packagemanager::ConfigMetaData payloadConfig = config;
+                if ((0U == payloadConfig.dataImageSize) && (0U != cachedDataImageSize)) {
+                    LOGWARN("Install metadata omitted dataImageSize for %s:%s; preserving cached value %" PRIu64,
                         packageId.c_str(), version.c_str(), cachedDataImageSize);
-                    state.runtimeConfig.dataImageSize = cachedDataImageSize;
+                    payloadConfig.dataImageSize = static_cast<decltype(payloadConfig.dataImageSize)>(cachedDataImageSize);
+                }
+                if (!getRuntimeConfig(payloadConfig, state.runtimeConfigPayload)) {
+                    LOGERR("Failed to create runtime configuration payload for packageId: %s", packageId.c_str());
+                    state.installState = InstallState::INSTALL_FAILURE;
+                    state.failReason = FailReason::INVALID_METADATA_FAILURE;
+                    packageImpl->Uninstall(packageId);
+                    NotifyInstallStatus(packageId, version, state);
+                    return Core::ERROR_GENERAL;
                 }
                 state.digest = config.md5Hash;
                 state.runtimeType = config.runtimeType;
+                if (config.mimeType.find("runtime") == 0)
+                {
+                    state.packageType = "runtime";
+                }
+                else if (packagemanager::ApplicationType::SYSTEM == config.appType)
+                {
+                    state.packageType = "system";
+                }
+                else
                 {
                     const auto sep = config.mimeType.find('/');
                     state.packageType = (sep != std::string::npos) ? config.mimeType.substr(0, sep) : config.mimeType;
@@ -1354,6 +1520,19 @@ namespace Plugin {
         }
 
         return result;
+    }
+
+    Core::hresult PackageManagerImplementation::GetRunningApplicationsUsingPackage(const string &packageId, string& applicationIds)
+    {
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
+        CHECK_CACHE()
+        // libpackage already returns the ids serialized as a JSON array string.
+        const packagemanager::Result result = packageImpl->GetRunningApplicationsUsingPackage(packageId, applicationIds);
+        if (packagemanager::SUCCESS != result) {
+            LOGERR("Failed to get running applications for packageId '%s': %d", packageId.c_str(), static_cast<int>(result));
+            return Core::ERROR_GENERAL;
+        }
+        return Core::ERROR_NONE;
     }
 
     void PackageManagerImplementation::NotifyDownloadStatus(const string& id, const string& locator, const DownloadReason reason)
@@ -1433,10 +1612,76 @@ namespace Plugin {
 Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */)
 {
     CHECK_CACHE()
-    (void)filter;
+    Core::hresult result = Core::ERROR_GENERAL;
+
     config.clear();
-    return Core::ERROR_NOT_SUPPORTED;
+
+    const packagemanager::Result pmResult = packageImpl->GetConfigListForInstalledPackages(filter, config);
+    if (pmResult == packagemanager::SUCCESS)
+    {
+        result = Core::ERROR_NONE;
+    }
+    else
+    {
+        config.clear();
+        LOGWARN("GetConfigListForInstalledPackages failed for filter '%s' (pmResult=%d)", filter.c_str(), static_cast<int>(pmResult));
+    }
+
+    return result;
+}
+
+Core::hresult PackageManagerImplementation::GetPackageSpecifierRuntimes(
+    Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator *&runtimes)
+{
+    runtimes = nullptr;
+    if (!enablePackageSpecifierRuntimes)
+    {
+        return Core::ERROR_NOT_SUPPORTED;
+    }
+
+    CHECK_CACHE()
+    packagemanager::PackageSpecifierRuntimeMap runtimeMap;
+    std::vector<Exchange::IAppPackageConnector::PackageSpecifierRuntime> runtimeList;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
+        const packagemanager::Result pmResult = packageImpl->GetPackageSpecifierRuntimes(runtimeMap);
+        if (pmResult != packagemanager::SUCCESS)
+        {
+            return Core::ERROR_GENERAL;
+        }
+        for (const auto &runtime : runtimeMap)
+        {
+            Exchange::IAppPackageConnector::PackageSpecifierRuntime entry;
+            entry.packageSpecifier = runtime.first;
+            entry.packageId = runtime.second;
+            runtimeList.emplace_back(std::move(entry));
+        }
+    }
+    LOGINFO("Retrieved %zu package specifier runtimes", runtimeList.size());
+
+    runtimes = Core::Service<RPC::IteratorType<
+        Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator>>::Create<Exchange::IAppPackageConnector::IPackageSpecifierRuntimeIterator>(runtimeList);
+    return (runtimes != nullptr) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
+}
+
+Core::hresult PackageManagerImplementation::SetPackageSpecifier(
+    const string &packageSpecifier, const string &packageId)
+{
+    if (!enablePackageSpecifierRuntimes)
+    {
+        return Core::ERROR_NOT_SUPPORTED;
+    }
+
+    CHECK_CACHE()
+
+    std::lock_guard<std::recursive_mutex> lock(mtxState);
+    const string installedVersion = GetInstalledVersion(packageId);
+    if (installedVersion.empty())
+    {
+        return Core::ERROR_UNKNOWN_KEY;
+    }
+    const packagemanager::Result pmResult = packageImpl->SetPackageSpecifierRuntime(packageSpecifier, packageId);
+    return (pmResult == packagemanager::SUCCESS) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
 }
 } // namespace Plugin
 } // namespace WPEFramework
-

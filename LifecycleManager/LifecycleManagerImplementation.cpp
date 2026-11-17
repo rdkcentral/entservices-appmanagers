@@ -25,6 +25,7 @@
 #include <semaphore.h>
 #include "LifecycleManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
+#include "RuntimeConfigPayload.h"
 
 namespace WPEFramework
 {
@@ -117,9 +118,108 @@ namespace WPEFramework
         
         void LifecycleManagerImplementation::dispatchEvent(EventNames event, const JsonValue &params)
         {
-            Core::IWorkerPool::Instance().Submit(Job::Create(this, event, params));
+            bool schedule = false;
+            {
+                std::lock_guard<std::mutex> lock(mEventQueueLock);
+                mEventQueue.emplace_back(event, params);
+                if (false == mEventDispatchScheduled)
+                {
+                    mEventDispatchScheduled = true;
+                    schedule = true;
+                }
+            }
+            if (schedule)
+            {
+                Core::IWorkerPool::Instance().Submit(Job::Create(this));
+            }
+        }
+
+        void LifecycleManagerImplementation::drainEvents()
+        {
+            while (true)
+            {
+                std::pair<EventNames, JsonValue> next;
+                {
+                    std::lock_guard<std::mutex> lock(mEventQueueLock);
+                    if (mEventQueue.empty())
+                    {
+                        mEventDispatchScheduled = false;
+                        return;
+                    }
+                    next = std::move(mEventQueue.front());
+                    mEventQueue.pop_front();
+                }
+                Dispatch(next.first, next.second);
+            }
         }
         
+        void LifecycleManagerImplementation::submitStateChangeNotifications(const JsonObject& data,
+            bool includeAppStateNotifications,
+            bool includeLifecycleStateNotifications)
+        {
+            const string appId = data["appId"].String();
+            const string appInstanceId = data["appInstanceId"].String();
+            const string errorReason = data["errorReason"].String();
+            const uint32_t oldLifecycleState = data["oldLifecycleState"].Number();
+            const uint32_t newLifecycleState = data["newLifecycleState"].Number();
+            const string navigationIntent = data["navigationIntent"].String();
+
+            std::list<Core::ProxyType<Core::IDispatch>> appStateJobs;
+            std::list<Core::ProxyType<Core::IDispatch>> lifecycleStateJobs;
+
+            {
+                Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
+
+                if (includeAppStateNotifications)
+                {
+                    for (auto* listener : mLifecycleManagerNotification)
+                    {
+                        if (nullptr != listener)
+                        {
+                            appStateJobs.push_back(AppStateListenerJob::Create(this,
+                                listener,
+                                appId,
+                                static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                                errorReason));
+                        }
+                    }
+                }
+
+                if (includeLifecycleStateNotifications)
+                {
+                    for (auto* listener : mLifecycleManagerStateNotification)
+                    {
+                        if (nullptr != listener)
+                        {
+                            lifecycleStateJobs.push_back(LifecycleStateListenerJob::Create(this,
+                                listener,
+                                appId,
+                                appInstanceId,
+                                static_cast<Exchange::ILifecycleManager::LifecycleState>(oldLifecycleState),
+                                static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState),
+                                navigationIntent));
+                        }
+                    }
+                }
+            }
+
+            for (auto& job : appStateJobs)
+            {
+                if (job.IsValid())
+                {
+                    Core::IWorkerPool::Instance().Submit(job);
+                }
+            }
+
+            for (auto& job : lifecycleStateJobs)
+            {
+                if (job.IsValid())
+                {
+                    Core::IWorkerPool::Instance().Submit(job);
+                }
+            }
+        }
+
         void LifecycleManagerImplementation::Dispatch(EventNames event, const JsonValue params)
         {
              JsonObject obj = params.Object();
@@ -133,16 +233,11 @@ namespace WPEFramework
 
              //below is additional for ILifecycleManagerState notification
              string appInstanceId(obj["appInstanceId"].String());
-             uint32_t oldLifecycleState(obj["oldLifecycleState"].Number());
              string navigationIntent(obj["navigationIntent"].String());
              auto contextHolder = getContext("", appId);
              ApplicationContext* context = contextHolder.get();
 
              mAdminLock.Lock();
-        
-             std::list<Exchange::ILifecycleManager::INotification*>::const_iterator index(mLifecycleManagerNotification.begin());
-             std::list<Exchange::ILifecycleManagerState::INotification*>::const_iterator stateNotificationIndex(mLifecycleManagerStateNotification.begin());
-        
              switch(event)
              {
                  case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
@@ -153,23 +248,14 @@ namespace WPEFramework
                      {
                          shouldRespawn = tryGetPendingRespawn(appInstanceId, pendingRespawn);
                      }
-                     while (index != mLifecycleManagerNotification.end())
-                     {
-                         (*index)->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
-                         ++index;
+                     const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
+                     const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
+                     const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
+                     obj["navigationIntent"] = effectiveNavigationIntent;
+                     if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
+                         context->setUnexpectedTermination(false);
                      }
-                    const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
-                    const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
-                    const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
-                    while (stateNotificationIndex != mLifecycleManagerStateNotification.end())
-                    {
-                        (*stateNotificationIndex)->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, effectiveNavigationIntent);
-                        ++stateNotificationIndex;
-                    }
-                    if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
-                        context->setUnexpectedTermination(false);
-                    }
-                    break;
+                     break;
                  }
                  case LIFECYCLE_MANAGER_EVENT_RUNTIME:
                      handleRuntimeManagerEvent(obj);
@@ -178,18 +264,21 @@ namespace WPEFramework
                       handleWindowManagerEvent(obj);
                       break;
                  case LIFECYCLE_MANAGER_EVENT_ONFAILURE:
-                      while (index != mLifecycleManagerNotification.end())
-                      {
-                          (*index)->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
-                          ++index;
-                      }
                       break;
                  default:
                      LOGWARN("Event[%u] not handled appId=%s appInstanceId=%s", event, appId.c_str(), appInstanceId.c_str());
                      break;
              }
-        
              mAdminLock.Unlock();
+
+             if (LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED == event)
+             {
+                 submitStateChangeNotifications(obj, true, true);
+             }
+             else if (LIFECYCLE_MANAGER_EVENT_ONFAILURE == event)
+             {
+                 submitStateChangeNotifications(obj, true, false);
+             }
 
              if (shouldRespawn)
              {
@@ -259,11 +348,19 @@ namespace WPEFramework
             return status;
         }
         
-        Core::hresult LifecycleManagerImplementation::SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success)
+        Core::hresult LifecycleManagerImplementation::SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState, const string& runtimeConfigPayload, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success)
         {
 	    // Launches an app.  This will be an asynchronous call.
             // Notifies appropriate API Gateway when an app is about to be loaded
             // Lifecycle manager will create the appInstanceId once the app is loaded.  Ripple is responsible for creating a token. 
+            Utils::RuntimeConfigPayload payload;
+            if (!payload.Parse(runtimeConfigPayload, errorReason))
+            {
+                LOGERR("SpawnApp received invalid runtime configuration payload: %s", errorReason.c_str());
+                success = false;
+                return Core::ERROR_GENERAL;
+            }
+
             Core::hresult status = Core::ERROR_NONE;
             bool firstLaunch = false;
             time_t requestTime = 0;
@@ -273,7 +370,7 @@ namespace WPEFramework
             if (nullptr == context)
 	    {
                 context = std::make_shared<ApplicationContext>(appId);
-                context->setApplicationLaunchParams(appId, launchIntent, launchArgs, targetLifecycleState, runtimeConfigObject);
+                context->setApplicationLaunchParams(appId, launchIntent, launchArgs, targetLifecycleState, runtimeConfigPayload);
 		mLoadedApplications.push_back(context);
                 firstLaunch = true;
 	    }
@@ -849,7 +946,7 @@ namespace WPEFramework
             Core::hresult status = SpawnApp(launchParams.mAppId,
                                             launchParams.mLaunchIntent,
                                             launchParams.mTargetState,
-                                            launchParams.mRuntimeConfigObject,
+                                            launchParams.mRuntimeConfigPayload,
                                             launchParams.mLaunchArgs,
                                             appInstanceId,
                                             errorReason,

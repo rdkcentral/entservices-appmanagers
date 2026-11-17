@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main, 'sprint/**', 'release/**', topic/RDK*, develop ]
 
+env:
+  INTERFACES_REF: "e39950f345b5e32399ab9e05fbd93b07a045d831"
+
 jobs:
   build-entservices-on-pr:
     name: Build entservices-appmanagers component in github rdkcentral

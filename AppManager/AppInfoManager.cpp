@@ -194,6 +194,13 @@ std::string AppInfoManager::getAppIntent(const std::string& appId) const
     return (it != mMap.end()) ? it->second.getAppIntent() : std::string{};
 }
 
+std::string AppInfoManager::getRequestedLaunchVersion(const std::string& appId) const
+{
+    Core::SafeSyncType<Core::CriticalSection> lock(mLock);
+    auto it = mMap.find(appId);
+    return (it != mMap.end()) ? it->second.getRequestedLaunchVersion() : std::string{};
+}
+
 AppManagerTypes::CurrentAction AppInfoManager::getCurrentAction(const std::string& appId) const
 {
     Core::SafeSyncType<Core::CriticalSection> lock(mLock);
@@ -285,6 +292,12 @@ void AppInfoManager::setAppIntent(const std::string& appId, const std::string& i
     mMap[appId].setAppIntent(intent);
 }
 
+void AppInfoManager::setRequestedLaunchVersion(const std::string& appId, const std::string& version)
+{
+    Core::SafeSyncType<Core::CriticalSection> lock(mLock);
+    mMap[appId].setRequestedLaunchVersion(version);
+}
+
 void AppInfoManager::setCurrentAction(const std::string& appId, AppManagerTypes::CurrentAction action)
 {
     Core::SafeSyncType<Core::CriticalSection> lock(mLock);
@@ -309,7 +322,7 @@ void AppInfoManager::setPackageInfoUnpackedPath(const std::string& appId, const 
     mMap[appId].getPackageInfoMutable().unpackedPath = path;
 }
 
-void AppInfoManager::setPackageInfoConfigMetadata(const std::string& appId, const Exchange::RuntimeConfig& cfg)
+void AppInfoManager::setPackageInfoConfigMetadata(const std::string& appId, const std::string& cfg)
 {
     Core::SafeSyncType<Core::CriticalSection> lock(mLock);
     mMap[appId].getPackageInfoMutable().configMetadata = cfg;

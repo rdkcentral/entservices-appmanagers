@@ -39,9 +39,11 @@
 #include "LifecycleInterfaceConnector.h"
 #include <interfaces/IPackageManager.h>
 #include <map>
+#include <deque>
 #include <memory>
 #include "AppManagerTypes.h"
 #include "AppInfoManager.h"
+#include "RuntimeConfigPayload.h"
 
 namespace WPEFramework {
 namespace Plugin {
@@ -161,10 +163,9 @@ namespace Plugin {
 
         class EXTERNAL Job : public Core::IDispatch {
         protected:
-             Job(AppManagerImplementation *appManagerImplementation, EventNames event, JsonObject &params)
+                 explicit Job(AppManagerImplementation *appManagerImplementation)
                 : mAppManagerImplementation(appManagerImplementation)
-                , _event(event)
-                , _params(params) {
+                     {
                 if (mAppManagerImplementation != nullptr) {
                     mAppManagerImplementation->AddRef();
                 }
@@ -181,21 +182,19 @@ namespace Plugin {
             }
 
        public:
-            static Core::ProxyType<Core::IDispatch> Create(AppManagerImplementation *appManagerImplementation, EventNames event, JsonObject params) {
+            static Core::ProxyType<Core::IDispatch> Create(AppManagerImplementation *appManagerImplementation) {
 #ifndef USE_THUNDER_R4
-                return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(appManagerImplementation, event, params)));
+                return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(appManagerImplementation)));
 #else
-                return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(appManagerImplementation, event, params)));
+                return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(appManagerImplementation)));
 #endif
             }
 
             virtual void Dispatch() {
-                mAppManagerImplementation->Dispatch(_event, _params);
+                mAppManagerImplementation->drainEvents();
             }
         private:
             AppManagerImplementation *mAppManagerImplementation;
-            const EventNames _event;
-            const JsonObject _params;
         };
 
     public:
@@ -221,11 +220,12 @@ namespace Plugin {
         Core::hresult GetMaxHibernatedApps(int32_t& maxHibernatedApps) const override;
         Core::hresult GetMaxHibernatedFlashUsage(int32_t& maxHibernatedFlashUsage) const override;
         Core::hresult GetMaxInactiveRamUsage(int32_t& maxInactiveRamUsage) const override;
+        bool SupportsHibernation(const string& appId);
     #ifdef APP_MANAGER_RESOURCE_MONITOR
         Core::hresult SetInactiveTargetState(const string& appId, Exchange::ILifecycleManager::LifecycleState state);
         Core::hresult Reconcile(const string& appId, uint32_t ramTargetMB, bool allowTerminate);
         uint32_t GetAppRamTargetMB(const string& appId) const;
-        bool SupportsHibernation(const string& appId);
+        bool IsHibernationEnabled() const;
         bool HasHibernationFlashSpace(const string& appId) const;
     #endif
         void handleOnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::IAppManager::AppLifecycleState newState,
@@ -242,7 +242,7 @@ namespace Plugin {
         void releasePersistentStoreRemoteStoreObject();
         Core::hresult createPackageManagerObject();
         void releasePackageManagerObject();
-        void getCustomValues(WPEFramework::Exchange::RuntimeConfig& runtimeConfig);
+        void getCustomValues(Utils::RuntimeConfigPayload& runtimeConfigPayload);
         Core::hresult createStorageManagerRemoteObject();
         void releaseStorageManagerRemoteObject();
     #ifdef APP_MANAGER_RESOURCE_MONITOR
@@ -254,6 +254,9 @@ namespace Plugin {
     #endif
     private:
         mutable Core::CriticalSection mAdminLock;
+        std::mutex mEventQueueLock;
+        std::deque<std::pair<EventNames, JsonObject>> mEventQueue;
+        bool mEventDispatchScheduled { false };
         std::list<Exchange::IAppManager::INotification*> mAppManagerNotification;
         LifecycleInterfaceConnector* mLifecycleInterfaceConnector;
         Exchange::IStore2* mPersistentStoreRemoteStoreObject;
@@ -278,18 +281,20 @@ namespace Plugin {
         std::mutex mPendingPreloadLock;
         std::map<std::string, std::shared_ptr<AppLaunchRequestParam>> mPendingPreloads;
         std::string mHibernationStoragePath;
+        bool mHibernationEnabled{false};
         std::unique_ptr<AppStateTransitionManager> mStateTransitionManager;
     #endif
         Core::hresult fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
         void checkInstallDetails(const std::string& appId, bool& installed, std::string& version,
                      const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
-        Core::hresult packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason);
+        Core::hresult packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason, bool* lockAcquired = nullptr);
         Core::hresult packageUnLock(const string& appId);
         bool createOrUpdatePackageInfoByAppId(const string& appId, PackageInfo &packageData);
         bool removeAppInfoByAppId(const string &appId);
         void OnAppInstallationStatus(const string& jsonresponse);
         void  AppManagerWorkerThread(void);
         void dispatchEvent(EventNames, const JsonObject &params);
+        void drainEvents();
         void Dispatch(EventNames event, const JsonObject params);
         friend class Job;
 
@@ -299,9 +304,11 @@ namespace Plugin {
     public: /* public methods */
         void updateCurrentAction(const std::string& appId, CurrentAction action);
         void updateCurrentActionTime(const std::string& appId, time_t currentActionTime, CurrentAction currentAction);
+        Core::hresult releaseDeferredReplacementLock(const std::string& appId, const std::string& requestedVersion);
     bool checkInstallUninstallBlock(const std::string& appId);
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
 

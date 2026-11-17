@@ -17,6 +17,36 @@ The **RuntimeManager** plugin manages application execution through OCI-complian
 - **User ID Management**: Manage container user/group IDs via `UserIdManager`
 - **AI Configuration**: Load runtime configuration from YAML via `AIConfiguration`
 
+The `RUNTIMEMANAGER_ENABLE_DIALCONFIG` CMake option (default `ON`) enables DIAL
+environment-variable generation in `DobbySpecGenerator` for DIAL-enabled
+applications. Set `-DRUNTIMEMANAGER_ENABLE_DIALCONFIG=ON` when configuring both
+RuntimeManager and its standalone L0 tests to build and test this behavior.
+
+### Vendor Bind Mounts
+
+With `ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG=ON`, `AIConfiguration` reads the YAML
+file selected by RuntimeManager's `runtimeConfigFile`. The optional `mounts`
+sequence supplies platform bind mounts to `DobbySpecGenerator`:
+
+```yaml
+mounts:
+    - /tmp/redis.sock,MS_BIND|MS_NOSUID|MS_NODEV|MS_NOEXEC
+    - /tmp/rtkaudiosvc,MS_BIND|MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC
+```
+
+Each entry uses the same absolute path on the host and in the container.
+`MS_BIND` is required; malformed entries and unknown flags are skipped with a
+warning. Duplicate paths are included only once. Host services must create their
+socket paths before app launch. Unavailable paths are skipped with a warning;
+relaunch the app after the service becomes available. App-capability `extraMounts`
+remain independent. These vendor mounts apply to Dobby-spec generation, not RALF.
+
+Enable the same CMake option for the standalone L0 target to build the YAML
+parsing and vendor-mount regression tests; this requires `yaml-cpp`.
+RALF OCI generation adds Wayland environment variables and the socket bind mount
+only when `mWesterosSocketPath` is configured; headless daemon containers omit
+these display settings.
+
 ### Interacting Subsystems
 
 | Subsystem | Interaction Type | Purpose |
@@ -91,7 +121,7 @@ stateDiagram-v2
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -192,7 +222,7 @@ Core::hresult Run(const string& appId, const string& appInstanceId,
                   IValueIterator* const& ports,
                   IStringIterator* const& paths,
                   IStringIterator* const& debugSettings,
-                  const RuntimeConfig& runtimeConfigObject);
+                  const string& runtimeConfigPayload);
 Core::hresult Hibernate(const string& appInstanceId);
 Core::hresult Wake(const string& appInstanceId, RuntimeState runtimeState);
 Core::hresult Suspend(const string& appInstanceId);
@@ -207,23 +237,25 @@ Core::hresult Annotate(const string& appInstanceId, const string& key, const str
 
 **Purpose**: Generates OCI-compliant container specifications for Dobby.
 
+`RuntimeManager::Run` is the only manager boundary that validates and decodes the flat opaque JSON payload into the private `RuntimeConfiguration` type. The decoder consumes known fields for OCI generation; upstream managers do not share that structure. JSON arrays remain arrays throughout the payload flow, and enrichment preserves unknown properties.
+
 **Key Methods**:
 ```cpp
 class DobbySpecGenerator {
 public:
     DobbySpecGenerator(AIConfiguration& aiConfiguration);
     bool generate(const ApplicationConfiguration& config,
-                  const RuntimeConfig& runtimeConfig,
+                  const RuntimeConfiguration& runtimeConfig,
                   string& outputJsonString);
 
 private:
     Json::Value createEnvVars(const ApplicationConfiguration& config,
-                              const RuntimeConfig& runtimeConfig,
+                              const RuntimeConfiguration& runtimeConfig,
                               const std::vector<std::pair<std::string, std::string>>& capabilities) const;
     Json::Value createMounts(const ApplicationConfiguration& config,
-                             const RuntimeConfig& runtimeConfig) const;
+                             const RuntimeConfiguration& runtimeConfig) const;
     Json::Value createRdkPlugins(const ApplicationConfiguration& config,
-                                 const RuntimeConfig& runtimeConfig,
+                                 const RuntimeConfiguration& runtimeConfig,
                                  const std::vector<std::pair<std::string, std::string>>& capabilities) const;
     Json::Value createNetworkPlugin(...) const;
     Json::Value createThunderPlugin(...) const;
@@ -312,7 +344,7 @@ interface IRuntimeManager {
                 uint32_t userId, uint32_t groupId,
                 IValueIterator* ports, IStringIterator* paths,
                 IStringIterator* debugSettings,
-                const RuntimeConfig& runtimeConfig);
+                const string& runtimeConfigPayload);
     hresult Hibernate(const string& appInstanceId);
     hresult Wake(const string& appInstanceId, RuntimeState state);
     hresult Suspend(const string& appInstanceId);
@@ -670,7 +702,7 @@ TEST(RuntimeManagerTest, ContainerFailureRecovery) {
 
 ---
 
-## 9. Beginner-to-Expert Learning Path
+## 9. Beginner-to-Expert Teaching Mode
 
 ### Must Know First
 

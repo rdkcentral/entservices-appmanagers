@@ -12,6 +12,7 @@
 
 #include "NetFilter.h"
 
+#include <exception>
 #include <unistd.h>
 
 // -----------------------------------------------------------------------------
@@ -53,11 +54,22 @@ WebInspector::WebInspector(const std::string &appId, int debugPort, const std::s
 {
 }
 
-WebInspector::~WebInspector()
+WebInspector::~WebInspector() noexcept
 {
     LOGINFO("detaching webinspector from %s", mAppId.c_str());
 
-    NetFilter::removeAllRulesMatchingComment(mNetFilterCommentMatcher);
+    try
+    {
+        NetFilter::removeAllRulesMatchingComment(mNetFilterCommentMatcher);
+    }
+    catch (const std::exception &error)
+    {
+        LOGERR("failed to detach webinspector from %s: %s", mAppId.c_str(), error.what());
+    }
+    catch (...)
+    {
+        LOGERR("failed to detach webinspector from %s: unknown exception", mAppId.c_str());
+    }
 }
 
 Debugger::Type WebInspector::type() const

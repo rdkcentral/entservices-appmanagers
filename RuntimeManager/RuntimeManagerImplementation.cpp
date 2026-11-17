@@ -348,6 +348,15 @@ namespace WPEFramework
                 LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
                 mAIConfiguration = new AIConfiguration();
                 mAIConfiguration->initialize(mRuntimeConfigFile);
+                if (config.hibernation.enable.IsSet() || config.hibernation.defaultCompression.IsSet())
+                {
+                    mAIConfiguration->overrideHibernationSettings(
+                        config.hibernation.enable.IsSet() ? config.hibernation.enable.Value()
+                                                          : mAIConfiguration->getHibernationEnabled(),
+                        config.hibernation.defaultCompression.IsSet()
+                            ? config.hibernation.defaultCompression.Value()
+                            : mAIConfiguration->getHibernateCompression());
+                }
 
                 if (mAIConfiguration->getGstreamerRegistryEnabled())
                 {
@@ -519,7 +528,7 @@ namespace WPEFramework
             return status;
         }
 
-        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, std::string &dobbySpec)
+        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration &config, const RuntimeConfiguration &runtimeConfigObject, std::string &dobbySpec)
         {
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             LOGINFO("Generating Ralf Package Config : %s", runtimeConfigObject.ralfPkgPath.c_str());
@@ -582,8 +591,22 @@ namespace WPEFramework
             }
 	        return containerId;
         }
-        Core::hresult RuntimeManagerImplementation::Run(const string &appId, const string &appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator *const &ports, IStringIterator *const &paths, IStringIterator *const &debugSettings, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
+        Core::hresult RuntimeManagerImplementation::Run(const string &appId, const string &appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator *const &ports, IStringIterator *const &paths, IStringIterator *const &debugSettings, const string &runtimeConfigPayload)
         {
+            RuntimeConfiguration runtimeConfigObject;
+            std::string configurationError;
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            const bool requireCommand = false;
+#else
+            const bool requireCommand = true;
+#endif
+            if (!RuntimeConfigurationDecoder::Decode(runtimeConfigPayload, runtimeConfigObject, configurationError, userId, groupId, requireCommand))
+            {
+                LOGERR("Invalid runtime configuration payload: %s", configurationError.c_str());
+                notifyParameterCheckFailure(appInstanceId, "ERROR_INVALID_PARAM");
+                return Core::ERROR_INVALID_PARAMETER;
+            }
+
             Core::hresult status = Core::ERROR_GENERAL;
             RuntimeAppInfo runtimeAppInfo;
             std::string xdgRuntimeDir = "";
@@ -597,6 +620,9 @@ namespace WPEFramework
             ApplicationConfiguration config;
             config.mAppId = appId;
             config.mAppInstanceId = appInstanceId;
+            std::vector<std::pair<std::string, std::string>> parsedCaps;
+            DobbySpecGenerator::parseCapabilities(runtimeConfigObject.capabilities, parsedCaps);
+            const bool isDaemonApp = DobbySpecGenerator::hasCapability(parsedCaps, "daemon-app");
             bool displayResult = false;
             bool notifyParamCheckFailure = false;
             std::string errorCode = "";
@@ -696,7 +722,8 @@ namespace WPEFramework
             }
 
             /* Creating Display — no lock needed, operates on local/connector state */
-            if (nullptr != mWindowManagerConnector)
+            // Daemons have no app-owned display, so their container Wayland socket stays empty.
+            if (false == isDaemonApp && nullptr != mWindowManagerConnector)
             {
 
                 mWindowManagerConnector->getDisplayInfo(appInstanceId, xdgRuntimeDir, waylandDisplay);
@@ -711,7 +738,7 @@ namespace WPEFramework
                     LOGINFO("Display [%s] created successfully", waylandDisplay.c_str());
                 }
             }
-            else
+            else if (false == isDaemonApp)
             {
                 LOGERR("WindowManagerConnector is null");
                 status = Core::ERROR_GENERAL;
@@ -730,13 +757,12 @@ namespace WPEFramework
 #endif
 #ifdef ENABLE_RIALTO
             bool rialtoSetupFailed = false;
-            if (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty())
+            // A headless daemon can use Rialto without first creating an app display.
+            if (isDaemonApp || (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty()))
             {
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             const bool requiresRialto = true;
 #else
-            std::vector<std::pair<std::string, std::string>> parsedCaps;
-            DobbySpecGenerator::parseCapabilities(runtimeConfigObject.capabilities, parsedCaps);
             const bool appRequiresRialto = DobbySpecGenerator::hasCapability(parsedCaps, "rialto");
             const int rialtoOverride = (nullptr != mAIConfiguration) ? mAIConfiguration->getRialtoOverride() : -1;
             const bool requiresRialto = (rialtoOverride >= 0) ? (rialtoOverride > 0) : appRequiresRialto;
@@ -745,6 +771,11 @@ namespace WPEFramework
             {
                 LOGINFO("[RIALTO] Entering Rialto session setup for appId='%s' appInstanceId='%s'",
                         appId.c_str(), appInstanceId.c_str());
+                std::string rialtoDisplaySocket = westerosSocket;
+// #ifdef ENABLE_DAEMON_APP_SOCKET_SUPPORT
+                // Rialto's server configuration to use the player display. TODO make it generic.
+                rialtoDisplaySocket = isDaemonApp ? "/tmp/westeros-asplayer-0" : westerosSocket;
+// #endif
                 if (!mRialtoConnector->initialize())
                 {
                     LOGERR("[RIALTO] Rialto initialization failed for appId='%s', aborting session setup", appId.c_str());
@@ -760,7 +791,7 @@ namespace WPEFramework
                 rialtoSocket = "rlto-" + appInstanceId;
                 LOGINFO("[RIALTO] RALF enabled: rialtoSocket updated to '%s'", rialtoSocket.c_str());
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-                if (mRialtoConnector->createAppSession(appInstanceId, westerosSocket, rialtoSocket))
+                if (mRialtoConnector->createAppSession(appInstanceId, rialtoDisplaySocket, rialtoSocket))
                 {
                     LOGINFO("[RIALTO] createAppSession succeeded, waiting for ACTIVE state (timeout=%d ms)",
                             RIALTO_TIMEOUT_MILLIS);
@@ -794,7 +825,8 @@ namespace WPEFramework
 #endif // ENABLE_RIALTO
 
             LOGINFO("legacyContainer: %s", legacyContainer ? "true" : "false");
-            if (xdgRuntimeDir.empty() || waylandDisplay.empty() || !displayResult)
+            // Daemon apps don't require a display, but if they do have one, it must be valid. Non-daemon apps must have a valid display.
+            if (false == isDaemonApp && (xdgRuntimeDir.empty() || waylandDisplay.empty() || !displayResult))
             {
                 LOGERR("Missing required environment variables: XDG_RUNTIME_DIR=%s, WAYLAND_DISPLAY=%s createDisplay %s",
                        xdgRuntimeDir.empty() ? "NOT FOUND" : xdgRuntimeDir.c_str(),
@@ -868,6 +900,23 @@ namespace WPEFramework
                         /* Store request time and type in runtime app info map */
                         runtimeAppInfo.requestTime = requestTime;
                         runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
+                        runtimeAppInfo.debuggerEnabled = runtimeConfigObject.enableDebugger;
+			runtimeAppInfo.webInspectorEnabled = false;
+
+#ifdef RDK_APPMANAGERS_DEBUG
+                        if ((true == runtimeAppInfo.debuggerEnabled) && (true == legacyContainer))
+                        {
+                            runtimeAppInfo.webInspectorEnabled =
+                                (std::string::npos != dobbySpec.find("WEBKIT_LEGACY_INSPECTOR_SERVER="));
+
+                            LOGINFO("WebInspector configuration for appId=%s: debuggerEnabled=%d, legacyContainer=%d, webInspectorEnabled=%d", appId.c_str(), runtimeAppInfo.debuggerEnabled, legacyContainer, runtimeAppInfo.webInspectorEnabled);
+
+                            if (!runtimeAppInfo.webInspectorEnabled)
+                            {
+                                LOGWARN("Debugger requested for appId=%s, but WEBKIT_LEGACY_INSPECTOR_SERVER is missing from the generated Dobby spec", appId.c_str());
+                            }
+                        }
+#endif
 #ifdef ENABLE_RIALTO
                         // usesRialto is true only when a Rialto session was actually
                         // established (socket path assigned). If createAppSession failed,
@@ -941,6 +990,18 @@ namespace WPEFramework
 
             /* Get current timestamp at the start of hibernate for telemetry */
             time_t requestTime = getCurrentTimestamp();
+
+            if (mAIConfiguration == nullptr || !mAIConfiguration->getHibernationEnabled())
+            {
+                LOGWARN("Hibernate rejected: hibernation is disabled by rdkappmanagers.json");
+                return Core::ERROR_UNAVAILABLE;
+            }
+            const std::string& destination = mAIConfiguration->getHibernateFlashStoragePath();
+            const std::string& compression = mAIConfiguration->getHibernateCompression();
+            if (!destination.empty())
+                options = "dest=" + destination;
+            if (!compression.empty())
+                options += (options.empty() ? "" : ",") + std::string("compress=") + compression;
 
             mRuntimeManagerImplLock.Lock();
 
@@ -1410,74 +1471,116 @@ namespace WPEFramework
         void RuntimeManagerImplementation::onOCIContainerStartedEvent(std::string name, JsonObject &data)
         {
             LOGINFO("Container name: %s", name.c_str());
-/*
+
 #ifdef RDK_APPMANAGERS_DEBUG
-            const in_addr_t addr = ContainerUtils::getContainerIpAddress(name);
-            if (addr != 0)
+	    bool debuggerEnabled = false;
+	    bool webInspectorEnabled = false;
+	    const std::string eventContainerId = data.HasLabel("containerId") ? data["containerId"].String() : std::string();
+            const std::string inspectorKey = eventContainerId.empty() ? name : eventContainerId;
             {
-                struct in_addr ip_addr;
-                ip_addr.s_addr = addr;
-                LOGINFO("Container %s started with IP address: %s", name.c_str(), inet_ntoa(ip_addr));
-
-                uint16_t debugPort = 0;
-
-                for (uint16_t port = 2000; port <= 2100; ++port)
+                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                for (const auto& appInfo : mRuntimeAppInfo)
                 {
-                    if (mPortAvailability.find(port) == mPortAvailability.end() || !mPortAvailability[port])
+                    if ((appInfo.second.containerId == eventContainerId) ||
+                        (eventContainerId.empty() && (appInfo.second.containerId == name)))
                     {
-                        debugPort = port;
+                        debuggerEnabled = appInfo.second.debuggerEnabled;
+			webInspectorEnabled = appInfo.second.webInspectorEnabled;
                         break;
                     }
                 }
+            }
 
-                if (debugPort != 0)
+            if ((true == debuggerEnabled) && (true == webInspectorEnabled))
+            {
+                const in_addr_t addr = ContainerUtils::getContainerIpAddress(inspectorKey);
+                if (addr != 0)
                 {
-                    auto webInspector = WebInspector::attach(name, addr, debugPort);
-                    if (webInspector)
+                    struct in_addr ip_addr;
+                    ip_addr.s_addr = addr;
+                    LOGINFO("Container %s started with IP address: %s", name.c_str(), inet_ntoa(ip_addr));
+
+                        Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
+                        uint16_t debugPort = 0;
+
+                        for (uint16_t port = 2000; port <= 2100; ++port)
+                        {
+                            if (mPortAvailability.find(port) == mPortAvailability.end() || !mPortAvailability[port])
+                            {
+                                debugPort = port;
+                                mPortAvailability[debugPort] = true;
+                                break;
+                            }
+                        }
+
+                    if (debugPort != 0)
                     {
-                        mWebInspectors[name] = std::move(webInspector);
-                        mPortAvailability[debugPort] = true;
-                        LOGINFO("WebInspector attached for container %s on host port %d", name.c_str(), debugPort);
+                        auto webInspector = WebInspector::attach(name, addr, debugPort);
+                        if (webInspector)
+                        {
+                            mWebInspectors[inspectorKey] = std::move(webInspector);
+                            LOGINFO("WebInspector attached for container %s (key=%s) on host port %d", name.c_str(), inspectorKey.c_str(), debugPort);
+                        }
+                        else
+                        {
+                            mPortAvailability[debugPort] = false;
+                            LOGWARN("WebInspector::attach failed for container %s on port %d", name.c_str(), debugPort);
+                        }
                     }
                     else
                     {
-                        LOGWARN("WebInspector::attach failed for container %s on port %d", name.c_str(), debugPort);
+                        LOGERR("No available debug ports for container %s", name.c_str());
                     }
                 }
                 else
                 {
-                    LOGERR("No available debug ports for container %s", name.c_str());
+                    LOGERR("Failed to get IP address for container '%s'", name.c_str());
                 }
-            }
+	    }
             else
             {
-                LOGERR("Failed to get IP address for container '%s'", name.c_str());
+		 LOGINFO("Skipping WebInspector attach for container %s (debuggerEnabled=%d, webInspectorEnabled=%d)", name.c_str(), debuggerEnabled, webInspectorEnabled);
             }
 #endif
-*/
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTARTED, data);
         }
 
-        void RuntimeManagerImplementation::onOCIContainerStoppedEvent(std::string name, JsonObject &data)
-        {
-/*
 #ifdef RDK_APPMANAGERS_DEBUG
-            auto it = mWebInspectors.find(name);
+        void RuntimeManagerImplementation::detachWebInspectorForContainer(const std::string& name, const JsonObject& data)
+        {
+            const std::string eventContainerId = data.HasLabel("containerId") ? data["containerId"].String() : std::string();
+            const std::string inspectorKey = eventContainerId.empty() ? name : eventContainerId;
+            Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
+            auto it = mWebInspectors.find(inspectorKey);
+            if ((it == mWebInspectors.end()) && !eventContainerId.empty())
+            {
+                it = mWebInspectors.find(name);
+            }
             if (it != mWebInspectors.end())
             {
                 uint16_t freedPort = it->second->debugPort();
-                LOGINFO("Detaching WebInspector for container %s, freeing debug port %d", name.c_str(), freedPort);
+		LOGINFO("Detaching WebInspector for container %s (key=%s), freeing debug port %d", name.c_str(), it->first.c_str(), freedPort);
                 mWebInspectors.erase(it);
                 mPortAvailability[freedPort] = false;
                 LOGINFO("Debug port %d flag reset to available for reuse", freedPort);
             }
+	}
 #endif
-*/
+        void RuntimeManagerImplementation::onOCIContainerStoppedEvent(std::string name, JsonObject &data)
+        {
+
+#ifdef RDK_APPMANAGERS_DEBUG
+            detachWebInspectorForContainer(name, data);
+#endif
+
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED, data);
         }
 
         void RuntimeManagerImplementation::onOCIContainerFailureEvent(std::string name, JsonObject &data)
         {
+#ifdef RDK_APPMANAGERS_DEBUG
+            detachWebInspectorForContainer(name, data);
+#endif
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERFAILED, data);
         }
 
@@ -1521,4 +1624,5 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 

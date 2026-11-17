@@ -204,7 +204,7 @@ public:
 class MockPackageHandler final : public WPEFramework::Exchange::IPackageHandler {
 public:
     using LockHandler = std::function<WPEFramework::Core::hresult(
-        const string&, const string&, const LockReason&, uint32_t&, string&, WPEFramework::Exchange::RuntimeConfig&, ILockIterator*&)>;
+        const string&, const string&, const LockReason&, uint32_t&, string&, std::string&, ILockIterator*&)>;
     using UnlockHandler = std::function<WPEFramework::Core::hresult(const string&, const string&)>;
 
     MockPackageHandler()
@@ -237,7 +237,7 @@ public:
     }
 
     WPEFramework::Core::hresult Lock(const string& packageId, const string& version, const LockReason& lockReason,
-        uint32_t& lockId, string& unpackedPath, WPEFramework::Exchange::RuntimeConfig& configMetadata, ILockIterator*& appMetadata) override
+        uint32_t& lockId, string& unpackedPath, std::string& configMetadata, ILockIterator*& appMetadata) override
     {
         lockCount++;
         if (lockHandler) {
@@ -258,7 +258,7 @@ public:
         return WPEFramework::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult GetLockedInfo(const string&, const string&, string&, WPEFramework::Exchange::RuntimeConfig&, string&, bool&) override
+    WPEFramework::Core::hresult GetLockedInfo(const string&, const string&, string&, std::string&, string&, bool&) override
     {
         return WPEFramework::Core::ERROR_NONE;
     }
@@ -274,7 +274,7 @@ class MockPackageInstaller final : public WPEFramework::Exchange::IPackageInstal
 public:
     using Package = WPEFramework::Exchange::IPackageInstaller::Package;
     using ListHandler = std::function<WPEFramework::Core::hresult(IPackageIterator*&)>;
-    using ConfigHandler = std::function<WPEFramework::Core::hresult(const string&, string&, string&, WPEFramework::Exchange::RuntimeConfig&)>;
+    using ConfigHandler = std::function<WPEFramework::Core::hresult(const string&, string&, string&, std::string&)>;
 
     MockPackageInstaller()
         : _refCount(1)
@@ -337,7 +337,7 @@ public:
         return (nullptr != packages) ? WPEFramework::Core::ERROR_NONE : WPEFramework::Core::ERROR_GENERAL;
     }
 
-    WPEFramework::Core::hresult Config(const string&, const string&, WPEFramework::Exchange::RuntimeConfig&) override
+    WPEFramework::Core::hresult Config(const string&, const string&, std::string&) override
     {
         return WPEFramework::Core::ERROR_NONE;
     }
@@ -347,7 +347,7 @@ public:
         return WPEFramework::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult GetConfigForPackage(const string& fileLocator, string& id, string& version, WPEFramework::Exchange::RuntimeConfig& config) override
+    WPEFramework::Core::hresult GetConfigForPackage(const string& fileLocator, string& id, string& version, std::string& config) override
     {
         getConfigCount++;
         if (configHandler) {
@@ -608,7 +608,7 @@ public:
     }
 
     WPEFramework::Core::hresult SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState,
-        const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId,
+        const std::string& runtimeConfigObject, const string& launchArgs, string& appInstanceId,
         string& errorReason, bool& success) override
     {
         (void)runtimeConfigObject;
@@ -666,7 +666,7 @@ public:
     INotification* registeredNotification { nullptr };
     std::function<WPEFramework::Core::hresult(const std::string&, bool&)> isAppLoadedHandler;
     std::function<WPEFramework::Core::hresult(std::string&)> getLoadedAppsHandler;
-    std::function<WPEFramework::Core::hresult(const string&, const string&, const LifecycleState, const WPEFramework::Exchange::RuntimeConfig&, const string&, string&, string&, bool&)> spawnAppHandler;
+    std::function<WPEFramework::Core::hresult(const string&, const string&, const LifecycleState, const std::string&, const string&, string&, string&, bool&)> spawnAppHandler;
     std::function<uint32_t(const string&, const LifecycleState, const string&)> setTargetAppStateHandler;
     std::function<WPEFramework::Core::hresult(const string&, string&, bool&)> unloadAppHandler;
     std::function<WPEFramework::Core::hresult(const string&, string&, bool&)> killAppHandler;

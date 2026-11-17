@@ -14,7 +14,7 @@ The **PackageManager** plugin provides comprehensive package management capabili
 - **Package Installation**: Install packages with signature verification and metadata extraction
 - **Package Locking**: Lock packages during app execution to prevent modification
 - **Package State Management**: Track installation state for all packages
-- **Runtime Configuration**: Provide runtime configuration metadata to callers
+- **Runtime Configuration**: Create and return a flat, opaque JSON payload for the launch pipeline; array-valued metadata remains JSON arrays and unknown properties are preserved by later enrichers
 
 ### Interacting Subsystems
 
@@ -63,7 +63,9 @@ graph TB
     Impl --> FS
 ```
 
-### Package Lifecycle
+### High-Level Package Workflow
+
+The following diagram combines download and installation phases for orientation. `DOWNLOADING` and `DOWNLOADED` are download workflow labels, not values from the `IPackageInstaller::InstallState` enum documented below.
 
 ```mermaid
 stateDiagram-v2
@@ -72,18 +74,20 @@ stateDiagram-v2
     DOWNLOADING --> DOWNLOADED: Download Complete
     DOWNLOADED --> INSTALLING: Install()
     INSTALLING --> INSTALLED: Install Complete
+    INSTALLING --> INSTALL_FAILURE: Install Failed
     INSTALLED --> LOCKED: Lock()
     LOCKED --> INSTALLED: Unlock()
     INSTALLED --> UNINSTALLING: Uninstall()
     UNINSTALLING --> UNINSTALLED: Uninstall Complete
-    
+    UNINSTALLING --> UNINSTALL_BLOCKED: Uninstall Blocked
+    UNINSTALLING --> UNINSTALL_FAILURE: Uninstall Failed
+
     DOWNLOADING --> UNINSTALLED: Download Failed
-    INSTALLING --> UNINSTALLED: Install Failed
 ```
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -123,7 +127,7 @@ PackageManager/
 |-------|------|-------------|
 | `installState` | `InstallState` | Current package installation state |
 | `mLockCount` | `uint32_t` | Number of active locks |
-| `runtimeConfig` | `Exchange::RuntimeConfig` | Runtime metadata used by launch/runtime flows |
+| `runtimeConfigPayload` | `string` | Flat opaque JSON payload created from package runtime metadata |
 | `gatewayMetadataPath` | `string` | Path to gateway metadata |
 | `unpackedPath` | `string` | Path to unpacked package contents |
 | `failReason` | `FailReason` | Last failure reason |
@@ -160,18 +164,18 @@ Core::hresult Install(const string& packageId, const string& version,
 Core::hresult Uninstall(const string& packageId, string& errorReason);
 Core::hresult ListPackages(IPackageIterator*& packages);
 Core::hresult Config(const string& packageId, const string& version,
-                     RuntimeConfig& configMetadata);
+                     string& runtimeConfigPayload);
 Core::hresult PackageState(const string& packageId, const string& version,
                            InstallState& state);
 
 // IPackageHandler
 Core::hresult Lock(const string& packageId, const string& version,
                    LockReason lockReason, uint32_t& lockId,
-                   string& unpackedPath, RuntimeConfig& configMetadata,
+                   string& unpackedPath, string& runtimeConfigPayload,
                    ILockIterator*& appMetadata);
 Core::hresult Unlock(const string& packageId, const string& version);
 Core::hresult GetLockedInfo(const string& packageId, const string& version,
-                            string& unpackedPath, RuntimeConfig& configMetadata,
+                            string& unpackedPath, string& runtimeConfigPayload,
                             string& gatewayMetadataPath, bool& locked);
 ```
 
@@ -226,9 +230,12 @@ interface IPackageInstaller {
     enum InstallState {
         UNINSTALLED = 0,
         INSTALLING,
+        INSTALLATION_BLOCKED,
+        INSTALL_FAILURE,
         INSTALLED,
         UNINSTALLING,
-        FAILED
+        UNINSTALL_FAILURE,
+        UNINSTALL_BLOCKED
     };
 
     enum FailReason {
@@ -252,7 +259,7 @@ interface IPackageInstaller {
     hresult Uninstall(const string& packageId, string& errorReason);
     hresult ListPackages(IPackageIterator*& packages);
     hresult Config(const string& packageId, const string& version,
-                   RuntimeConfig& config);
+                   string& runtimeConfigPayload);
     hresult PackageState(const string& packageId, const string& version,
                          InstallState& state);
     hresult Register(INotification* notification);
@@ -288,11 +295,11 @@ interface IPackageHandler {
 
     hresult Lock(const string& packageId, const string& version,
                  LockReason reason, uint32_t& lockId,
-                 string& unpackedPath, RuntimeConfig& config,
+                 string& unpackedPath, string& runtimeConfigPayload,
                  ILockIterator*& metadata);
     hresult Unlock(const string& packageId, const string& version);
     hresult GetLockedInfo(const string& packageId, const string& version,
-                          string& unpackedPath, RuntimeConfig& config,
+                          string& unpackedPath, string& runtimeConfigPayload,
                           string& gatewayMetadataPath, bool& locked);
 };
 ```
@@ -316,7 +323,7 @@ classDiagram
     class State {
         +InstallState installState
         +uint32_t lockCount
-        +RuntimeConfig runtimeConfig
+        +string runtimeConfigPayload
         +string unpackedPath
     }
 
@@ -352,14 +359,7 @@ classDiagram
 
 ### Configuration Parameters
 
-```json
-{
-    "downloadDir": "/tmp/packages",
-    "maxConcurrentDownloads": 2,
-    "defaultRetries": 3,
-    "defaultRateLimit": 0
-}
-```
+The implementation defines `downloadDir` as its package-download configuration key. No checked-in `PackageManager.config` exists in this workspace, and the source does not define `maxConcurrentDownloads`, `defaultRetries`, or `defaultRateLimit` as PackageManager configuration parameters.
 
 ---
 
@@ -399,7 +399,7 @@ sequenceDiagram
     State-->>PKG: state
     PKG->>PKG: Increment lockCount
     PKG->>PKG: Generate lockId
-    PKG-->>AM: lockId, unpackedPath, config
+    PKG-->>AM: lockId, unpackedPath, opaque JSON payload
 ```
 
 ### Download Queue Processing
@@ -435,10 +435,12 @@ stateDiagram-v2
     [*] --> UNINSTALLED
     UNINSTALLED --> INSTALLING: Install()
     INSTALLING --> INSTALLED: Success
-    INSTALLING --> FAILED: Error
+    INSTALLING --> INSTALL_FAILURE: Error
     INSTALLED --> UNINSTALLING: Uninstall()
     UNINSTALLING --> UNINSTALLED: Success
-    FAILED --> UNINSTALLED: Cleanup
+    UNINSTALLING --> UNINSTALL_FAILURE: Error
+    UNINSTALLING --> UNINSTALL_BLOCKED: Blocked
+    INSTALL_FAILURE --> UNINSTALLED: Cleanup
     INSTALLED --> INSTALLED: Lock/Unlock
 ```
 
@@ -494,3 +496,9 @@ Located in `Tests/L1Tests/tests/test_PackageManager.cpp`:
 4. **Lock Contention**: Multiple lock requests
 
 ---
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** package state includes versions, locks, runtime metadata, and storage paths, not only installed/uninstalled status.
+
+**Advanced path:** trace download-to-install state transitions, inspect lock accounting and blocked operations, then compare RALF and non-RALF builds and cache initialization modes.

@@ -3,6 +3,7 @@ set -x
 set -e
 ##############################
 GITHUB_WORKSPACE="${PWD}"
+INTERFACES_REF="${INTERFACES_REF:-e39950f345b5e32399ab9e05fbd93b07a045d831}"
 ls -la ${GITHUB_WORKSPACE}
 cd ${GITHUB_WORKSPACE}
 
@@ -69,10 +70,9 @@ git clone --branch R4_4-RDK https://github.com/rdkcentral/Thunder.git
 
 git clone --branch develop https://github.com/rdkcentral/entservices-apis.git
 
-
 git clone -b develop https://github.com/rdkcentral/eshelpers.git
 
-git clone -b v1.2.0 https://github.com/rdkcentral/ralf-utils.git
+git clone -b v1.3.0 https://github.com/rdkcentral/ralf-utils.git
 
 git clone -b develop https://github.com/rdkcentral/libPackage.git
 

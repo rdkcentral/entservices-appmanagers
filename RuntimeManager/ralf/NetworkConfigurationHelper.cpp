@@ -23,6 +23,7 @@
 #include "RalfSupport.h"
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <cstddef>
 #include <cstdio>
@@ -65,6 +66,9 @@ namespace
     // Dobby interContainer is for container-to-container routing over the bridge.
     // Host loopback access must use portForwarding.containerToHost (with localhostMasquerade).
     constexpr const char *HOST_ENDPOINT_MARKER = "_hostEndpoint";
+
+    // xdialserver uses the following port for its REST endpoints.
+    constexpr const int DIALSERVER_REST_PORT = 56889;
 
     /**
      * @brief Navigates, allocates, or migrates the base connection settings of the Dobby module profile.
@@ -780,22 +784,32 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
     }
 
     const Json::Value& configurationNode = manifestRootNode[ralf::CONFIGURATION];
-    if (!configurationNode.isMember(ralf::NETWORK_CONFIG_URN))
+    bool hasNetworkConfig = configurationNode.isMember(ralf::NETWORK_CONFIG_URN);
+    bool hasDialConfig = configurationNode.isMember(ralf::DIAL_CONFIG_URN);
+
+    if (!hasNetworkConfig && !hasDialConfig)
     {
-        LOGWARN("%s: No network configuration node found in manifest; skipping network configuration update", MODULE_LOGTAG);
+        LOGWARN("%s: No network or DIAL configuration node found in manifest; skipping network configuration update", MODULE_LOGTAG);
         return true;
     }
 
-    const Json::Value& networkConfiguration = configurationNode[ralf::NETWORK_CONFIG_URN];
-    if (!networkConfiguration.isArray())
+    const Json::Value& networkConfiguration = hasNetworkConfig ? configurationNode[ralf::NETWORK_CONFIG_URN] : Json::Value::nullSingleton();
+    if (hasNetworkConfig && (!networkConfiguration.isArray() || networkConfiguration.empty()))
     {
-        LOGWARN("%s: Network configuration is not an array, no need to process it.", MODULE_LOGTAG);
-        return false;
+        LOGWARN("%s: Network configuration is not an array or is empty, no need to process it.", MODULE_LOGTAG);
+        hasNetworkConfig = false;
     }
 
-    if (networkConfiguration.empty())
+    const Json::Value& dialConfiguration = hasDialConfig ? configurationNode[ralf::DIAL_CONFIG_URN] : Json::Value::nullSingleton();
+    if (hasDialConfig && !dialConfiguration.isObject())
     {
-        LOGDBG("%s: Network configuration is empty, skipping it.", MODULE_LOGTAG);
+        LOGDBG("%s: Invalid DIAL configuration, skipping it.", MODULE_LOGTAG);
+        hasDialConfig = false;
+    }
+
+    if (!hasNetworkConfig && !hasDialConfig)
+    {
+        LOGDBG("%s: No valid network or DIAL configuration to process.", MODULE_LOGTAG);
         return true;
     }
 
@@ -819,11 +833,57 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
         return false;
     }
 
-    // Batch-process network configuration array entries
-    Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(networkConfiguration);
+    Json::Value dobbyNWCfgObject(Json::objectValue);
+    if (hasNetworkConfig && !networkConfiguration.empty())
+    {
+        dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(networkConfiguration);
+        if (dobbyNWCfgObject.empty())
+        {
+            LOGWARN("%s: Translated Dobby network configuration object is empty.", MODULE_LOGTAG);
+        }
+    }
+
+    if (hasDialConfig && dialConfiguration.isObject())
+    {
+        LOGDBG("%s: Add DIAL specific port forwarding rules into dobbyNWCfgObject.", MODULE_LOGTAG);
+
+        Json::Value& portForwarding = dobbyNWCfgObject[PORT_FORWARDING];
+        if (false == portForwarding.isObject())
+        {
+            portForwarding = Json::Value(Json::objectValue);
+        }
+
+        Json::Value& containerToHost = portForwarding[CONTAINER_TO_HOST];
+        if (false == containerToHost.isArray())
+        {
+            containerToHost = Json::Value(Json::arrayValue);
+        }
+
+        // Only map the "dial-rest-port" for apps.
+        if (!(hasPortFwdContainerToHostRule(*netDataNode, static_cast<unsigned int>(DIALSERVER_REST_PORT), "tcp") &&
+            (*netDataNode)[PORT_FORWARDING].get(LOCALHOST_MASQUERADE, false).asBool()))
+        {
+            Json::Value dialRule(Json::objectValue);
+            dialRule[ralf::PORT] = static_cast<unsigned int>(DIALSERVER_REST_PORT);
+            dialRule[ralf::PROTOCOL] = "tcp";
+            dialRule[ralf::NAME] = "dial-rest-port";
+
+            if (false == hasContainerToHostRule(containerToHost, dialRule[ralf::PORT].asUInt(), dialRule[ralf::PROTOCOL].asString()))
+            {
+                containerToHost.append(dialRule);
+                LOGDBG("%s: Added DIAL specific port forwarding rule.", MODULE_LOGTAG);
+            }
+        }
+
+        if (false == portForwarding.get(LOCALHOST_MASQUERADE, false).asBool() && false == containerToHost.empty())
+        {
+            portForwarding[LOCALHOST_MASQUERADE] = true;
+        }
+    }
+
     if (dobbyNWCfgObject.empty())
     {
-        LOGWARN("%s: Translated Dobby network configuration object is empty.", MODULE_LOGTAG);
+        LOGWARN("%s: No translated network rules to apply.", MODULE_LOGTAG);
         return true;
     }
 
@@ -834,11 +894,11 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
  * @brief Updates the OCI configuration with network settings based on permissions specified in the manifest.
  * @param ociConfigRootNode The root node of the OCI configuration JSON.
  * @param manifestRootNode The root node of the manifest JSON.
- * @param envVariables The serialized JSON array string of environment variables as provided by RuntimeConfig.envVariables.
+ * @param envVariables The decoded runtime environment variables.
  * @return true if the update was successful or if there were no permissions to process; false on error.
  */
 bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode,
-                                               const std::string& envVariables)
+                                               const std::vector<std::string>& envVariables)
 {
     if (!manifestRootNode.isMember(ralf::PERMISSIONS))
     {
@@ -912,76 +972,50 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
 
     if (hasPermissionFirebolt && !envVariables.empty())
     {
-        const std::string& src = envVariables;
-        const std::string prefix = std::string(ralf::FIREBOLT_ENDPOINT_ENV_KEY);
-        size_t pos = 0;
-
-        while ((pos = src.find(prefix, pos)) != std::string::npos)
+        const std::string prefix = std::string(ralf::FIREBOLT_ENDPOINT_ENV_KEY) + "=";
+        for (const auto& environment : envVariables)
         {
-            if (pos > 0 && src[pos - 1] != '"' && src[pos - 1] != '[')
+            if (environment.compare(0, prefix.size(), prefix) != 0)
             {
-                pos += prefix.size();
                 continue;
             }
 
-            size_t valueStart = pos + prefix.size();
-            if (valueStart < src.size() && src[valueStart] == '=')
+            const std::string fireboltEndpointStr = environment.substr(prefix.size());
+            if (isLoopbackEndpoint(fireboltEndpointStr))
             {
-                valueStart++;
-                size_t valueEnd = src.find('"', valueStart);
-                if (valueEnd != std::string::npos)
+                size_t schemeEnd = fireboltEndpointStr.find("://");
+                std::string protocolScheme = (schemeEnd != std::string::npos)
+                    ? fireboltEndpointStr.substr(0, schemeEnd)
+                    : fireboltEndpointStr;
+
+                const int port = extractPortFromEndpoint(fireboltEndpointStr);
+                if (port > 0 && port <= 65535)
                 {
-                    size_t len = valueEnd - valueStart;
-                    std::string fireboltEndpointStr;
-                    fireboltEndpointStr.reserve(len);
-                    for (size_t i = 0; i < len; ++i)
+                    const std::string normProto = normalizeProtocol(protocolScheme);
+                    const unsigned int targetPort = static_cast<unsigned int>(port);
+
+                    // Safe inspection lookup using the non-mutated snapshot block reference
+                    if (netDataCheck != nullptr &&
+                        hasPortFwdContainerToHostRule(*netDataCheck, targetPort, normProto))
                     {
-                        size_t currentIdx = valueStart + i;
-                        if (src[currentIdx] == '\\' && (i + 1 < len) && src[currentIdx + 1] == '/')
-                        {
-                            continue;
-                        }
-                        fireboltEndpointStr.push_back(src[currentIdx]);
+                        LOGDBG("%s: Firebolt Port %u & protocol %s already exists; skipping addition.",
+                                MODULE_LOGTAG, targetPort, normProto.c_str());
+                        isFireboltFulfilled = true;
+                        break;
                     }
 
-                    if (isLoopbackEndpoint(fireboltEndpointStr))
-                    {
-                        size_t schemeEnd = fireboltEndpointStr.find("://");
-                        std::string protocolScheme = (schemeEnd != std::string::npos)
-                            ? fireboltEndpointStr.substr(0, schemeEnd)
-                            : fireboltEndpointStr;
+                    Json::Value fireboltNWCfgObject(Json::objectValue);
+                    fireboltNWCfgObject[ralf::NAME] = "Firebolt";
+                    fireboltNWCfgObject[ralf::PORT] = targetPort;
+                    fireboltNWCfgObject[ralf::PROTOCOL] = normProto;
+                    fireboltNWCfgObject[ralf::TYPE] = IMPORTED;
+                    fireboltNWCfgObject[HOST_ENDPOINT_MARKER] = true;
 
-                        const int port = extractPortFromEndpoint(fireboltEndpointStr);
-                        if (port > 0 && port <= 65535)
-                        {
-                            const std::string normProto = normalizeProtocol(protocolScheme);
-                            const unsigned int targetPort = static_cast<unsigned int>(port);
-
-                            // Safe inspection lookup using the non-mutated snapshot block reference
-                            if (netDataCheck != nullptr &&
-                                hasPortFwdContainerToHostRule(*netDataCheck, targetPort, normProto))
-                            {
-                                LOGDBG("%s: Firebolt Port %u & protocol %s already exists; skipping addition.",
-                                        MODULE_LOGTAG, targetPort, normProto.c_str());
-                                isFireboltFulfilled = true;
-                                break;
-                            }
-
-                            Json::Value fireboltNWCfgObject(Json::objectValue);
-                            fireboltNWCfgObject[ralf::NAME] = "Firebolt";
-                            fireboltNWCfgObject[ralf::PORT] = targetPort;
-                            fireboltNWCfgObject[ralf::PROTOCOL] = normProto;
-                            fireboltNWCfgObject[ralf::TYPE] = IMPORTED;
-                            fireboltNWCfgObject[HOST_ENDPOINT_MARKER] = true;
-
-                            ralfLocalNWCfgObject.append(fireboltNWCfgObject);
-                            isFireboltFulfilled = true;
-                            break;
-                        }
-                    }
+                    ralfLocalNWCfgObject.append(fireboltNWCfgObject);
+                    isFireboltFulfilled = true;
+                    break;
                 }
             }
-            pos += prefix.size();
         }
 
         if (!isFireboltFulfilled)

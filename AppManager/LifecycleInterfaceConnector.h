@@ -30,6 +30,7 @@
 #include <plugins/System.h>
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
+#include "AppManagerTypes.h"
 #include <core/core.h>
 #include <com/com.h>
 #include <plugins/plugins.h>
@@ -61,6 +62,16 @@ namespace WPEFramework
                 std::string appId;
                 Exchange::ILifecycleManager::LifecycleState state;
                 std::string errorReason;
+            };
+
+	    struct PendingRelaunchRequest
+            {
+                std::string appId;
+                std::string intent;
+                std::string launchArgs;
+                std::string requestedVersion;
+                std::string runtimeConfigPayload;
+                AppManagerTypes::PackageInfo packageInfo;
             };
 
             class NotificationHandler : public Exchange::ILifecycleManagerState::INotification {
@@ -108,8 +119,8 @@ namespace WPEFramework
                     ~LifecycleInterfaceConnector();
                     Core::hresult createLifecycleManagerRemoteObject();
                     void releaseLifecycleManagerRemoteObject();
-                    Core::hresult launch(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject);
-                    Core::hresult preLoadApp(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& error);
+                    Core::hresult launch(const string& appId, const string& intent, const string& launchArgs, std::string& runtimeConfigPayload);
+                    Core::hresult preLoadApp(const string& appId, const string& intent, const string& launchArgs, std::string& runtimeConfigPayload, string& error);
                     Core::hresult closeApp(const string& appId);
                     Core::hresult terminateApp(const string& appId);
                     Core::hresult killApp(const string& appId);
@@ -118,6 +129,7 @@ namespace WPEFramework
 #endif
                     Core::hresult sendIntent(const string& appId, const string& intent);
                     Core::hresult getLoadedApps(Exchange::IAppManager::ILoadedAppInfoIterator*& apps);
+                    void handlePendingRelaunch(const string& suspendedAppInstanceId);
                     void OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState newState, const Exchange::ILifecycleManager::LifecycleState oldState, const string& navigationIntent);
                     void OnAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason);
                     Exchange::IAppManager::AppLifecycleState mapAppLifecycleState(Exchange::ILifecycleManager::LifecycleState state);
@@ -130,8 +142,12 @@ namespace WPEFramework
                     void lifecycleWorker();
                     void processAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState oldState, const Exchange::ILifecycleManager::LifecycleState newState, const string& navigationIntent);
                     void processAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason);
+                    Core::hresult launchRequestedPackage(const string& appId, const string& intent, const string& launchArgs,std::string& runtimeConfigPayload);
+                    Core::hresult restartSuspendedWithRequestedVersion(const string& appId, const string& intent, const string& launchArgs,
+                        std::string& runtimeConfigPayload, const string& suspendedAppInstanceId, const string& requestedVersion);
+                    bool tryGetPendingRelaunch(const string& suspendedAppInstanceId, PendingRelaunchRequest& pendingRelaunch);
                     static std::string base64Encode(const std::string& in);
-                    void appendLaunchParametersEnv(const std::string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) const;
+                    bool appendLaunchParametersEnv(const std::string& launchArgs, std::string& runtimeConfigPayload, std::string& error) const;
                     mutable Core::CriticalSection mAdminLock;
                     Exchange::ILifecycleManager *mLifecycleManagerRemoteObject;
                     Exchange::ILifecycleManagerState *mLifecycleManagerStateRemoteObject;
@@ -148,6 +164,8 @@ namespace WPEFramework
                     bool mStopLifecycleThread;
                     std::string mAppIdAwaitingPause;
                     std::map<std::string, Exchange::IAppManager::AppLifecycleState> mAppCurrentActionList;
+                    std::map<std::string, PendingRelaunchRequest> mPendingRelaunches;
+
         };
     }
 }

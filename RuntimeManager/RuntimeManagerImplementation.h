@@ -30,6 +30,7 @@
 #include <condition_variable>
 #include "AIConfiguration.h"
 #include "ApplicationConfiguration.h"
+#include "RuntimeConfiguration.h"
 #include "WindowManagerConnector.h"
 #include "IEventHandler.h"
 #include "DobbyEventListener.h"
@@ -54,14 +55,31 @@ namespace WPEFramework
         {
             private:
                 class Configuration : public Core::JSON::Container {
+                    class Hibernation : public Core::JSON::Container {
+                    public:
+                        Hibernation()
+                            : Core::JSON::Container()
+                            , enable()
+                            , defaultCompression()
+                        {
+                            Add(_T("enable"), &enable);
+                            Add(_T("defaultCompression"), &defaultCompression);
+                        }
+
+                        Core::JSON::Boolean enable;
+                        Core::JSON::String defaultCompression;
+                    };
+
                     public:
                         Configuration()
                             : Core::JSON::Container()
                             , runtimeAppPortal()
                             , runtimeConfigFile()
+                            , hibernation()
                         {
                             Add(_T("runtimeAppPortal"), &runtimeAppPortal);
                             Add(_T("runtimeConfigFile"), &runtimeConfigFile);
+                            Add(_T("hibernate"), &hibernation);
                         }
                         ~Configuration() = default;
 
@@ -73,6 +91,7 @@ namespace WPEFramework
                     public:
                         Core::JSON::String runtimeAppPortal;
                         Core::JSON::String runtimeConfigFile;
+                        Hibernation hibernation;
                 };
 
             public:
@@ -105,6 +124,8 @@ namespace WPEFramework
                     Exchange::IRuntimeManager::RuntimeState containerState;
                     time_t requestTime = 0;
                     RuntimeManagerImplementation::RequestType requestType = RuntimeManagerImplementation::REQUEST_TYPE_NONE;
+                    bool debuggerEnabled = false;
+		    bool webInspectorEnabled = false;
 #ifdef ENABLE_RIALTO
                     bool usesRialto = false;
 #endif
@@ -174,7 +195,7 @@ namespace WPEFramework
                 virtual Core::hresult Register(Exchange::IRuntimeManager::INotification *notification) override;
                 virtual Core::hresult Unregister(Exchange::IRuntimeManager::INotification *notification) override;
 
-                virtual Core::hresult Run(const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) override;
+                virtual Core::hresult Run(const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings, const string& runtimeConfigPayload) override;
                 virtual Core::hresult Hibernate(const string& appInstanceId) override;
                 virtual Core::hresult Wake(const string& appInstanceId, const RuntimeState runtimeState) override;
                 virtual Core::hresult Suspend(const string& appInstanceId) override;
@@ -189,7 +210,7 @@ namespace WPEFramework
                 // IConfiguration methods
                 uint32_t Configure(PluginHost::IShell* service) override;
 
-                bool generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, std::string& dobbySpec);
+                bool generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::string& dobbySpec);
 
                 // IEventHandler methods
                 virtual void onOCIContainerStartedEvent(std::string name, JsonObject& data) override;
@@ -207,6 +228,9 @@ namespace WPEFramework
                 bool isOCIPluginObjectValid(void);
                 Exchange::IRuntimeManager::RuntimeState getRuntimeState(const string& appInstanceId);
                 Core::hresult getAppStorageInfo(const string& appId, AppStorageInfo& appStorageInfo);
+#ifdef RDK_APPMANAGERS_DEBUG
+                void detachWebInspectorForContainer(const std::string& name, const JsonObject& data);
+#endif
 
             private: /* members */
                 mutable Core::CriticalSection mRuntimeManagerImplLock;
@@ -216,6 +240,7 @@ namespace WPEFramework
                 std::map<std::string, RuntimeAppInfo> mRuntimeAppInfo;
 
                 #ifdef RDK_APPMANAGERS_DEBUG
+                Core::CriticalSection mWebInspectorLock;
                 std::map<std::string, std::shared_ptr<WebInspector>> mWebInspectors;
                 std::map<uint16_t, bool> mPortAvailability;
                 #endif
@@ -250,3 +275,4 @@ namespace WPEFramework
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+

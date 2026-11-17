@@ -33,6 +33,7 @@ namespace WPEFramework
             public:
                 RequestHandler(const RequestHandler& obj) = delete;
                 static RequestHandler* getInstance();
+                static void cleanupSingleton();
                 ~RequestHandler ();
                 bool initialize(PluginHost::IShell* service, IEventHandler* eventHandler);
 		void terminate();

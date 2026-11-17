@@ -13,7 +13,16 @@ extern uint32_t Test_PM_Impl_DownloaderRegisterUnregister();
 extern uint32_t Test_PM_Impl_InstallerRegisterUnregister();
 extern uint32_t Test_PM_Impl_UnregisterUnknownNotification();
 extern uint32_t Test_PM_Impl_ListPackagesAndPackageStateForDummyData();
+extern uint32_t Test_PM_Impl_SystemApplicationClassification();
 extern uint32_t Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator();
+extern uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization();
+extern uint32_t Test_PM_Impl_RuntimeConfigPayloadBooleanTypes();
+extern uint32_t Test_PM_Impl_RuntimeConfigPayloadIntegerTypes();
+extern uint32_t Test_PM_Impl_RuntimeConfigPayloadUnsignedEdgeCases();
+extern uint32_t Test_PM_Impl_RuntimeConfigPayloadAppendString();
+extern uint32_t Test_PM_Impl_RuntimeConfigPayloadUpsertEnvironmentEdgeCases();
+extern uint32_t Test_PM_Impl_RuntimeConfigPayloadStringArrayValidation();
+extern uint32_t Test_PM_Impl_RuntimeConfigPayloadComplexScenarios();
 extern uint32_t Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload();
 extern uint32_t Test_PM_Impl_DeleteFilePaths();
 extern uint32_t Test_PM_Impl_InstallAndUninstallFlowWithNotifications();
@@ -23,7 +32,11 @@ extern uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths();
 extern uint32_t Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths();
 extern uint32_t Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable();
 extern uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath();
+extern uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageSuccess();
+extern uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageBackendFailure();
+extern uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable();
 extern uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock();
+extern uint32_t Test_PM_Impl_InstallDifferentVersionWhileLocked();
 extern uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock();
 extern uint32_t Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure();
 extern uint32_t Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState();
@@ -52,7 +65,16 @@ int main()
         { "PM_Impl_InstallerRegisterUnregister", Test_PM_Impl_InstallerRegisterUnregister },
         { "PM_Impl_UnregisterUnknownNotification", Test_PM_Impl_UnregisterUnknownNotification },
         { "PM_Impl_ListPackagesAndPackageStateForDummyData", Test_PM_Impl_ListPackagesAndPackageStateForDummyData },
+        { "PM_Impl_SystemApplicationClassification", Test_PM_Impl_SystemApplicationClassification },
         { "PM_Impl_ConfigAndGetConfigForPackageEmptyLocator", Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator },
+        { "PM_Impl_RuntimeConfigPayloadSerialization", Test_PM_Impl_RuntimeConfigPayloadSerialization },
+        { "PM_Impl_RuntimeConfigPayloadBooleanTypes", Test_PM_Impl_RuntimeConfigPayloadBooleanTypes },
+        { "PM_Impl_RuntimeConfigPayloadIntegerTypes", Test_PM_Impl_RuntimeConfigPayloadIntegerTypes },
+        { "PM_Impl_RuntimeConfigPayloadUnsignedEdgeCases", Test_PM_Impl_RuntimeConfigPayloadUnsignedEdgeCases },
+        { "PM_Impl_RuntimeConfigPayloadAppendString", Test_PM_Impl_RuntimeConfigPayloadAppendString },
+        { "PM_Impl_RuntimeConfigPayloadUpsertEnvironmentEdgeCases", Test_PM_Impl_RuntimeConfigPayloadUpsertEnvironmentEdgeCases },
+        { "PM_Impl_RuntimeConfigPayloadStringArrayValidation", Test_PM_Impl_RuntimeConfigPayloadStringArrayValidation },
+        { "PM_Impl_RuntimeConfigPayloadComplexScenarios", Test_PM_Impl_RuntimeConfigPayloadComplexScenarios },        
         { "PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload", Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload },
         { "PM_Impl_DeleteFilePaths", Test_PM_Impl_DeleteFilePaths },
         { "PM_Impl_InstallAndUninstallFlowWithNotifications", Test_PM_Impl_InstallAndUninstallFlowWithNotifications },
@@ -63,7 +85,10 @@ int main()
         { "PM_Impl_GetLockedInfoAndUnlockNegativePaths", Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths },
         { "PM_Impl_DownloadWithoutInternetReturnsUnavailable", Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable },
         { "PM_Impl_GetConfigForPackageSuccessPath", Test_PM_Impl_GetConfigForPackageSuccessPath },
-        { "PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock", Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock },
+        { "PM_Impl_GetRunningApplicationsUsingPackageSuccess", Test_PM_Impl_GetRunningApplicationsUsingPackageSuccess },
+        { "PM_Impl_GetRunningApplicationsUsingPackageBackendFailure", Test_PM_Impl_GetRunningApplicationsUsingPackageBackendFailure },
+        { "PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable", Test_PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable },
+        { "PM_Impl_InstallDifferentVersionWhileLocked", Test_PM_Impl_InstallDifferentVersionWhileLocked },
         { "PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock", Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock },
         { "PM_Impl_InstallCreateStorageFailureReportsInstallFailure", Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure },
         { "PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState", Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState },
@@ -87,4 +112,3 @@ int main()
     L0Test::PrintTotals(std::cerr, "PackageManager l0test", tr.failures);
     return L0Test::ResultToExitCode(tr);
 }
-

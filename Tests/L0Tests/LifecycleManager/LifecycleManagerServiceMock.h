@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <vector>
 
 #include <core/core.h>
 #include <plugins/plugins.h>
@@ -85,7 +86,7 @@ public:
         const uint32_t /*userId*/, const uint32_t /*groupId*/,
         IValueIterator* const& /*ports*/, IStringIterator* const& /*paths*/,
         IStringIterator* const& /*debugSettings*/,
-        const WPEFramework::Exchange::RuntimeConfig& /*runtimeConfigObject*/) override { return WPEFramework::Core::ERROR_NONE; }
+        const std::string& /*runtimeConfigPayload*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Hibernate(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Wake(const string& /*appInstanceId*/, RuntimeState /*runtimeState*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Suspend(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
@@ -471,6 +472,7 @@ public:
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState newState,
         const std::string& navigationIntent) override
     {
+        transitions.emplace_back(oldState, newState);
         onStateChangedCount++;
         lastAppId = appId;
         lastAppInstanceId = appInstanceId;
@@ -486,6 +488,8 @@ public:
     WPEFramework::Exchange::ILifecycleManager::LifecycleState lastOldState {};
     WPEFramework::Exchange::ILifecycleManager::LifecycleState lastNewState {};
     std::string lastNavigationIntent;
+    std::vector<std::pair<WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+                          WPEFramework::Exchange::ILifecycleManager::LifecycleState>> transitions;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -552,7 +556,7 @@ public:
     WPEFramework::Core::hresult IsAppLoaded(const std::string&, bool&) const override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult SpawnApp(const std::string&, const std::string&,
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
-        const WPEFramework::Exchange::RuntimeConfig&,
+        const std::string&,
         const std::string&, std::string&, std::string&, bool&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult SetTargetAppState(const std::string&,
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState,

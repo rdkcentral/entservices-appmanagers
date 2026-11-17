@@ -80,6 +80,11 @@ extern uint32_t Test_AIConfig_ResourceManagerClientDisabledByDefault();
 extern uint32_t Test_AIConfig_SvpDisabledByDefault();
 extern uint32_t Test_AIConfig_IPv6DisabledByDefault();
 extern uint32_t Test_AIConfig_PrintAIConfigurationDoesNotCrash();
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+extern uint32_t Test_AIConfig_VendorMounts();
+extern uint32_t Test_AIConfig_InvalidVendorMounts();
+extern uint32_t Test_DobbySpecGenerator_VendorMounts();
+#endif
 extern uint32_t Test_DobbyEventListener_ConstructionAndDestruction();
 extern uint32_t Test_DobbyEventListener_InitializeWithNullOCIPlugin();
 extern uint32_t Test_DobbyEventListener_DeinitializeWithoutInitialize();
@@ -184,6 +189,9 @@ extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConf
 extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission();
 extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints();
 extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeEnabled();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeDisabled();
 
 // ── ralf/RalfPackageBuilder tests ─────────────────────────────────────────────
 extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
@@ -274,13 +282,22 @@ extern uint32_t Test_DobbySpecGenerator_GenerateWithEmptyWesterosSocket();
 extern uint32_t Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts();
 extern uint32_t Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp();
-extern uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig();
+extern uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfiguration();
+extern uint32_t Test_DobbySpecGenerator_GenerateInjectsWebInspectorEnvWhenDebuggerEnabled();
+extern uint32_t Test_DobbySpecGenerator_GenerateSkipsWebInspectorEnvWhenDebuggerDisabled();
 extern uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities();
 extern uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString();
 extern uint32_t Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog();
 extern uint32_t Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive();
 extern uint32_t Test_DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive();
+extern uint32_t Test_RuntimeConfigurationDecoder_FullValidPayload();
+extern uint32_t Test_RuntimeConfigurationDecoder_OptionalDefaults();
+extern uint32_t Test_RuntimeConfigurationDecoder_RejectsMalformedAndNonObjectJson();
+extern uint32_t Test_RuntimeConfigurationDecoder_RejectsWrongScalarTypes();
+extern uint32_t Test_RuntimeConfigurationDecoder_RejectsWrongArrayTypes();
+extern uint32_t Test_RuntimeConfigurationDecoder_RequiresCommandAndUserId();
+extern uint32_t Test_RuntimeConfigurationDecoder_ToleratesUnknownProperties();
 #ifdef ENABLE_RIALTO
 extern uint32_t Test_DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive();
 extern uint32_t Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive();
@@ -374,6 +391,11 @@ int main()
         { "AIConfig_SvpDisabledByDefault",                                           Test_AIConfig_SvpDisabledByDefault },
         { "AIConfig_IPv6DisabledByDefault",                                          Test_AIConfig_IPv6DisabledByDefault },
         { "AIConfig_PrintAIConfigurationDoesNotCrash",                               Test_AIConfig_PrintAIConfigurationDoesNotCrash },
+    #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+        { "AIConfig_VendorMounts",                                                  Test_AIConfig_VendorMounts },
+        { "AIConfig_InvalidVendorMounts",                                           Test_AIConfig_InvalidVendorMounts },
+        { "DobbySpecGenerator_VendorMounts",                                         Test_DobbySpecGenerator_VendorMounts },
+    #endif
         { "DobbyEventListener_ConstructionAndDestruction",                           Test_DobbyEventListener_ConstructionAndDestruction },
         { "DobbyEventListener_InitializeWithNullOCIPlugin",                          Test_DobbyEventListener_InitializeWithNullOCIPlugin },
         { "DobbyEventListener_DeinitializeWithoutInitialize",                        Test_DobbyEventListener_DeinitializeWithoutInitialize },
@@ -436,13 +458,22 @@ int main()
         { "DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack",                     Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack },
         { "DobbySpecGenerator_GenerateWithNonEmptyAppPorts",                         Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts },
         { "DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp",                Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp },
-        { "DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig",              Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig },
+        { "DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfiguration",       Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfiguration },
+        { "DobbySpecGenerator_GenerateInjectsWebInspectorEnvWhenDebuggerEnabled",    Test_DobbySpecGenerator_GenerateInjectsWebInspectorEnvWhenDebuggerEnabled },
+        { "DobbySpecGenerator_GenerateSkipsWebInspectorEnvWhenDebuggerDisabled",     Test_DobbySpecGenerator_GenerateSkipsWebInspectorEnvWhenDebuggerDisabled },
         { "DobbySpecGenerator_GenerateThunderPluginFromCapabilities",                Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities },
         { "DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue",            Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue },
         { "DobbySpecGenerator_GenerateWithEmptyCapabilitiesString",                  Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString },
         { "DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog",           Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog },
         { "DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive",                Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive },
         { "DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive",                 Test_DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive },
+        { "RuntimeConfigurationDecoder_FullValidPayload",                            Test_RuntimeConfigurationDecoder_FullValidPayload },
+        { "RuntimeConfigurationDecoder_OptionalDefaults",                            Test_RuntimeConfigurationDecoder_OptionalDefaults },
+        { "RuntimeConfigurationDecoder_RejectsMalformedAndNonObjectJson",             Test_RuntimeConfigurationDecoder_RejectsMalformedAndNonObjectJson },
+        { "RuntimeConfigurationDecoder_RejectsWrongScalarTypes",                     Test_RuntimeConfigurationDecoder_RejectsWrongScalarTypes },
+        { "RuntimeConfigurationDecoder_RejectsWrongArrayTypes",                      Test_RuntimeConfigurationDecoder_RejectsWrongArrayTypes },
+        { "RuntimeConfigurationDecoder_RequiresCommandAndUserId",                    Test_RuntimeConfigurationDecoder_RequiresCommandAndUserId },
+        { "RuntimeConfigurationDecoder_ToleratesUnknownProperties",                  Test_RuntimeConfigurationDecoder_ToleratesUnknownProperties },
 #ifdef ENABLE_RIALTO
         { "DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive",              Test_DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive },
         { "DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive",                 Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive },
@@ -520,6 +551,9 @@ int main()
         { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission },
         { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints },
         { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeEnabled", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeEnabled },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeDisabled", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeDisabled },
 
         // ── ralf/RalfPackageBuilder tests ────────────────────────────────────
         { "RalfPackageBuilder_ConstructionAndDestruction",                           Test_RalfPackageBuilder_ConstructionAndDestruction },

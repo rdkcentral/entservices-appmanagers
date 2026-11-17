@@ -11,12 +11,24 @@ LifecycleManager is the central state machine for application lifecycle on RDK-b
 ## Requirements
 - Maintain a per-app state machine with valid transition enforcement
 - Accept spawn, state-change, unload, and kill requests from AppManager
-- Forward container operations (run, suspend, resume, hibernate, wake, terminate) to RuntimeManager
+- Keep the runtime configuration as a flat opaque JSON string; before `Run`, set `dialId` and upsert `FIREBOLT_ENDPOINT` and `TARGET_STATE` in the `envVariables` array while preserving unknown properties
+- Forward the enriched payload and container operations (run, suspend, resume, hibernate, wake, terminate) to RuntimeManager
 - Coordinate display creation and focus management with RDKWindowManager
 - Emit state change notifications to all registered `ILifecycleManagerState::INotification` listeners
 - Support `GetLoadedApps`, `IsAppLoaded`, `KillApp`, `SendIntentToActiveApp`, `AppReady`, and `StateChangeComplete` operations
 - Reject invalid state transitions with a clear error response
 - Hibernation support is conditional on CRIU availability in Dobby
+
+### Requirement: Lifecycle transition notifications include the request navigation intent
+When a lifecycle request supplies a navigation intent, LifecycleManager SHALL include that intent in every `onAppLifecycleStateChanged` notification emitted for transitions caused by that request, regardless of the destination state.
+
+#### Scenario: Preload transitions retain the launch intent
+- **WHEN** an app is spawned with a navigation intent and a target state of `PAUSED`
+- **THEN** each `onAppLifecycleStateChanged` notification for the resulting transitions, including `UNLOADED` to `LOADING`, `LOADING` to `INITIALIZING`, and `INITIALIZING` to `PAUSED`, contains the supplied navigation intent
+
+#### Scenario: Other target states retain the request intent
+- **WHEN** a lifecycle state-change request supplies a navigation intent and causes one or more state transitions
+- **THEN** every `onAppLifecycleStateChanged` notification for those transitions contains the supplied navigation intent
 
 ## Architecture / Design
 
@@ -52,7 +64,7 @@ UNLOADED (0)
 ### Public APIs (JSON-RPC)
 | Method | Description |
 |--------|-------------|
-| `SpawnApp(appId, intent, targetState, runtimeConfig, launchArgs, ...)` | Initiate app launch |
+| `SpawnApp(appId, intent, targetState, runtimeConfigPayload, launchArgs, ...)` | Initiate launch with an opaque JSON payload |
 | `SetTargetAppState(appInstanceId, targetState, intent)` | Request state transition |
 | `UnloadApp(appInstanceId, ...)` | Request app termination |
 | `KillApp(appInstanceId, ...)` | Force-kill app |
@@ -74,7 +86,8 @@ AppManager::LaunchApp()
 LifecycleManager::SpawnApp()
     ├→ Create ApplicationContext
     ├→ Transition: UNLOADED → LOADING
-    ├→ RuntimeManagerHandler → RuntimeManager::Run()
+    ├→ Set dialId; upsert FIREBOLT_ENDPOINT and TARGET_STATE env entries
+    ├→ RuntimeManagerHandler → RuntimeManager::Run(opaque JSON payload)
     │   └→ Dobby container starts
     ├→ Notify: LOADING → INITIALIZING
     └→ Notify registered listeners of state changes

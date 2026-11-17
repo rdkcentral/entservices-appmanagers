@@ -22,7 +22,7 @@
 #include <json/json.h>
 #include "RalfConstants.h"
 #include "../ApplicationConfiguration.h"
-#include <interfaces/IRuntimeManager.h>
+#include "../RuntimeConfiguration.h"
 namespace ralf
 {
     class RalfOCIConfigGenerator
@@ -36,7 +36,7 @@ namespace ralf
          * @param runtimeConfigObject The runtime configuration.
          * @return true if the OCI config was generated successfully, false otherwise.
          */
-        bool generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject);
+        bool generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject);
 
     private:
         /**
@@ -93,7 +93,7 @@ namespace ralf
          * @param config The application configuration.
          * @return true if the configuration options were applied successfully, false otherwise.
          */
-        bool applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &config);
+        bool applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &config);
 
         /**
          * Applies the configuration from the package config to the OCI config JSON.
@@ -101,7 +101,7 @@ namespace ralf
          * @param manifestRootNode The manifest root node.
          * @return true if the configuration was applied successfully, false otherwise.
          */
-        bool applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
+        bool applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject);
 
         /**
          * Add device node entries from graphics config to OCI config.
@@ -121,13 +121,12 @@ namespace ralf
         bool addAppStorageToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath);
 
         /**
-         * Reads the environment variables JSON array string from WPEFramework::Exchange::RuntimeConfig.envVariables and pushes them to OCI config.
-         * We are specifically looking to update the FIREBOLT_ENDPOINT environment variable here.
+         * Reads the environment variables and pushes FIREBOLT_ENDPOINT to OCI config.
          * @param ociConfigRootNode The root node of the OCI config JSON.
-         * @param envVar The serialized JSON array string of environment variables (e.g. "[\"KEY=VALUE\", ...]") as provided by RuntimeConfig.envVariables.
+         * @param envVars Environment variables in KEY=VALUE form.
          * @return true if the environment variable was added successfully, false otherwise.
          */
-        bool addFireboltEndPointToConfig(Json::Value &ociConfigRootNode, const std::string &envVar);
+        bool addFireboltEndPointToConfig(Json::Value &ociConfigRootNode, const std::vector<std::string> &envVars);
 
         /**
          * Adds configuration overrides from the Ralf package config to the OCI config JSON.
@@ -196,8 +195,8 @@ namespace ralf
          * @param envVariables The environment variables to be added based on permissions.
          * @return false if any permission could not be applied, true otherwise.
          */
-        bool applyPermissionsToOCIConfig(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode,
-                                         const std::string& envVariables);
+        bool applyPermissionsToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &manifestRootNode,
+                                         const std::vector<std::string> &envVariables);
 
         /**
          * Adds permission-based environment variables to the OCI config JSON.
@@ -206,8 +205,8 @@ namespace ralf
          * @param envVariables The environment variables to be added based on permissions.
          * @return false if any environment variable could not be added, true otherwise.
          */
-        bool addPermissionBasedEnvironmentVariables(Json::Value& ociConfigRootNode,
-                                    const Json::Value& manifestRootNode, const std::string& envVariables);
+        bool addPermissionBasedEnvironmentVariables(Json::Value &ociConfigRootNode,
+                                                    const Json::Value &manifestRootNode, const std::vector<std::string> &envVariables);
 
         /**
          * Updates the OCI config JSON at rdkPlugins.logging.data.fileOptions.path to point to the
@@ -250,5 +249,14 @@ namespace ralf
          * The OCI config file path to be generated.
          */
         const std::string &mConfigFilePath;
+#ifdef ALLOW_DEV_MOUNT_SUPPORT
+        /**
+         * Applies development mount support by adding the specified mount points from the configuration to the OCI config.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param manifestRootNode The manifest root node containing the mount configuration.
+         * @return true if any development mounts were applied, false otherwise.
+         */
+        bool applyDevMountSupport(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
+#endif // ALLOW_DEV_MOUNT_SUPPORT
     };
 } // namespace ralf

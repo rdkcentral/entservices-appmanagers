@@ -18,6 +18,7 @@
 **/
 
 #include "StateTransitionHandler.h"
+#include "RequestHandler.h"
 #include "StateHandler.h"
 #include <cstdlib>
 #include <thread>
@@ -43,19 +44,36 @@ namespace WPEFramework
         namespace {
             void terminateStateTransitionHandlerAtExit()
             {
-                StateTransitionHandler::getInstance()->terminate();
+                // Order matters: cleanupSingleton() below joins the worker thread before
+                // deleting, and that thread reaches RequestHandler via State.cpp. Stopping
+                // it first means RequestHandler cannot be deleted out from under it.
+                RequestHandler::getInstance()->terminate();
+                RequestHandler::cleanupSingleton();
+                StateTransitionHandler::cleanupSingleton();
             }
         }
 
         StateTransitionHandler* StateTransitionHandler::mInstance = nullptr;
+        static std::mutex gStateTransitionHandlerInstanceMutex;
 
         StateTransitionHandler* StateTransitionHandler::getInstance()
 	{
+            std::lock_guard<std::mutex> lock(gStateTransitionHandlerInstanceMutex);
             if (nullptr == mInstance)
             {
                 mInstance = new StateTransitionHandler();
             }
             return mInstance;
+	}
+
+        void StateTransitionHandler::cleanupSingleton()
+	{
+            std::lock_guard<std::mutex> lock(gStateTransitionHandlerInstanceMutex);
+            if (nullptr != mInstance)
+            {
+                delete mInstance;
+                mInstance = nullptr;
+            }
 	}
 
         StateTransitionHandler::StateTransitionHandler()
@@ -68,6 +86,7 @@ namespace WPEFramework
 
         bool StateTransitionHandler::initialize()
 	{
+            std::lock_guard<std::mutex> lock(gStateTransitionHandlerInstanceMutex);
             {
                 std::lock_guard<std::mutex> lock(gRequestMutex);
                 if (true == sInitialized.load())
@@ -84,7 +103,6 @@ namespace WPEFramework
                 }
 
             }
-
             StateHandler::initialize();
             std::atexit(terminateStateTransitionHandlerAtExit);
             try

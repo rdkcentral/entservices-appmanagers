@@ -204,19 +204,8 @@ The following CMake cache variables are available:
 |---|---:|---|
 | `PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT` | `60` | Seconds an app may remain PAUSED |
 | `PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT` | `15` | Seconds before evaluating a SUSPENDED app |
-| `PLUGIN_APP_MANAGER_HIBERNATION_STORAGE_PATH` | `/media/apps/memcr` | Filesystem path used to check available hibernation flash space |
-
-They are emitted into the generated AppManager configuration as:
-
-```json
-{
-  "pausedToSuspendedTimeout": 60,
-  "suspendedToHibernatedTimeout": 15,
-  "hibernationStoragePath": "/media/apps/memcr"
-}
-```
-
-Both modern `AppManager.conf.in` and legacy `AppManager.config` generation paths contain these values.
+The flash-space check and RuntimeManager hibernate destination both use
+`apps.hibernate.flashStoragePath` from `/etc/rdk/rdkappmanagers.json`.
 
 ## Files Changed
 
@@ -271,7 +260,8 @@ Focused tests should cover:
 ## Known Limitations
 
 - The ResourceMonitor API currently has no request correlation ID. AppManager relies on the contract that same-app reconciliation requests do not overlap.
-- Application support for PAUSED, SUSPENDED, and HIBERNATED is inferred from LifecycleManager request/confirmation behavior. Explicit capability metadata is not currently available through AppManager's package data.
-- Hibernation support is read from the AppManager property `APPLICATION_CAN_RUN_IN_HIBERNATE_MODE`; the legacy `supportsHibernation` property is accepted as a fallback. If neither property is present, the app is not hibernation-capable.
-- Flash requirement is currently estimated from `RuntimeConfig.dataImageSize`, and free space is checked with `statvfs` on `hibernationStoragePath`.
+- Application support for PAUSED and SUSPENDED is inferred from LifecycleManager request/confirmation behavior; hibernation eligibility is determined separately from package capability metadata.
+- Hibernation support is determined from the package `configMetadata.capabilities` token `hibernate-mode` (case-insensitive, exact token match; optional `=...` parameters are allowed). If capability metadata is absent, AppManager falls back to the `APPLICATION_CAN_RUN_IN_HIBERNATE_MODE` property and then the legacy `supportsHibernation` property. A present capability field without `hibernate-mode` is authoritative and disables hibernation for that app.
+- Flash requirement is currently estimated from `RuntimeConfig.dataImageSize`, and free space is checked with `statvfs` on the same `apps.hibernate.flashStoragePath` destination RuntimeManager passes to OCI.
 - Unit tests for the newly added flows still need to be implemented.
+

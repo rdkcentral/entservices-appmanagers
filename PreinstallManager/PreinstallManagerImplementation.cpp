@@ -220,6 +220,10 @@ namespace WPEFramework
         std::string base2 = (pos2 == std::string::npos) ? v2 : v2.substr(0, pos2);
 
         auto parseVersion = [](const std::string& version, int& major, int& minor, int& patch, int& build) -> bool {
+            if (version.empty() || ('.' == version.back()))
+            {
+                return false;
+            }
             std::istringstream versionStream(version);
             std::string token;
             int components[4] = {0, 0, 0, 0};
@@ -318,7 +322,7 @@ namespace WPEFramework
             PackageInfo packageInfo;
             packageInfo.fileLocator = filepath;
             LOGDBG("Found package folder: %s", filepath.c_str());
-            if (packageInstaller->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.configMetadata) == Core::ERROR_NONE)
+            if (packageInstaller->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.runtimeConfigPayload) == Core::ERROR_NONE)
             {
                 LOGINFO("Found package: %s, version: %s", packageInfo.packageId.c_str(), packageInfo.version.c_str());
             }
@@ -419,15 +423,29 @@ namespace WPEFramework
 
         releasePackageManagerObject(packageInstaller);
 
-        mAdminLock.Lock();
-        mPreinstallState = State::COMPLETED;
-        mAdminLock.Unlock();
-
         if (installError)
         {
             LOGWARN("Preinstall completed with failures");
         }
+        /*
+         * Ordering of the completion event vs. the COMPLETED state (fixes "pure virtual method called"
+         * seen in L0 and the stale-state race reported in review):
+         *
+         * 1. Queue the completion job BEFORE publishing COMPLETED. Job::Create() takes a reference on
+         *    this object. Once COMPLETED is visible, the owner (or a test) may Release() the object; if
+         *    the job were created afterwards it could AddRef an object whose destructor is already
+         *    running, and the worker pool would then call into a partially destroyed object.
+         * 2. Hold mAdminLock across queuing AND publishing. Dispatch() takes the same lock before it
+         *    notifies listeners, so the job cannot deliver OnPreinstallationComplete until COMPLETED is
+         *    set. Listeners therefore never observe IN_PROGRESS after being told preinstall finished,
+         *    and an immediate StartPreinstall() from the callback is not rejected as "still running".
+         *    dispatchEvent() only submits to the worker pool and does not take mAdminLock, so no
+         *    self-deadlock is possible here.
+         */
+        mAdminLock.Lock();
         sendOnPreinstallationCompleteEvent();
+        mPreinstallState = State::COMPLETED;
+        mAdminLock.Unlock();
     }
 
     /*
@@ -586,6 +604,9 @@ namespace WPEFramework
 
         releasePackageManagerObject(packageInstaller);
 
+        mAdminLock.Lock();
+        mPreinstallState = State::IN_PROGRESS;
+        mAdminLock.Unlock();
         try
         {
             mInstallThread = std::thread(&PreinstallManagerImplementation::installPackages, this, std::move(preinstallPackages));

@@ -111,6 +111,14 @@ public:
     {
         impl.Dispatch(event, params);
     }
+
+    static void queueEvent(
+        LifecycleManagerImplementation& impl,
+        EventNames event,
+        const Core::JSON::VariantContainer& params)
+    {
+        impl.dispatchEvent(event, params);
+    }
 };
 
 /**
@@ -169,6 +177,7 @@ public:
     int spawnCallCount = 0;
     std::string killedAppInstanceId;
     std::string spawnedAppId;
+    std::string spawnedRuntimeConfigPayload;
     Exchange::ILifecycleManager::LifecycleState spawnedTargetState =
         Exchange::ILifecycleManager::LifecycleState::UNLOADED;
 
@@ -187,7 +196,7 @@ public:
     Core::hresult SpawnApp(const std::string& appId,
                            const std::string& launchIntent,
                            const Exchange::ILifecycleManager::LifecycleState targetLifecycleState,
-                           const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject,
+                           const std::string& runtimeConfigPayload,
                            const std::string& launchArgs,
                            std::string& appInstanceId,
                            std::string& errorReason,
@@ -195,12 +204,13 @@ public:
     {
         ++spawnCallCount;
         spawnedAppId = appId;
+        spawnedRuntimeConfigPayload = runtimeConfigPayload;
         spawnedTargetState = targetLifecycleState;
         appInstanceId = "respawned-instance";
         errorReason.clear();
         success = true;
         static_cast<void>(launchIntent);
-        static_cast<void>(runtimeConfigObject);
+        static_cast<void>(runtimeConfigPayload);
         static_cast<void>(launchArgs);
         return Core::ERROR_NONE;
     }
@@ -772,6 +782,8 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsLcmNotifications()
         LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED,
         params);
 
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "Queued APPSTATECHANGED jobs finish before assertions");
     L0Test::ExpectTrue(tr, notif1->onAppStateChangedCount.load() >= 1u,
         "First notification received OnAppStateChanged callback");
     L0Test::ExpectTrue(tr, notif2->onAppStateChangedCount.load() >= 1u,
@@ -816,6 +828,8 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsStateNotifications()
         LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED,
         params);
 
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "Queued APPSTATECHANGED lifecycle jobs finish before assertions");
     L0Test::ExpectTrue(tr, sn1->onStateChangedCount.load() >= 1u,
         "First state notification received OnAppLifecycleStateChanged");
     L0Test::ExpectTrue(tr, sn2->onStateChangedCount.load() >= 1u,
@@ -826,6 +840,46 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsStateNotifications()
     sn1->Release();
     sn2->Release();
 
+    return tr.failures;
+}
+
+uint32_t Test_Impl_QueuedLifecycleEventsPreserveOrder()
+{
+    L0Test::TestResult tr;
+    ConcreteLifecycleManagerImpl impl;
+    auto* notification = new L0Test::FakeLcmStateNotification();
+    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
+
+    WPEFramework::Core::JSON::VariantContainer params;
+    params["appId"] = "com.test.order";
+    params["appInstanceId"] = "instance-order";
+    params["navigationIntent"] = "";
+    params["errorReason"] = "";
+
+    params["oldLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::INITIALIZING);
+    params["newLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::PAUSED);
+    LifecycleManagerImplementationTest::queueEvent(impl,
+        LifecycleManagerImplementationTest::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, params);
+
+    params["oldLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::PAUSED);
+    params["newLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::ACTIVE);
+    LifecycleManagerImplementationTest::queueEvent(impl,
+        LifecycleManagerImplementationTest::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, params);
+
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(), "Queued lifecycle dispatch completes");
+    L0Test::ExpectEqU32(tr, notification->onStateChangedCount.load(), 2U,
+        "Both lifecycle transitions are delivered");
+    if (2U == notification->transitions.size()) {
+        L0Test::ExpectTrue(tr,
+            notification->transitions[0].first == WPEFramework::Exchange::ILifecycleManager::INITIALIZING &&
+            notification->transitions[0].second == WPEFramework::Exchange::ILifecycleManager::PAUSED &&
+            notification->transitions[1].first == WPEFramework::Exchange::ILifecycleManager::PAUSED &&
+            notification->transitions[1].second == WPEFramework::Exchange::ILifecycleManager::ACTIVE,
+            "INITIALIZING to PAUSED is delivered before PAUSED to ACTIVE");
+    }
+
+    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
+    notification->Release();
     return tr.failures;
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -854,6 +908,8 @@ uint32_t Test_Impl_DispatchOnFailureCallsLcmNotification()
         LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_ONFAILURE,
         params);
 
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "Queued ONFAILURE jobs finish before assertions");
     L0Test::ExpectTrue(tr, notif->onAppStateChangedCount.load() >= 1u,
         "OnAppStateChanged called on ONFAILURE dispatch");
 
@@ -1225,14 +1281,15 @@ uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
     std::string appId = "com.test.respawn";
     std::string launchIntent = "intent://respawn";
     std::string launchArgs = "--restart";
-    WPEFramework::Exchange::RuntimeConfig runtimeConfigObject;
+    const std::string runtimeConfigPayload =
+        R"({"envVariables":["EXISTING=value"],"logLevels":["DEBUG","INFO"],"vendor":{"preserve":true}})";
 
     ctx->setAppInstanceId(inst);
     ctx->setApplicationLaunchParams(appId,
                                     launchIntent,
                                     launchArgs,
                                     WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
-                                    runtimeConfigObject);
+                                    runtimeConfigPayload);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
     WPEFramework::Core::hresult result = impl.CloseApp(
@@ -1278,6 +1335,8 @@ uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
         "SpawnApp is triggered after the UNLOADED event");
     L0Test::ExpectTrue(tr, impl.spawnedAppId == appId,
         "respawn uses the original appId");
+    L0Test::ExpectEqStr(tr, impl.spawnedRuntimeConfigPayload, runtimeConfigPayload,
+        "respawn preserves the opaque runtime config payload");
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(impl.spawnedTargetState),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED),

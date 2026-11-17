@@ -1,17 +1,19 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <limits>
 #include <string>
 #include <thread>
+#include <sys/stat.h>
 
 #include "PackageManagerImplementation.h"
+#include "RuntimeConfigPayload.h"
 #include "ServiceMock.h"
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
 namespace {
 
-using WPEFramework::Core::ERROR_BAD_REQUEST;
 using WPEFramework::Core::ERROR_GENERAL;
 using WPEFramework::Core::ERROR_INVALID_PARAMETER;
 using WPEFramework::Core::ERROR_INVALID_SIGNATURE;
@@ -248,6 +250,54 @@ uint32_t Test_PM_Impl_ListPackagesAndPackageStateForDummyData()
     return tr.failures;
 }
 
+uint32_t Test_PM_Impl_SystemApplicationClassification()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason =
+        WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    L0Test::ExpectEqU32(tr, fx.impl->Install("SystemApp", "1.0", nullptr, "/tmp/system-app.pkg", failReason),
+        ERROR_NONE, "System app installs");
+    WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
+    L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "ListPackages() succeeds");
+    if (nullptr != packages)
+    {
+        WPEFramework::Exchange::IPackageInstaller::Package package;
+        bool foundSystemApp = false;
+        while (packages->Next(package))
+        {
+            if ("SystemApp" == package.packageId)
+            {
+                foundSystemApp = true;
+                L0Test::ExpectEqStr(tr, package.packageType, "system",
+                    "libpackage SYSTEM appType is exposed as system package type");
+            }
+        }
+        L0Test::ExpectTrue(tr, foundSystemApp, "ListPackages() includes the SYSTEM app");
+        packages->Release();
+    }
+    else
+    {
+        L0Test::ExpectTrue(tr, false, "ListPackages() returns an iterator");
+    }
+
+    std::string runtimeConfig;
+    L0Test::ExpectEqU32(tr, fx.impl->Config("SystemApp", "1.0", runtimeConfig), ERROR_NONE,
+        "Config() succeeds for a system app");
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    std::string appType;
+    bool present = false;
+    L0Test::ExpectTrue(tr, payload.Parse(runtimeConfig, error)
+        && payload.GetString("appType", appType, present, error)
+        && present && "SYSTEM" == appType,
+        "libpackage SYSTEM appType is emitted as SYSTEM in runtime config");
+
+    return tr.failures;
+}
+
 uint32_t Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator()
 {
     L0Test::TestResult tr;
@@ -255,17 +305,40 @@ uint32_t Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator()
 
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
-    WPEFramework::Exchange::RuntimeConfig config {};
+    std::string config;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Config("YouTube", "100.1.24", config),
                         ERROR_NONE,
                         "Config() for installed dummy package returns ERROR_NONE");
-    L0Test::ExpectEqStr(tr, config.appPath, "/opt/YouTube", "Config() returns expected appPath from dummy metadata");
-    L0Test::ExpectEqStr(tr, config.capabilities, "dial-app,wan-lan,thunder,fkps", "Config() returns expected runtime capabilities");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    bool present = false;
+    L0Test::ExpectTrue(tr, payload.Parse(config, error), "Config() returns a valid JSON runtime payload");
+
+    std::string value;
+    L0Test::ExpectTrue(tr,
+                       payload.GetString("appPath", value, present, error) && present && value == "/opt/YouTube",
+                       "Config() payload returns expected appPath from dummy metadata");
+    L0Test::ExpectTrue(tr,
+                       payload.GetString("capabilities", value, present, error) && present && value == "dial-app,wan-lan,thunder,fkps",
+                       "Config() payload returns expected runtime capabilities");
+
+    std::vector<std::string> values;
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("envVariables", values, present, error) && present && values.empty(),
+                       "Config() payload encodes envVariables as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("fkpsFiles", values, present, error) && present &&
+                           values == std::vector<std::string>({ "file1", "file2", "file3" }),
+                       "Config() payload encodes real fkpsFiles values as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("logLevels", values, present, error) && present && values.empty(),
+                       "Config() payload encodes logLevels as a JSON string array");
 
     std::string id;
     std::string version;
-    WPEFramework::Exchange::RuntimeConfig cfg {};
+    std::string cfg;
     L0Test::ExpectEqU32(tr,
                         fx.impl->GetConfigForPackage("", id, version, cfg),
                         ERROR_INVALID_SIGNATURE,
@@ -274,6 +347,487 @@ uint32_t Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator()
     return tr.failures;
 }
 
+uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload canonical;
+    canonical.SetString("appPath", "/opt/TestApp");
+    canonical.SetStringArray("envVariables", { "HOME=/home/private", "LANG=en_US.UTF-8" });
+    canonical.SetStringArray("fkpsFiles", { "/etc/test/one", "/etc/test/two" });
+    canonical.SetStringArray("logLevels", { "INFO", "WARN" });
+    canonical.SetUnsigned("maxUnsigned", std::numeric_limits<uint64_t>::max());
+
+    std::string serialized;
+    std::string error;
+    L0Test::ExpectTrue(tr,
+                       canonical.Serialize(serialized, error),
+                       "RuntimeConfigPayload serializes a canonical opaque runtime payload");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload decoded;
+    bool present = false;
+    std::vector<std::string> values;
+    L0Test::ExpectTrue(tr, decoded.Parse(serialized, error), "Canonical runtime payload parses successfully");
+    L0Test::ExpectTrue(tr,
+                       decoded.GetStringArray("envVariables", values, present, error) && present &&
+                           values == std::vector<std::string>({ "HOME=/home/private", "LANG=en_US.UTF-8" }),
+                       "Canonical payload preserves envVariables array values");
+    L0Test::ExpectTrue(tr,
+                       decoded.GetStringArray("fkpsFiles", values, present, error) && present &&
+                           values == std::vector<std::string>({ "/etc/test/one", "/etc/test/two" }),
+                       "Canonical payload preserves fkpsFiles array values");
+    L0Test::ExpectTrue(tr,
+                       decoded.GetStringArray("logLevels", values, present, error) && present &&
+                           values == std::vector<std::string>({ "INFO", "WARN" }),
+                       "Canonical payload preserves logLevels array values");
+    uint64_t unsignedValue = 0;
+    L0Test::ExpectTrue(tr,
+                       decoded.GetUnsigned("maxUnsigned", unsignedValue, present, error) && present &&
+                           unsignedValue == std::numeric_limits<uint64_t>::max(),
+                       "Unsigned payload values round trip through the full uint64 range");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload opaque;
+    L0Test::ExpectTrue(tr,
+                       opaque.Parse("{\"runtimePath\":\"/old/runtime\",\"vendorExtension\":{\"enabled\":true}}", error),
+                       "Opaque payload with an unknown property parses successfully");
+    opaque.SetString("runtimePath", "/new/runtime");
+    L0Test::ExpectTrue(tr, opaque.Serialize(serialized, error), "runtimePath mutation serializes successfully");
+
+    WPEFramework::Core::JSON::VariantContainer object;
+    L0Test::ExpectTrue(tr, object.FromString(serialized), "Mutated runtime payload remains valid JSON");
+    const WPEFramework::Core::JSON::VariantContainer vendor = object["vendorExtension"].Object();
+    L0Test::ExpectTrue(tr,
+                       object.HasLabel("vendorExtension") && vendor.HasLabel("enabled") && vendor["enabled"].Boolean(),
+                       "runtimePath mutation preserves unknown object properties");
+    L0Test::ExpectTrue(tr,
+                       object.HasLabel("runtimePath") && object["runtimePath"].String() == "/new/runtime",
+                       "runtimePath mutation updates only the requested property");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload environmentPayload;
+    L0Test::ExpectTrue(tr,
+                       environmentPayload.Parse("{\"envVariables\":[\"FIREBOLT_ENDPOINT=old1\",\"KEEP=value\",\"FIREBOLT_ENDPOINT=old2\"]}", error) &&
+                           environmentPayload.UpsertEnvironment("FIREBOLT_ENDPOINT=new", error) &&
+                           environmentPayload.GetStringArray("envVariables", values, present, error) && present &&
+                           values == std::vector<std::string>({ "FIREBOLT_ENDPOINT=new", "KEEP=value" }),
+                       "Environment upsert replaces duplicate definitions and preserves unrelated values");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload malformed;
+    L0Test::ExpectTrue(tr,
+                       !malformed.Parse("{\"envVariables\":[\"VALID\"]", error),
+                       "Malformed runtime payload serialization is rejected");
+    L0Test::ExpectTrue(tr, !malformed.Parse("[]", error), "Non-object runtime payload is rejected");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_RuntimeConfigPayloadBooleanTypes()
+{
+    L0Test::TestResult tr;
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+
+    // Test SetBoolean and GetBoolean with true value
+    payload.SetBoolean("enabled", true);
+    bool value = false;
+    bool present = false;
+    std::string error;
+    L0Test::ExpectTrue(tr,
+                       payload.GetBoolean("enabled", value, present, error) && present && value == true,
+                       "Boolean true value round-trips correctly");
+
+    // Test SetBoolean with false value
+    payload.SetBoolean("disabled", false);
+    L0Test::ExpectTrue(tr,
+                       payload.GetBoolean("disabled", value, present, error) && present && value == false,
+                       "Boolean false value round-trips correctly");
+
+    // Test GetBoolean on non-existent key
+    L0Test::ExpectTrue(tr,
+                       payload.GetBoolean("nonexistent", value, present, error) && !present,
+                       "GetBoolean returns present=false for non-existent key");
+
+    // Test GetBoolean with type mismatch (string instead of boolean)
+    payload.SetString("stringKey", "notBoolean");
+    L0Test::ExpectTrue(tr,
+                       !payload.GetBoolean("stringKey", value, present, error) && !error.empty(),
+                       "GetBoolean returns error for non-boolean field");
+
+    // Test GetBoolean with type mismatch (number instead of boolean)
+    payload.SetInteger("numberKey", 42);
+    L0Test::ExpectTrue(tr,
+                       !payload.GetBoolean("numberKey", value, present, error) && !error.empty(),
+                       "GetBoolean returns error for numeric field");
+
+    // Test serialization with boolean values
+    std::string serialized;
+    L0Test::ExpectTrue(tr,
+                       payload.Serialize(serialized, error),
+                       "Payload with boolean values serializes successfully");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload deserialized;
+    L0Test::ExpectTrue(tr,
+                       deserialized.Parse(serialized, error),
+                       "Serialized payload with booleans parses successfully");
+    L0Test::ExpectTrue(tr,
+                       deserialized.GetBoolean("enabled", value, present, error) && present && value == true,
+                       "Deserialized boolean true value is correct");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_RuntimeConfigPayloadIntegerTypes()
+{
+    L0Test::TestResult tr;
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    bool present = false;
+
+    // Test SetInteger and GetInteger with positive value
+    payload.SetInteger("positive", 12345);
+    int64_t intValue = 0;
+    L0Test::ExpectTrue(tr,
+                       payload.GetInteger("positive", intValue, present, error) && present && intValue == 12345,
+                       "Positive integer value round-trips correctly");
+
+    // Test SetInteger with negative value
+    payload.SetInteger("negative", -9876);
+    L0Test::ExpectTrue(tr,
+                       payload.GetInteger("negative", intValue, present, error) && present && intValue == -9876,
+                       "Negative integer value round-trips correctly");
+
+    // Test SetInteger with zero
+    payload.SetInteger("zero", 0);
+    L0Test::ExpectTrue(tr,
+                       payload.GetInteger("zero", intValue, present, error) && present && intValue == 0,
+                       "Zero integer value round-trips correctly");
+
+    // Test SetInteger with min and max values
+    payload.SetInteger("minInt", std::numeric_limits<int64_t>::min() + 1);
+    payload.SetInteger("maxInt", std::numeric_limits<int64_t>::max());
+    L0Test::ExpectTrue(tr,
+                       payload.GetInteger("minInt", intValue, present, error) && present && intValue == std::numeric_limits<int64_t>::min() + 1,
+                       "Minimum int64_t value round-trips correctly");
+    L0Test::ExpectTrue(tr,
+                       payload.GetInteger("maxInt", intValue, present, error) && present && intValue == std::numeric_limits<int64_t>::max(),
+                       "Maximum int64_t value round-trips correctly");
+
+    // Test GetInteger on non-existent key
+    L0Test::ExpectTrue(tr,
+                       payload.GetInteger("nonexistent", intValue, present, error) && !present,
+                       "GetInteger returns present=false for non-existent key");
+
+    // Test GetInteger with type mismatch (string)
+    payload.SetString("stringKey", "notAnInteger");
+    L0Test::ExpectTrue(tr,
+                       !payload.GetInteger("stringKey", intValue, present, error) && !error.empty(),
+                       "GetInteger returns error for string field");
+
+    // Test GetInteger with type mismatch (boolean)
+    payload.SetBoolean("boolKey", true);
+    L0Test::ExpectTrue(tr,
+                       !payload.GetInteger("boolKey", intValue, present, error) && !error.empty(),
+                       "GetInteger returns error for boolean field");
+
+    // Test serialization with integer values
+    std::string serialized;
+    L0Test::ExpectTrue(tr,
+                       payload.Serialize(serialized, error),
+                       "Payload with integer values serializes successfully");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload deserialized;
+    L0Test::ExpectTrue(tr,
+                       deserialized.Parse(serialized, error),
+                       "Serialized payload with integers parses successfully");
+    L0Test::ExpectTrue(tr,
+                       deserialized.GetInteger("negative", intValue, present, error) && present && intValue == -9876,
+                       "Deserialized negative integer is correct");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_RuntimeConfigPayloadUnsignedEdgeCases()
+{
+    L0Test::TestResult tr;
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    bool present = false;
+
+    // Test SetUnsigned with zero
+    payload.SetUnsigned("zero", 0);
+    uint64_t unsignedValue = 1;
+    L0Test::ExpectTrue(tr,
+                       payload.GetUnsigned("zero", unsignedValue, present, error) && present && unsignedValue == 0,
+                       "Unsigned zero value round-trips correctly");
+
+    // Test SetUnsigned with very large value
+    const uint64_t largeValue = std::numeric_limits<uint64_t>::max() / 2;
+    payload.SetUnsigned("large", largeValue);
+    L0Test::ExpectTrue(tr,
+                       payload.GetUnsigned("large", unsignedValue, present, error) && present && unsignedValue == largeValue,
+                       "Large unsigned value round-trips correctly");
+
+    // Test GetUnsigned rejects negative numbers
+    payload.SetInteger("negative", -1);
+    L0Test::ExpectTrue(tr,
+                       !payload.GetUnsigned("negative", unsignedValue, present, error) && !error.empty(),
+                       "GetUnsigned rejects negative integer values");
+
+    // Test GetUnsigned with type mismatch
+    payload.SetString("stringKey", "notUnsigned");
+    L0Test::ExpectTrue(tr,
+                       !payload.GetUnsigned("stringKey", unsignedValue, present, error) && !error.empty(),
+                       "GetUnsigned returns error for string field");
+
+    // Test GetUnsigned on non-existent key
+    L0Test::ExpectTrue(tr,
+                       payload.GetUnsigned("nonexistent", unsignedValue, present, error) && !present,
+                       "GetUnsigned returns present=false for non-existent key");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_RuntimeConfigPayloadAppendString()
+{
+    L0Test::TestResult tr;
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    bool present = false;
+
+    // Test AppendString to non-existent array
+    L0Test::ExpectTrue(tr,
+                       payload.AppendString("newArray", "firstValue", error) && error.empty(),
+                       "AppendString creates new array with first value");
+
+    std::vector<std::string> values;
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("newArray", values, present, error) && present && values.size() == 1 && values[0] == "firstValue",
+                       "AppendString creates single-element array correctly");
+
+    // Test AppendString to existing array
+    L0Test::ExpectTrue(tr,
+                       payload.AppendString("newArray", "secondValue", error) && error.empty(),
+                       "AppendString appends to existing array");
+
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("newArray", values, present, error) && present && values.size() == 2 &&
+                           values[0] == "firstValue" && values[1] == "secondValue",
+                       "AppendString preserves existing array elements");
+
+    // Test AppendString with empty string
+    L0Test::ExpectTrue(tr,
+                       payload.AppendString("newArray", "", error) && error.empty(),
+                       "AppendString handles empty strings");
+
+    // Test AppendString to non-array field (error case)
+    payload.SetString("stringField", "notAnArray");
+    L0Test::ExpectTrue(tr,
+                       !payload.AppendString("stringField", "value", error) && !error.empty(),
+                       "AppendString returns error for non-array field");
+
+    // Test AppendString with special characters
+    const std::string specialValue = "test/path:with@special#chars";
+    payload.SetStringArray("paths", {});
+    L0Test::ExpectTrue(tr,
+                       payload.AppendString("paths", specialValue, error) && error.empty(),
+                       "AppendString handles special characters");
+
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("paths", values, present, error) && present && values.size() == 1 && values[0] == specialValue,
+                       "AppendString preserves special characters in values");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_RuntimeConfigPayloadUpsertEnvironmentEdgeCases()
+{
+    L0Test::TestResult tr;
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    bool present = false;
+
+    // Test UpsertEnvironment with no equals sign
+    L0Test::ExpectTrue(tr,
+                       payload.UpsertEnvironment("NOVALUE", error) && error.empty(),
+                       "UpsertEnvironment handles variable without value");
+
+    std::vector<std::string> values;
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("envVariables", values, present, error) && present && values.size() == 1 && values[0] == "NOVALUE",
+                       "UpsertEnvironment creates envVariables array with no-value variable");
+
+    // Test UpsertEnvironment with equals at end
+    L0Test::ExpectTrue(tr,
+                       payload.UpsertEnvironment("EMPTYVAL=", error) && error.empty(),
+                       "UpsertEnvironment handles empty value");
+
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("envVariables", values, present, error) && present && values.size() == 2,
+                       "UpsertEnvironment appends empty-value variable");
+
+    // Test UpsertEnvironment replacing existing variable
+    L0Test::ExpectTrue(tr,
+                       payload.UpsertEnvironment("EMPTYVAL=newvalue", error) && error.empty(),
+                       "UpsertEnvironment replaces existing variable");
+
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("envVariables", values, present, error) && present && values.size() == 2,
+                       "UpsertEnvironment maintains array size after replacement");
+
+    bool foundReplacement = false;
+    for (const auto& v : values) {
+        if (v == "EMPTYVAL=newvalue") {
+            foundReplacement = true;
+        }
+        L0Test::ExpectTrue(tr, v != "EMPTYVAL=", "Old value is removed after upsert");
+    }
+    L0Test::ExpectTrue(tr, foundReplacement, "New value is present after upsert");
+
+    // Test UpsertEnvironment with multiple equals signs
+    L0Test::ExpectTrue(tr,
+                       payload.UpsertEnvironment("COMPLEX=value=with=equals", error) && error.empty(),
+                       "UpsertEnvironment handles values with multiple equals signs");
+
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("envVariables", values, present, error) && present,
+                       "UpsertEnvironment successfully stores complex values");
+
+    bool foundComplex = false;
+    for (const auto& v : values) {
+        if (v == "COMPLEX=value=with=equals") {
+            foundComplex = true;
+        }
+    }
+    L0Test::ExpectTrue(tr, foundComplex, "Complex value with multiple equals signs is preserved");
+
+    // Test UpsertEnvironment with non-array envVariables (error case)
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload badPayload;
+    badPayload.SetString("envVariables", "notAnArray");
+    L0Test::ExpectTrue(tr,
+                       !badPayload.UpsertEnvironment("TEST=value", error) && !error.empty(),
+                       "UpsertEnvironment returns error when envVariables is not an array");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_RuntimeConfigPayloadStringArrayValidation()
+{
+    L0Test::TestResult tr;
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    bool present = false;
+
+    // Test SetStringArray with empty array
+    payload.SetStringArray("empty", {});
+    std::vector<std::string> values;
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("empty", values, present, error) && present && values.empty(),
+                       "SetStringArray with empty array round-trips correctly");
+
+    // Test SetStringArray with single element
+    payload.SetStringArray("single", { "oneElement" });
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("single", values, present, error) && present && values.size() == 1 && values[0] == "oneElement",
+                       "SetStringArray with single element round-trips correctly");
+
+    // Test SetStringArray with many elements
+    const std::vector<std::string> manyValues = { "first", "second", "third", "fourth", "fifth" };
+    payload.SetStringArray("many", manyValues);
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("many", values, present, error) && present && values == manyValues,
+                       "SetStringArray with multiple elements round-trips correctly");
+
+    // Test GetStringArray with type mismatch
+    payload.SetString("stringField", "notArray");
+    L0Test::ExpectTrue(tr,
+                       !payload.GetStringArray("stringField", values, present, error) && !error.empty(),
+                       "GetStringArray returns error for string field");
+
+    payload.SetInteger("numberField", 42);
+    L0Test::ExpectTrue(tr,
+                       !payload.GetStringArray("numberField", values, present, error) && !error.empty(),
+                       "GetStringArray returns error for integer field");
+
+    // Test GetStringArray on non-existent key
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("nonexistent", values, present, error) && !present,
+                       "GetStringArray returns present=false for non-existent key");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_RuntimeConfigPayloadComplexScenarios()
+{
+    L0Test::TestResult tr;
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    bool present = false;
+
+    // Build a complex payload with mixed types
+    payload.SetString("appName", "TestApplication");
+    payload.SetBoolean("autoStart", true);
+    payload.SetInteger("priority", -10);
+    payload.SetUnsigned("memoryLimit", 536870912); // 512 MB
+    payload.SetStringArray("dependencies", { "serviceA", "serviceB", "serviceC" });
+
+    // Serialize and deserialize
+    std::string serialized;
+    L0Test::ExpectTrue(tr,
+                       payload.Serialize(serialized, error),
+                       "Complex payload with mixed types serializes successfully");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload restored;
+    L0Test::ExpectTrue(tr,
+                       restored.Parse(serialized, error),
+                       "Serialized complex payload parses successfully");
+
+    // Verify all fields are present and correct
+    std::string strValue;
+    L0Test::ExpectTrue(tr,
+                       restored.GetString("appName", strValue, present, error) && present && strValue == "TestApplication",
+                       "String field in complex payload is preserved");
+
+    bool boolValue = false;
+    L0Test::ExpectTrue(tr,
+                       restored.GetBoolean("autoStart", boolValue, present, error) && present && boolValue == true,
+                       "Boolean field in complex payload is preserved");
+
+    int64_t intValue = 0;
+    L0Test::ExpectTrue(tr,
+                       restored.GetInteger("priority", intValue, present, error) && present && intValue == -10,
+                       "Integer field in complex payload is preserved");
+
+    uint64_t unsignedValue = 0;
+    L0Test::ExpectTrue(tr,
+                       restored.GetUnsigned("memoryLimit", unsignedValue, present, error) && present && unsignedValue == 536870912,
+                       "Unsigned field in complex payload is preserved");
+
+    std::vector<std::string> arrayValue;
+    L0Test::ExpectTrue(tr,
+                       restored.GetStringArray("dependencies", arrayValue, present, error) && present &&
+                           arrayValue == std::vector<std::string>({ "serviceA", "serviceB", "serviceC" }),
+                       "Array field in complex payload is preserved");
+
+    // Modify one field and verify others remain unchanged
+    restored.SetString("appName", "ModifiedApplication");
+    std::string serialized2;
+    L0Test::ExpectTrue(tr,
+                       restored.Serialize(serialized2, error),
+                       "Modified complex payload serializes successfully");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload modified;
+    L0Test::ExpectTrue(tr,
+                       modified.Parse(serialized2, error),
+                       "Modified complex payload parses successfully");
+
+    L0Test::ExpectTrue(tr,
+                       modified.GetString("appName", strValue, present, error) && present && strValue == "ModifiedApplication",
+                       "Modified field has new value");
+
+    L0Test::ExpectTrue(tr,
+                       modified.GetUnsigned("memoryLimit", unsignedValue, present, error) && present && unsignedValue == 536870912,
+                       "Other fields remain unchanged after modification");
+
+    return tr.failures;
+}
 uint32_t Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload()
 {
     L0Test::TestResult tr;
@@ -469,7 +1023,7 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
 
     uint32_t lockId = 0;
     std::string unpackedPath;
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig {};
+    std::string runtimeConfig;
     WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     L0Test::ExpectEqU32(tr,
@@ -477,8 +1031,28 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
                         ERROR_NONE,
                         "Lock() for dummy package returns ERROR_NONE");
     L0Test::ExpectTrue(tr, lockId > 0, "Lock() returns non-zero lockId");
-    L0Test::ExpectEqStr(tr, runtimeConfig.capabilities, "dial-app,wan-lan,thunder,fkps", "Lock() returns expected runtime capabilities");
 
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload lockPayload;
+    std::string error;
+    bool present = false;
+    std::vector<std::string> values;
+    L0Test::ExpectTrue(tr, lockPayload.Parse(runtimeConfig, error), "Lock() returns a valid JSON runtime payload");
+    L0Test::ExpectTrue(tr,
+                       lockPayload.GetStringArray("envVariables", values, present, error) && present,
+                       "Lock() payload contains envVariables as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       lockPayload.GetStringArray("fkpsFiles", values, present, error) && present,
+                       "Lock() payload contains fkpsFiles as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       lockPayload.GetStringArray("logLevels", values, present, error) && present,
+                       "Lock() payload contains logLevels as a JSON string array");
+    std::string payloadUnpackedPath;
+    L0Test::ExpectTrue(tr,
+                       lockPayload.GetString("unpackedPath", payloadUnpackedPath, present, error) && present,
+                       "Lock() payload contains unpackedPath");
+    L0Test::ExpectEqStr(tr, payloadUnpackedPath, unpackedPath, "Lock() payload contains the returned unpackedPath");
+
+    const std::string lockRuntimeConfig = runtimeConfig;
     bool locked = false;
     std::string gatewayMetadataPath;
     L0Test::ExpectEqU32(tr,
@@ -486,6 +1060,10 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
                         ERROR_NONE,
                         "GetLockedInfo() returns ERROR_NONE for known package");
     L0Test::ExpectTrue(tr, locked, "GetLockedInfo() reports package as locked");
+    L0Test::ExpectEqStr(tr,
+                        runtimeConfig,
+                        lockRuntimeConfig,
+                        "GetLockedInfo() returns the opaque runtime payload created by Lock()");
 
     if (appMetadata != nullptr) {
         appMetadata->Release();
@@ -498,8 +1076,8 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
 
     L0Test::ExpectEqU32(tr,
                         fx.impl->Lock("UnknownApp", "0.0.1", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH, lockId, unpackedPath, runtimeConfig, appMetadata),
-                        ERROR_BAD_REQUEST,
-                        "Lock() for unknown package returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "Lock() for unknown package returns ERROR_INVALID_PARAMETER");
 
     return tr.failures;
 }
@@ -521,10 +1099,13 @@ uint32_t Test_PM_Impl_DownloadAndStorageInfoPaths()
 
     uint32_t quotaKB = 0;
     uint32_t usedKB = 0;
+    // The packages directory only exists on target devices, not in CI.
+    struct stat storageStat {};
+    const bool storagePathExists = (0 == ::stat("/media/apps/sky/packages", &storageStat));
     L0Test::ExpectEqU32(tr,
                         fx.impl->GetStorageInformation(quotaKB, usedKB),
-                        ERROR_NONE,
-                        "GetStorageInformation() returns ERROR_NONE");
+                        storagePathExists ? ERROR_NONE : ERROR_GENERAL,
+                        "GetStorageInformation() result matches storage path availability");
 
     return tr.failures;
 }
@@ -547,7 +1128,7 @@ uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths()
                         ERROR_INVALID_PARAMETER,
                         "Uninstall() for unknown app returns ERROR_INVALID_PARAMETER");
 
-    WPEFramework::Exchange::RuntimeConfig cfg {};
+    std::string cfg;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Config("NoSuchApp", "0", cfg),
                         ERROR_INVALID_PARAMETER,
@@ -569,14 +1150,14 @@ uint32_t Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths()
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
     std::string unpackedPath;
-    WPEFramework::Exchange::RuntimeConfig cfg {};
+    std::string cfg;
     std::string gatewayMetadataPath;
     bool locked = false;
 
     L0Test::ExpectEqU32(tr,
                         fx.impl->GetLockedInfo("UnknownApp", "0", unpackedPath, cfg, gatewayMetadataPath, locked),
-                        ERROR_BAD_REQUEST,
-                        "GetLockedInfo() for unknown package returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "GetLockedInfo() for unknown package returns ERROR_INVALID_PARAMETER");
 
     L0Test::ExpectEqU32(tr,
                         fx.impl->Unlock("YouTube", "100.1.24"),
@@ -628,17 +1209,32 @@ uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath()
 
     std::string id;
     std::string version;
-    WPEFramework::Exchange::RuntimeConfig cfg {};
+    std::string cfg;
 
     L0Test::ExpectEqU32(tr,
                         fx.impl->GetConfigForPackage("/tmp/fake.pkg", id, version, cfg),
                         ERROR_NONE,
                         "GetConfigForPackage() with non-empty locator returns ERROR_NONE in UNIT_TEST path");
 
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    bool present = false;
+    std::vector<std::string> values;
+    L0Test::ExpectTrue(tr, payload.Parse(cfg, error), "GetConfigForPackage() returns a valid JSON runtime payload");
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("envVariables", values, present, error) && present,
+                       "GetConfigForPackage() payload contains envVariables as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("fkpsFiles", values, present, error) && present,
+                       "GetConfigForPackage() payload contains fkpsFiles as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("logLevels", values, present, error) && present,
+                       "GetConfigForPackage() payload contains logLevels as a JSON string array");
+
     return tr.failures;
 }
 
-uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock()
+uint32_t Test_PM_Impl_InstallDifferentVersionWhileLocked()
 {
     L0Test::TestResult tr;
     ImplFixture fx;
@@ -646,14 +1242,14 @@ uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUn
 
     uint32_t lockId = 0;
     std::string unpackedPath;
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig {};
+    std::string runtimeConfig;
     WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     L0Test::ExpectEqU32(tr,
         fx.impl->Lock("YouTube", "100.1.24", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
             lockId, unpackedPath, runtimeConfig, appMetadata),
         ERROR_NONE,
-        "Lock() existing package before install-block test");
+        "Lock() existing package before install");
 
     if (appMetadata != nullptr) {
         appMetadata->Release();
@@ -661,25 +1257,33 @@ uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUn
     }
 
     WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
-    const auto blockedInstall = fx.impl->Install("YouTube", "200.0.0", nullptr, "/tmp/youtube_200.pkg", failReason);
+    const auto install = fx.impl->Install("YouTube", "200.0.0", nullptr, "/tmp/youtube_200.pkg", failReason);
     L0Test::ExpectEqU32(tr,
-        blockedInstall,
-        ERROR_GENERAL,
-        "Install() returns ERROR_GENERAL when newer version is blocked by existing lock");
+        install,
+        ERROR_NONE,
+        "Install() succeeds while the old version is locked");
 
     WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     L0Test::ExpectEqU32(tr,
         fx.impl->PackageState("YouTube", "200.0.0", state),
         ERROR_NONE,
-        "PackageState() for blocked version is queryable");
+        "PackageState() for new version is queryable while old version is locked");
     L0Test::ExpectTrue(tr,
-        state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLATION_BLOCKED,
-        "State is INSTALLATION_BLOCKED while old version remains locked");
+        state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED,
+        "New version is installed while old version remains locked");
+
+    L0Test::ExpectEqU32(tr,
+        fx.impl->PackageState("YouTube", "100.1.24", state),
+        ERROR_NONE,
+        "PackageState() for old version is queryable while its lock is held");
+    L0Test::ExpectTrue(tr,
+        state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
+        "Old version is marked uninstalled after the new version installs");
 
     L0Test::ExpectEqU32(tr,
         fx.impl->Unlock("YouTube", "100.1.24"),
         ERROR_NONE,
-        "Unlock() processes blocked install");
+        "Unlock() releases the old version without processing a deferred install");
 
     L0Test::ExpectEqU32(tr,
         fx.impl->PackageState("YouTube", "200.0.0", state),
@@ -687,7 +1291,7 @@ uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUn
         "PackageState() for new version remains queryable after unlock");
     L0Test::ExpectTrue(tr,
         state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED,
-        "Blocked install transitions to INSTALLED after unlock");
+        "New version remains installed after unlock");
 
     return tr.failures;
 }
@@ -700,7 +1304,7 @@ uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock()
 
     uint32_t lockId = 0;
     std::string unpackedPath;
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig {};
+    std::string runtimeConfig;
     WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     L0Test::ExpectEqU32(tr,
@@ -783,9 +1387,26 @@ uint32_t Test_PM_Impl_GetConfigListForInstalledPackages()
 
     std::string config;
     L0Test::ExpectEqU32(tr,
-        fx.impl->GetConfigListForInstalledPackages("filter", config),
-        ERROR_NOT_SUPPORTED,
-        "GetConfigListForInstalledPackages() returns ERROR_NOT_SUPPORTED");
+        fx.impl->GetConfigListForInstalledPackages("dial", config),
+        ERROR_NONE,
+        "GetConfigListForInstalledPackages() returns ERROR_NONE for filter 'dial'");
+    L0Test::ExpectTrue(tr, !config.empty(), "GetConfigListForInstalledPackages() config is non-empty on success");
+    JsonObject dialConfig;
+    const bool parsed = dialConfig.FromString(config);
+    L0Test::ExpectTrue(tr, parsed, "DIAL package config is valid JSON");
+    if (parsed) {
+        L0Test::ExpectEqStr(tr, dialConfig["packageId"].String(), std::string("YouTube"),
+            "DIAL package config contains the matching package ID");
+        L0Test::ExpectEqStr(tr, dialConfig["version"].String(), std::string("100.1.24"),
+            "DIAL package config contains the matching package version");
+    }
+
+    config.clear();
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetConfigListForInstalledPackages("unsupported-filter", config),
+        ERROR_GENERAL,
+        "GetConfigListForInstalledPackages() returns ERROR_GENERAL for an unmatched filter");
+    L0Test::ExpectTrue(tr, config.empty(), "GetConfigListForInstalledPackages() config remains empty on failure");
 
     return tr.failures;
 }
@@ -800,6 +1421,59 @@ uint32_t Test_PM_Impl_GetConfigForInstalledPackage()
         fx.impl->GetConfigForInstalledPackage("SomePackageId", "1.0.0", config),
         ERROR_GENERAL,
         "GetConfigForInstalledPackage() returns ERROR_GENERAL for non-existent package");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageSuccess()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    std::string applicationIds;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetRunningApplicationsUsingPackage("YouTube", applicationIds),
+        ERROR_NONE,
+        "GetRunningApplicationsUsingPackage() returns ERROR_NONE");
+    L0Test::ExpectEqStr(tr,
+        applicationIds,
+        "[\"YouTube\"]",
+        "GetRunningApplicationsUsingPackage() serializes the ids as a JSON array string");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageBackendFailure()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    std::string applicationIds;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetRunningApplicationsUsingPackage("StatusFailApp", applicationIds),
+        ERROR_GENERAL,
+        "GetRunningApplicationsUsingPackage() maps a backend failure to ERROR_GENERAL");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable()
+{
+    L0Test::TestResult tr;
+
+    // No Initialize(): packageImpl stays null until the cache initialization runs,
+    // so CHECK_CACHE rejects the call. Deinitialize is skipped deliberately - with
+    // no Initialize there is no downloader thread or service to tear down.
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::PackageManagerImplementation>::Create<
+        WPEFramework::Plugin::PackageManagerImplementation>();
+    std::string applicationIds;
+    L0Test::ExpectEqU32(tr,
+        impl->GetRunningApplicationsUsingPackage("YouTube", applicationIds),
+        WPEFramework::Core::ERROR_UNAVAILABLE,
+        "GetRunningApplicationsUsingPackage() before cache initialization returns ERROR_UNAVAILABLE");
+    impl->Release();
 
     return tr.failures;
 }

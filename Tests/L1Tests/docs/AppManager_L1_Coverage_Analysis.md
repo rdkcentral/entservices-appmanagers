@@ -319,7 +319,7 @@ Add a test that triggers the suspend flow but never delivers a PAUSED state chan
 
 **13. `getCustomValues()` aipath file-read (L1598–1631)**
 
-Create a real file at `/tmp/aipath` with three lines (apppath, runtimepath, command) before the test, call `GetAppProperty(appId, "runtimeConfig", value)`, verify the `RuntimeConfig` JSON fields are populated, then delete the file after the test. Alternatively, extend `p_wrapsImplMock` to intercept `fopen`/`fclose`/`getline` if those wraps are available.
+Create a real file at `/tmp/aipath` with three lines (apppath, runtimepath, command) before the test and verify that `getCustomValues()` updates those properties in the opaque JSON payload without removing unrelated properties. Alternatively, extend `p_wrapsImplMock` to intercept `fopen`/`fclose`/`getline` if those wraps are available.
 
 **14. `PreloadApp` no-memory error paths (L1158–1165)**
 

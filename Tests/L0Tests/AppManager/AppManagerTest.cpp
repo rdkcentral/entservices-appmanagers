@@ -26,6 +26,7 @@
 extern uint32_t Test_AM_InitializeSucceedsAndDeinitializeCleansUp();
 extern uint32_t Test_AM_InformationReturnsEmptyString();
 extern uint32_t Test_AM_RegisterAndUnregisterNotification();
+extern uint32_t Test_AM_QueuedLifecycleEventsPreserveOrder();
 extern uint32_t Test_AM_ConfigureWithNullServiceFails();
 extern uint32_t Test_AM_ConfigureWithValidServiceReturnsSuccess();
 extern uint32_t Test_AM_LaunchAppEmptyIdRejected();
@@ -57,6 +58,9 @@ extern uint32_t Test_AM_TelemetryReportingStability();
 extern uint32_t Test_AM_SingletonPointerSetAndCleared();
 extern uint32_t Test_AM_LifecycleConnectorLaunchNewApp();
 extern uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp();
+extern uint32_t Test_AM_LifecycleConnectorLaunchPausedApp();
+extern uint32_t Test_AM_LifecycleConnectorLaunchHibernatedApp();
+extern uint32_t Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload();
 extern uint32_t Test_AM_LifecycleConnectorPreloadApp();
 extern uint32_t Test_AM_LifecycleConnectorTerminateApp();
 extern uint32_t Test_AM_LifecycleConnectorCloseApp();
@@ -152,8 +156,10 @@ extern uint32_t Test_AM_ClearAppDataStorageError();
 extern uint32_t Test_AM_ClearAllAppDataNullStorage();
 extern uint32_t Test_AM_ClearAllAppDataStorageError();
 extern uint32_t Test_AM_WorkerThreadLaunchSuccess();
+extern uint32_t Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn();
 extern uint32_t Test_AM_WorkerThreadPackageLockFails();
 extern uint32_t Test_AM_WorkerThreadPreloadSuccess();
+extern uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion();
 extern uint32_t Test_AM_PackageLockAlreadyLoadedEmptyVersion();
 extern uint32_t Test_AM_PackageLockIsAppLoadedError();
 extern uint32_t Test_AM_CloseAppLICReturnsError();
@@ -219,9 +225,11 @@ int main()
     };
 
     const Case cases[] = {
+        { "AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload", Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload },
         { "AM_InitializeSucceedsAndDeinitializeCleansUp", Test_AM_InitializeSucceedsAndDeinitializeCleansUp },
         { "AM_InformationReturnsEmptyString", Test_AM_InformationReturnsEmptyString },
         { "AM_RegisterAndUnregisterNotification", Test_AM_RegisterAndUnregisterNotification },
+        { "AM_QueuedLifecycleEventsPreserveOrder", Test_AM_QueuedLifecycleEventsPreserveOrder },
         { "AM_ConfigureWithNullServiceFails", Test_AM_ConfigureWithNullServiceFails },
         { "AM_ConfigureWithValidServiceReturnsSuccess", Test_AM_ConfigureWithValidServiceReturnsSuccess },
         { "AM_LaunchAppEmptyIdRejected", Test_AM_LaunchAppEmptyIdRejected },
@@ -255,6 +263,8 @@ int main()
         // Temporarily disabled: next-in-sequence case at latest L0 abort point after telemetry case.
         // { "AM_LifecycleConnectorLaunchNewApp", Test_AM_LifecycleConnectorLaunchNewApp },
         { "AM_LifecycleConnectorLaunchSuspendedApp", Test_AM_LifecycleConnectorLaunchSuspendedApp },
+        { "AM_LifecycleConnectorLaunchPausedApp", Test_AM_LifecycleConnectorLaunchPausedApp },
+        { "AM_LifecycleConnectorLaunchHibernatedApp", Test_AM_LifecycleConnectorLaunchHibernatedApp },
         { "AM_LifecycleConnectorPreloadApp", Test_AM_LifecycleConnectorPreloadApp },
         { "AM_LifecycleConnectorTerminateApp", Test_AM_LifecycleConnectorTerminateApp },
         { "AM_LifecycleConnectorCloseApp", Test_AM_LifecycleConnectorCloseApp },
@@ -351,8 +361,10 @@ int main()
         { "AM_ClearAllAppDataNullStorage", Test_AM_ClearAllAppDataNullStorage },
         { "AM_ClearAllAppDataStorageError", Test_AM_ClearAllAppDataStorageError },
         { "AM_WorkerThreadLaunchSuccess", Test_AM_WorkerThreadLaunchSuccess },
+        { "AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn", Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn },
         { "AM_WorkerThreadPackageLockFails", Test_AM_WorkerThreadPackageLockFails },
         { "AM_WorkerThreadPreloadSuccess", Test_AM_WorkerThreadPreloadSuccess },
+        { "AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion", Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion },
         { "AM_PackageLockAlreadyLoadedEmptyVersion", Test_AM_PackageLockAlreadyLoadedEmptyVersion },
         { "AM_PackageLockIsAppLoadedError", Test_AM_PackageLockIsAppLoadedError },
         { "AM_CloseAppLICReturnsError", Test_AM_CloseAppLICReturnsError },
@@ -423,3 +435,4 @@ int main()
     L0Test::PrintTotals(std::cout, "AppManager_L0", totalFailures);
     return L0Test::ResultToExitCode(totalFailures);
 }
+

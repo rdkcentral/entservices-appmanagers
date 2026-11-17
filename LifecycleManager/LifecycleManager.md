@@ -95,7 +95,7 @@ stateDiagram-v2
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -166,7 +166,7 @@ END_INTERFACE_MAP
 // ILifecycleManager methods
 Core::hresult SpawnApp(const string& appId, const string& launchIntent, 
                        LifecycleState targetLifecycleState,
-                       const RuntimeConfig& runtimeConfigObject,
+                       const string& runtimeConfigPayload,
                        const string& launchArgs, string& appInstanceId,
                        string& errorReason, bool& success);
 Core::hresult SetTargetAppState(const string& appInstanceId, 
@@ -186,6 +186,8 @@ Core::hresult CloseApp(const string& appId, AppCloseReason closeReason);
 #### ApplicationContext.h / ApplicationContext.cpp
 
 **Purpose**: Encapsulates all runtime context for a single application instance.
+
+LifecycleManager retains the incoming flat JSON configuration as an opaque string. Immediately before `RuntimeManager::Run`, it sets `dialId` and upserts `FIREBOLT_ENDPOINT` and `TARGET_STATE` entries in the `envVariables` array. Reserialization preserves every unknown property and keeps arrays as JSON arrays.
 
 **Key Members**:
 | Member | Type | Description |
@@ -284,7 +286,7 @@ interface ILifecycleManager {
     hresult GetLoadedApps(bool verbose, string& apps);
     hresult IsAppLoaded(const string& appId, bool& loaded);
     hresult SpawnApp(const string& appId, const string& launchIntent,
-                     LifecycleState targetState, const RuntimeConfig& config,
+                     LifecycleState targetState, const string& runtimeConfigPayload,
                      const string& launchArgs, string& appInstanceId,
                      string& errorReason, bool& success);
     hresult SetTargetAppState(const string& appInstanceId, LifecycleState target,
@@ -446,6 +448,10 @@ set(PLUGIN_LIFECYCLE_MANAGER_SOURCES
 
 ## 6. Internal Workflows & Execution Flow
 
+### Ordered Event Delivery
+
+`dispatchEvent()` appends state, runtime, window, and failure events to a FIFO queue. A single worker-pool job drains the queue and calls `Dispatch()` outside the queue lock. This preserves event submission order (including `INITIALIZING → PAUSED → ACTIVE`) without blocking the event producer or tying up worker-pool threads waiting on earlier jobs. Notification callbacks remain protected by the existing administration lock; enqueue order across truly concurrent producers is the order in which they acquire the queue lock.
+
 ### SpawnApp Flow
 
 ```mermaid
@@ -509,7 +515,9 @@ sequenceDiagram
             RMH-->>SH: success
         end
         SH->>LCM: sendEvent(oldState, newState)
-        LCM->>AM: OnAppLifecycleStateChanged
+        LCM->>AC: getMostRecentIntent()
+        AC-->>LCM: navigationIntent
+        LCM->>AM: OnAppLifecycleStateChanged(oldState, newState, navigationIntent)
     end
     
     LCM-->>AM: Core::ERROR_NONE
@@ -574,10 +582,10 @@ stateDiagram-v2
     ACTIVE --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> SUSPENDED: SetTargetState(SUSPENDED)
-    SUSPENDED --> PAUSED: SetTargetState(PAUSED/ACTIVE)
+    SUSPENDED --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> HIBERNATED: SetTargetState(HIBERNATED)
-    HIBERNATED --> PAUSED: SetTargetState(PAUSED/ACTIVE)
+    HIBERNATED --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> TERMINATING: UnloadApp/CloseApp
     ACTIVE --> TERMINATING: UnloadApp
@@ -588,6 +596,8 @@ stateDiagram-v2
     
     UNLOADED --> [*]
 ```
+
+An ACTIVE target from SUSPENDED or HIBERNATED is reached through the intermediate PAUSED state; the transition handler does not model it as a direct edge.
 
 ### Handler Interaction Diagram
 
@@ -662,3 +672,9 @@ TEST(LifecycleManagerTest, StatePathCalculation) {
 ```
 
 ---
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** LifecycleManager is a state machine around an application instance, not the container runtime itself. Learn contexts, target states, notifications, and asynchronous event dispatch.
+
+**Advanced path:** trace `SpawnApp` through `StateTransitionHandler`, `RuntimeManagerHandler`, and `WindowManagerHandler`, then study failure, respawn, pending-state queues, and teardown.

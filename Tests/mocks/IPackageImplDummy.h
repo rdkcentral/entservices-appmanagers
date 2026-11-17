@@ -84,6 +84,7 @@ namespace packagemanager
     typedef std::pair<std::string, std::string> ConfigMetadataKey;
     typedef std::map<ConfigMetadataKey, ConfigMetaData> ConfigMetadataArray;
 
+    typedef std::map<std::string, std::string> PackageSpecifierRuntimeMap;
     typedef std::pair<std::string, std::string> NameValue;
     typedef std::vector<NameValue> NameValues;
     class IPackageImplDummy
@@ -139,7 +140,8 @@ namespace packagemanager
             configMetadata.groupId = 1001;
             configMetadata.dataImageSize = (packageId == "YouTube") ? 0 : 31457280;
             configMetadata.appPath = "/opt/" + packageId;
-            configMetadata.appType = packagemanager::ApplicationType::INTERACTIVE;
+            configMetadata.appType = (packageId == "SystemApp")
+                ? packagemanager::ApplicationType::SYSTEM : packagemanager::ApplicationType::INTERACTIVE;
             configMetadata.fkpsFiles = {"file1", "file2", "file3"};
             configMetadata.capabilities = "dial-app,wan-lan,thunder,fkps";
             configMetadata.runtimeType = "";
@@ -174,12 +176,30 @@ namespace packagemanager
                 config = "{\"packageId\":\"YouTube\",\"version\":\"100.1.24\"}";
                 return SUCCESS;
             }
-            return FAILED; 
-        }        
+            return FAILED;
+        }
+
+        virtual Result GetRunningApplicationsUsingPackage(const std::string &packageId, std::string &applicationIds) {
+            if ("StatusFailApp" == packageId) {
+                return FAILED;
+            }
+            applicationIds = ("YouTube" == packageId) ? "[\"YouTube\"]" : "[]";
+            return SUCCESS;
+        }
+       virtual Result SetPackageSpecifierRuntime(const std::string &packageSpecifier, const std::string &packageId) {
+            packageSpecifierRuntimeMap[packageSpecifier] = packageId;
+            return SUCCESS;
+        }
+        virtual Result GetPackageSpecifierRuntimes(PackageSpecifierRuntimeMap &rtPkgSpecifierList) {
+            rtPkgSpecifierList = packageSpecifierRuntimeMap;
+            return SUCCESS;
+        }
 
         static std::shared_ptr<packagemanager::IPackageImplDummy> instance() {
                 return std::make_shared<packagemanager::IPackageImplDummy>();
         }
+    private:
+        PackageSpecifierRuntimeMap packageSpecifierRuntimeMap;
     };
 
 }

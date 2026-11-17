@@ -210,7 +210,7 @@ void DobbySpecGenerator::setGstreamerRegistryPath(const std::string& registryPat
     }
 }
 
-Json::Value DobbySpecGenerator::getWorkingDir(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
+Json::Value DobbySpecGenerator::getWorkingDir(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const
 {
     // default to the package directory
     std::string workingDir(mPackageMountPoint);
@@ -227,7 +227,7 @@ Json::Value DobbySpecGenerator::getWorkingDir(const ApplicationConfiguration& co
     return Json::Value(workingDir);
 }
 
-bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, string& resultSpec)
+bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::string& resultSpec)
 {
     LOGINFO("DobbySpecGenerator::generate()");
     resultSpec = "";
@@ -431,7 +431,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
 }
 
 Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& config,
-                                              const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                              const RuntimeConfiguration& runtimeConfig,
                                               const std::vector<std::pair<std::string, std::string>>& capabilities) const
 {
     Json::Value env(Json::arrayValue);
@@ -441,12 +441,9 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
      //TODO YET TO ANALYZE SUPPORT APPLICATION_LAUNCH_METHOD
      //TODO YET TO ANALYZE SUPPORT APPLICATION_TOKEN
 
-   JsonArray envInputArray;
-   envInputArray.FromString(runtimeConfig.envVariables);
-   for (unsigned int i = 0; i < envInputArray.Length(); ++i)
+   for (const std::string& envInputItem : runtimeConfig.envVariables)
    {
-       std::string envInputItem = envInputArray[i].String();
-       env.append(envInputArray[i].String());
+       env.append(envInputItem);
    }
 
    std::list<std::string> configEnvs = mAIConfiguration->getEnvs();
@@ -475,7 +472,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
            env.append("WESTEROS_SINK_USE_ESSRMGR=1");
        }
    }	     
-
+#ifdef RUNTIMEMANAGER_ENABLE_DIALCONFIG
    const bool dialEnabled = runtimeConfig.dial || hasCapability(capabilities, "dial-app");
    if (dialEnabled)
    {
@@ -496,7 +493,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        env.append(std::string("ADDITIONAL_DATA_URL=") + dataUrl);
        env.append(std::string("DIAL_USN=") + mAIConfiguration->getDialUsn());
    }
-
+#endif
    #ifdef ENABLE_RIALTO
    if (!config.mRialtoSocketPath.empty())
    {
@@ -513,18 +510,19 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
    }
 
    //TODO SUPPORT WATCHDOG
-
+#ifdef RDK_APPMANAGERS_DEBUG
    const bool webRuntime = hasCapability(capabilities, "runtime-html");
 
-   if (webRuntime)
+   if (runtimeConfig.enableDebugger && webRuntime)
    {
        env.append("WEBKIT_LEGACY_INSPECTOR_SERVER=0.0.0.0:22222");
    }
+#endif
 
    return env;
 }
 
-Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
+Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const
 {
     Json::Value mounts(Json::arrayValue);
 
@@ -586,11 +584,25 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
 
     //TODO SUPPORT Netflix specific mounts
     //TODO SUPPORT SVP file mounts
-    //TODO SUPPORT Platform specific mounts
     //TODO SUPPORT Airplay specific mounts
     //TODO SUPPORT TSB Storage
     //TODO SUPPORT USB Mass storage
     //TODO SUPPORT PerfettoSocketPath not mounted
+
+    for (const auto& vendorMount : mAIConfiguration->getVendorMounts())
+    {
+        if (0 == access(vendorMount.getPath().c_str(), F_OK))
+        {
+            LOGINFO("Applying vendor mount source=%s destination=%s for appId=%s",
+                vendorMount.getPath().c_str(), vendorMount.getPath().c_str(), config.mAppId.c_str());
+            mounts.append(createBindMount(vendorMount.getPath(), vendorMount.getPath(), vendorMount.getMountFlags()));
+        }
+        else
+        {
+            LOGWARN("Vendor mount source '%s' unavailable for appId=%s (errno=%d)",
+                    vendorMount.getPath().c_str(), config.mAppId.c_str(), errno);
+        }
+    }
 
     std::vector<ExtraBindMount> extraMountEntries;
     if (true == getExtraMountEntries(runtimeConfig.capabilities, extraMountEntries))
@@ -787,7 +799,7 @@ std::string DobbySpecGenerator::getCapabilityValue(const std::vector<std::pair<s
     return "";
 }
 
-ssize_t DobbySpecGenerator::getSysMemoryLimit(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
+ssize_t DobbySpecGenerator::getSysMemoryLimit(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const
 {
     ssize_t memoryLimit = runtimeConfig.systemMemoryLimit;
     if (memoryLimit <= 0)
@@ -801,7 +813,7 @@ ssize_t DobbySpecGenerator::getSysMemoryLimit(const ApplicationConfiguration& co
     return memoryLimit;
 }
 
-ssize_t DobbySpecGenerator::getGPUMemoryLimit(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
+ssize_t DobbySpecGenerator::getGPUMemoryLimit(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const
 {
     ssize_t gpuMemoryLimit = runtimeConfig.gpuMemoryLimit;
     if (gpuMemoryLimit <= 0)
@@ -815,7 +827,7 @@ ssize_t DobbySpecGenerator::getGPUMemoryLimit(const ApplicationConfiguration& co
     return gpuMemoryLimit;
 }
 
-bool DobbySpecGenerator::getVpuEnabled(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, std::vector<std::pair<std::string, std::string>>& capabilities) const
+bool DobbySpecGenerator::getVpuEnabled(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::vector<std::pair<std::string, std::string>>& capabilities) const
 {
 #ifdef ENABLE_RIALTO
     if (!config.mRialtoSocketPath.empty())
@@ -870,7 +882,7 @@ std::string DobbySpecGenerator::getCpuCores()
 }
 
 Json::Value DobbySpecGenerator::createRdkPlugins(const ApplicationConfiguration& config,
-                                                 const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                                 const RuntimeConfiguration& runtimeConfig,
                                                  const std::vector<std::pair<std::string, std::string>>& capabilities) const
 {
     Json::Value rdkPluginsObj(Json::objectValue);
@@ -942,7 +954,7 @@ Json::Value DobbySpecGenerator::createMinidumpPlugin() const
 
 //TODO SUPPORT airplay2 ports in appsservice plugin
 Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfiguration& config,
-                                                          const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                                          const RuntimeConfiguration& runtimeConfig,
                                                           const std::vector<std::pair<std::string, std::string>>& capabilities) const
 {
     Json::Value pluginObj(Json::objectValue);
@@ -1000,7 +1012,7 @@ Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfi
 }
 
 Json::Value DobbySpecGenerator::createNetworkPlugin(const ApplicationConfiguration& config,
-                                                    const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                                    const RuntimeConfiguration& runtimeConfig,
                                                     const std::vector<std::pair<std::string, std::string>>& capabilities) const
 {
     Json::Value pluginObj(Json::objectValue);
@@ -1028,7 +1040,7 @@ Json::Value DobbySpecGenerator::createNetworkPlugin(const ApplicationConfigurati
     return pluginObj;
 }
 
-void DobbySpecGenerator::populateClassicPlugins(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, Json::Value& spec)
+void DobbySpecGenerator::populateClassicPlugins(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, Json::Value& spec)
 {
     Json::Value pluginsArray(Json::arrayValue);
     // enable the logging plugin
@@ -1089,7 +1101,7 @@ void DobbySpecGenerator::populateClassicPlugins(const ApplicationConfiguration& 
     spec["plugins"] = std::move(pluginsArray);
 }
 
-Json::Value DobbySpecGenerator::createEthanLogPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
+Json::Value DobbySpecGenerator::createEthanLogPlugin(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const
 {
     Json::Value plugin(Json::objectValue);
     static const Json::StaticString name("name");
@@ -1105,12 +1117,9 @@ Json::Value DobbySpecGenerator::createEthanLogPlugin(const ApplicationConfigurat
     static const Json::StaticString debug("debug");
 
     Json::Value levels(Json::arrayValue);
-    if (!runtimeConfig.logLevels.empty())
+    for (const std::string& level : runtimeConfig.logLevels)
     {
-        Json::Reader reader;
-        Json::Value parsed;
-        if (reader.parse(runtimeConfig.logLevels, parsed) && parsed.isArray())
-            levels = parsed;
+        levels.append(level);
     }
     if (levels.empty())
     {
@@ -1131,7 +1140,7 @@ Json::Value DobbySpecGenerator::createEthanLogPlugin(const ApplicationConfigurat
 }
 
 
-Json::Value DobbySpecGenerator::createMulticastSocketPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
+Json::Value DobbySpecGenerator::createMulticastSocketPlugin(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const
 {
     //TODO SUPPORT multicast socket plugin
     /*
@@ -1201,7 +1210,7 @@ Json::Value DobbySpecGenerator::createThunderPlugin(const ApplicationConfigurati
     return plugin;
 }
 
-Json::Value DobbySpecGenerator::createOpenCDMPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
+Json::Value DobbySpecGenerator::createOpenCDMPlugin(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const
 {
     static const Json::StaticString name("name");
     static const Json::StaticString data("data");
@@ -1244,7 +1253,7 @@ void DobbySpecGenerator::initialiseIonHeapsJson()
     mIonMemoryPluginData["heaps"] = std::move(heapsArray);
 }
 
-Json::Value DobbySpecGenerator::createPrivateDataMount(const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
+Json::Value DobbySpecGenerator::createPrivateDataMount(const RuntimeConfiguration& runtimeConfig) const
 {
     static const Json::StaticString source("source");
     static const Json::StaticString destination("destination");
@@ -1279,23 +1288,15 @@ Json::Value DobbySpecGenerator::createPrivateDataMount(const WPEFramework::Excha
     return mount;
 }
 
-void DobbySpecGenerator::createFkpsMounts(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, Json::Value& spec) const
+void DobbySpecGenerator::createFkpsMounts(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, Json::Value& spec) const
 {
-    std::list<std::string> fkpsFiles;
-    JsonArray fkpsFilesArray;
-    fkpsFilesArray.FromString(runtimeConfig.fkpsFiles);
-    for (unsigned int i = 0; i < fkpsFilesArray.Length(); ++i)
-    {
-        fkpsFiles.push_back(fkpsFilesArray[i].String());
-    }
-    if (fkpsFiles.empty())
+    if (runtimeConfig.fkpsFiles.empty())
         return;
 
     // iterate through the files and make sure they're accessible
     const std::string fkpsPathPrefix("/opt/drm/");
-    for (std::list<std::string>::iterator it=fkpsFiles.begin(); it!=fkpsFiles.end(); ++it)
+    for (const std::string& fkpsFile : runtimeConfig.fkpsFiles)
     {
-	std::string fkpsFile = *it;
         const std::string fkpsFilePath = fkpsPathPrefix + fkpsFile;
 
         int fd = open(fkpsFilePath.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);

@@ -18,6 +18,7 @@
 **/
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <json/json.h>
 #include <mntent.h>
 #include <fstream>
 #include <string>
@@ -29,6 +30,7 @@
 
 #include "PackageManager.h"
 #include "PackageManagerImplementation.h"
+#include "RuntimeConfigPayload.h"
 #include "StorageManagerMock.h"
 #include "ISubSystemMock.h"
 #include "ServiceMock.h"
@@ -36,6 +38,13 @@
 #include "ThunderPortability.h"
 #include "WorkerPoolImplementation.h"
 #include "FactoriesImplementation.h"
+#include <sys/stat.h>
+
+static bool StoragePathExists()
+{
+    struct stat st;
+    return (0 == stat("/media/apps/sky/packages", &st));
+}
 
 #define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, getpid(), gettid(), ##__VA_ARGS__); fflush(stderr);
 #define TIMEOUT   (500)
@@ -363,6 +372,7 @@ TEST_F(PackageManagerTest, registeredMethodsusingJsonRpc) {
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("listPackages")));
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("config")));
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("packageState")));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("getRunningApplicationsUsingPackage")));
 
 	deinitforJsonRpc();
 }
@@ -1126,7 +1136,7 @@ TEST_F(PackageManagerTest, getStorageInformationusingJsonRpc) {
     initforJsonRpc();
 
     // TC-26: Get Storage Details using JsonRpc
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("getStorageInformation"), _T("{\"quotaKB\": 1024, \"usedKB\": 568}"), mJsonRpcResponse));
+    EXPECT_EQ(StoragePathExists() ? Core::ERROR_NONE : Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("getStorageInformation"), _T("{\"quotaKB\": 1024, \"usedKB\": 568}"), mJsonRpcResponse));
 
 	deinitforJsonRpc();
 }
@@ -1147,7 +1157,7 @@ TEST_F(PackageManagerTest, getStorageInformationusingComRpc) {
     uint32_t usedKB = 568;
 
     // TC-27: Get Storage Details using ComRpc
-    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->GetStorageInformation(quotaKB, usedKB));
+    EXPECT_EQ(StoragePathExists() ? Core::ERROR_NONE : Core::ERROR_GENERAL, pkgdownloaderInterface->GetStorageInformation(quotaKB, usedKB));
 
 	deinitforComRpc();
 }
@@ -1758,7 +1768,7 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
 
     uint32_t lockId = 0;
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     EXPECT_EQ(Core::ERROR_NONE,
@@ -1770,15 +1780,25 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
                                         runtimeConfig,
                                         appMetadata));
     EXPECT_GT(lockId, 0u);
-    // In UNIT_TEST, IPackageImplDummy::Lock() does not currently populate ConfigMetaData,
-    // so appPath may be empty after lock. Keep assertion tolerant while still validating API behavior.
-    EXPECT_TRUE(runtimeConfig.appPath.empty() || runtimeConfig.appPath == "/opt/YouTube");
+
+    Plugin::Utils::RuntimeConfigPayload lockPayload;
+    string payloadError;
+    bool present = false;
+    vector<string> values;
+    ASSERT_TRUE(lockPayload.Parse(runtimeConfig, payloadError)) << payloadError;
+    EXPECT_TRUE(lockPayload.GetStringArray("envVariables", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(lockPayload.GetStringArray("fkpsFiles", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(lockPayload.GetStringArray("logLevels", values, present, payloadError));
+    EXPECT_TRUE(present);
 
     if (appMetadata != nullptr) {
         appMetadata->Release();
         appMetadata = nullptr;
     }
 
+    const string lockRuntimeConfig = runtimeConfig;
     bool locked = false;
     string gatewayMetadataPath;
     EXPECT_EQ(Core::ERROR_NONE,
@@ -1789,6 +1809,13 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
                                                  gatewayMetadataPath,
                                                  locked));
     EXPECT_TRUE(locked);
+    Json::Value lockRuntimeConfigJson;
+    Json::Value runtimeConfigJson;
+    Json::Reader lockRuntimeConfigReader;
+    Json::Reader runtimeConfigReader;
+    ASSERT_TRUE(lockRuntimeConfigReader.parse(lockRuntimeConfig, lockRuntimeConfigJson));
+    ASSERT_TRUE(runtimeConfigReader.parse(runtimeConfig, runtimeConfigJson));
+    EXPECT_EQ(runtimeConfigJson, lockRuntimeConfigJson);
 
     EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
 
@@ -1798,7 +1825,7 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
 /* Test Case for lock/getLockedInfo failure branches using ComRpc
  *
  * Set up and initialize required COM-RPC resources
- * Verify Lock() and GetLockedInfo() return ERROR_BAD_REQUEST for unknown package
+ * Verify Lock() and GetLockedInfo() return ERROR_INVALID_PARAMETER for unknown package
  * Deinitialize COM-RPC resources
  */
 
@@ -1810,10 +1837,10 @@ TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcFailure) {
 
     uint32_t lockId = 0;
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkghandlerInterface->Lock("UnknownApp",
                                         "0.0.1",
                                         Exchange::IPackageHandler::LockReason::LAUNCH,
@@ -1824,7 +1851,7 @@ TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcFailure) {
 
     bool locked = false;
     string gatewayMetadataPath;
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkghandlerInterface->GetLockedInfo("UnknownApp",
                                                  "0.0.1",
                                                  unpackedPath,
@@ -1854,10 +1881,28 @@ TEST_F(PackageManagerTest, configAndGetConfigForPackageusingComRpcBranches) {
 
     waitforSignal(TIMEOUT_FOR_INIT);
 
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     EXPECT_EQ(Core::ERROR_NONE,
               pkginstallerInterface->Config("YouTube", "100.1.24", runtimeConfig));
-    EXPECT_EQ(runtimeConfig.appPath, "/opt/YouTube");
+
+    Plugin::Utils::RuntimeConfigPayload configPayload;
+    string payloadError;
+    bool present = false;
+    string value;
+    vector<string> values;
+    ASSERT_TRUE(configPayload.Parse(runtimeConfig, payloadError)) << payloadError;
+    EXPECT_TRUE(configPayload.GetString("appPath", value, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_EQ(value, "/opt/YouTube");
+    EXPECT_TRUE(configPayload.GetStringArray("envVariables", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(values.empty());
+    EXPECT_TRUE(configPayload.GetStringArray("fkpsFiles", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_EQ(values, vector<string>({ "file1", "file2", "file3" }));
+    EXPECT_TRUE(configPayload.GetStringArray("logLevels", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(values.empty());
 
     EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkginstallerInterface->Config("UnknownApp", "0", runtimeConfig));
@@ -1870,7 +1915,58 @@ TEST_F(PackageManagerTest, configAndGetConfigForPackageusingComRpcBranches) {
     EXPECT_EQ(Core::ERROR_NONE,
               pkginstallerInterface->GetConfigForPackage("/tmp/fake_pkg.ipk", packageId, version, runtimeConfig));
 
+    Plugin::Utils::RuntimeConfigPayload packagePayload;
+    ASSERT_TRUE(packagePayload.Parse(runtimeConfig, payloadError)) << payloadError;
+    EXPECT_TRUE(packagePayload.GetStringArray("envVariables", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(packagePayload.GetStringArray("fkpsFiles", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(packagePayload.GetStringArray("logLevels", values, present, payloadError));
+    EXPECT_TRUE(present);
+
     deinitforComRpc();
+}
+
+TEST_F(PackageManagerTest, runtimeConfigPayloadSerialization) {
+
+    Plugin::Utils::RuntimeConfigPayload canonical;
+    canonical.SetString("appPath", "/opt/TestApp");
+    canonical.SetStringArray("envVariables", { "HOME=/home/private", "LANG=en_US.UTF-8" });
+    canonical.SetStringArray("fkpsFiles", { "/etc/test/one", "/etc/test/two" });
+    canonical.SetStringArray("logLevels", { "INFO", "WARN" });
+
+    string serialized;
+    string payloadError;
+    ASSERT_TRUE(canonical.Serialize(serialized, payloadError)) << payloadError;
+
+    Plugin::Utils::RuntimeConfigPayload decoded;
+    bool present = false;
+    vector<string> values;
+    ASSERT_TRUE(decoded.Parse(serialized, payloadError)) << payloadError;
+    EXPECT_TRUE(decoded.GetStringArray("envVariables", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_EQ(values, vector<string>({ "HOME=/home/private", "LANG=en_US.UTF-8" }));
+    EXPECT_TRUE(decoded.GetStringArray("fkpsFiles", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_EQ(values, vector<string>({ "/etc/test/one", "/etc/test/two" }));
+    EXPECT_TRUE(decoded.GetStringArray("logLevels", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_EQ(values, vector<string>({ "INFO", "WARN" }));
+
+    Plugin::Utils::RuntimeConfigPayload opaque;
+    ASSERT_TRUE(opaque.Parse("{\"runtimePath\":\"/old/runtime\",\"vendorExtension\":{\"enabled\":true}}", payloadError));
+    opaque.SetString("runtimePath", "/new/runtime");
+    ASSERT_TRUE(opaque.Serialize(serialized, payloadError)) << payloadError;
+
+    JsonObject object;
+    ASSERT_TRUE(object.FromString(serialized));
+    ASSERT_TRUE(object.HasLabel("vendorExtension"));
+    const JsonObject vendor = object["vendorExtension"].Object();
+    EXPECT_TRUE(vendor["enabled"].Boolean());
+    EXPECT_EQ(object["runtimePath"].String(), "/new/runtime");
+
+    Plugin::Utils::RuntimeConfigPayload malformed;
+    EXPECT_FALSE(malformed.Parse("{\"logLevels\":[\"INFO\"]", payloadError));
 }
 
 /* Test Case for unlock failure using ComRpc
@@ -1947,7 +2043,7 @@ TEST_F(PackageManagerTest, installFailureReasonBranchesusingComRpc) {
  *
  * Set up and initialize COM-RPC resources
  * Force install failure state, then verify Config() returns ERROR_GENERAL for non-installed known package
- * Verify PackageState() returns ERROR_BAD_REQUEST for unknown package/version
+ * Verify PackageState() returns ERROR_INVALID_PARAMETER for unknown package/version
  * Deinitialize COM-RPC resources
  */
 
@@ -1968,7 +2064,7 @@ TEST_F(PackageManagerTest, configAndPackageStateNegativeBranchesusingComRpc) {
     EXPECT_EQ(Core::ERROR_GENERAL,
               pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
 
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     EXPECT_EQ(Core::ERROR_GENERAL,
               pkginstallerInterface->Config(packageId, version, runtimeConfig));
 
@@ -2018,7 +2114,7 @@ TEST_F(PackageManagerTest, uninstallBlockedWhileLockedThenProcessedOnUnlockusing
 
     uint32_t lockId = 0;
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     EXPECT_EQ(Core::ERROR_NONE,
@@ -2069,7 +2165,7 @@ TEST_F(PackageManagerTest, lockTwiceUnlockTwiceLockCountBranchusingComRpc) {
     uint32_t lockId1 = 0;
     uint32_t lockId2 = 0;
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     EXPECT_EQ(Core::ERROR_NONE,
@@ -2129,7 +2225,7 @@ TEST_F(PackageManagerTest, lockTwiceUnlockTwiceLockCountBranchusingComRpc) {
 /* Test Case for unlock unknown package branch using ComRpc
  *
  * Set up and initialize COM-RPC resources
- * Verify Unlock() returns ERROR_BAD_REQUEST for unknown package/version
+ * Verify Unlock() returns ERROR_INVALID_PARAMETER for unknown package/version
  * Deinitialize COM-RPC resources
  */
 
@@ -2139,7 +2235,76 @@ TEST_F(PackageManagerTest, unlockUnknownPackageusingComRpcBadRequest) {
 
     waitforSignal(TIMEOUT_FOR_INIT);
 
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkghandlerInterface->Unlock("UnknownApp", "0.0.1"));
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, pkghandlerInterface->Unlock("UnknownApp", "0.0.1"));
+
+    deinitforComRpc();
+}
+
+/* Test Case for getRunningApplicationsUsingPackage via JsonRpc - success path
+ *
+ * Initialize the plugin for JSON-RPC
+ * Invoke the method for the "YouTube" package - the UNIT_TEST dummy backend
+ * (IPackageImplDummy) reports "YouTube" as its running user
+ * Verify Core::ERROR_NONE and that the response carries the application id
+ */
+
+TEST_F(PackageManagerTest, getRunningApplicationsUsingPackageJsonRpcSuccess) {
+
+    initforJsonRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    const uint32_t rc = mJsonRpcHandler.Invoke(connection, _T("getRunningApplicationsUsingPackage"), _T("{\"packageId\": \"YouTube\"}"), mJsonRpcResponse);
+    EXPECT_EQ(Core::ERROR_NONE, rc);
+    EXPECT_EQ(mJsonRpcResponse, R"~~(["YouTube"])~~");
+
+    // A package with no running users serializes as an empty JSON array
+    const uint32_t rcEmpty = mJsonRpcHandler.Invoke(connection, _T("getRunningApplicationsUsingPackage"), _T("{\"packageId\": \"com.rdkcentral.base\"}"), mJsonRpcResponse);
+    EXPECT_EQ(Core::ERROR_NONE, rcEmpty);
+    EXPECT_EQ(mJsonRpcResponse, R"~~([])~~");
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for getRunningApplicationsUsingPackage via JsonRpc - backend failure
+ *
+ * The dummy backend fails for the "StatusFailApp" package id
+ * Verify the failure is mapped to Core::ERROR_GENERAL
+ */
+
+TEST_F(PackageManagerTest, getRunningApplicationsUsingPackageJsonRpcBackendFailure) {
+
+    initforJsonRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    const uint32_t rc = mJsonRpcHandler.Invoke(connection, _T("getRunningApplicationsUsingPackage"), _T("{\"packageId\": \"StatusFailApp\"}"), mJsonRpcResponse);
+    EXPECT_EQ(Core::ERROR_GENERAL, rc);
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for getRunningApplicationsUsingPackage via ComRpc - success path
+ *
+ * Initialize the implementation for COM-RPC, query IAppPackagesStatus directly
+ * from the implementation object
+ * Verify Core::ERROR_NONE and the JSON array string payload
+ */
+
+TEST_F(PackageManagerTest, getRunningApplicationsUsingPackageComRpcSuccess) {
+
+    initforComRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    auto* statusInterface = static_cast<Exchange::IAppPackagesStatus*>(mPackageManagerImpl->QueryInterface(Exchange::IAppPackagesStatus::ID));
+    ASSERT_TRUE(nullptr != statusInterface);
+
+    std::string applicationIds;
+    EXPECT_EQ(Core::ERROR_NONE, statusInterface->GetRunningApplicationsUsingPackage("YouTube", applicationIds));
+    EXPECT_EQ(applicationIds, "[\"YouTube\"]");
+
+    statusInterface->Release();
 
     deinitforComRpc();
 }
