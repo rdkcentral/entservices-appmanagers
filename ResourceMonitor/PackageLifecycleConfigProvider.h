@@ -59,13 +59,7 @@ namespace Plugin {
             bool& locked, std::string& runtimeConfigPayload) override;
 
     private:
-        bool Acquire(Exchange::IPackageInstaller*& installer, Exchange::IPackageHandler*& handler);
-        void InvalidateOnConnectionError(const Core::hresult result);
-
-        Core::CriticalSection _lock;
         PluginHost::IShell* _service;
-        Exchange::IPackageInstaller* _installer;
-        Exchange::IPackageHandler* _handler;
     };
 
     // Resolves an application's lifecycle capabilities from Package Manager.

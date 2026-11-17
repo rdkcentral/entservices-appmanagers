@@ -7,6 +7,7 @@
 #include <mutex>
 #include <vector>
 #include "ResourceMonitorImplementation.h"
+#include "../L0Tests/common/AppManagerL0Mock.hpp"
 
 namespace ResourceMonitorTestSupport {
 
@@ -48,12 +49,6 @@ public:
         result = Core::Service<RPC::IteratorType<ILoadedAppInfoIterator>>::Create<ILoadedAppInfoIterator>(apps);
         return Core::ERROR_NONE;
     }
-    Core::hresult SetTargetAppState(const string& appId, const State state) override
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        transitions.emplace_back(appId, state);
-        return transitionResult;
-    }
     Core::hresult TerminateApp(const string& appId) override
     {
         std::lock_guard<std::mutex> lock(mutex);
@@ -93,11 +88,6 @@ public:
             sink->Release();
         }
     }
-    std::vector<std::pair<string, State>> Transitions()
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        return transitions;
-    }
     std::vector<string> Terminations()
     {
         std::lock_guard<std::mutex> lock(mutex);
@@ -123,14 +113,12 @@ public:
     Core::hresult GetMaxInactiveRamUsage(int32_t&) const override { return Core::ERROR_UNAVAILABLE; }
 
     Core::hresult listResult { Core::ERROR_NONE };
-    Core::hresult transitionResult { Core::ERROR_NONE };
 
 private:
     mutable std::atomic<uint32_t> references { 1 };
     std::mutex mutex;
     std::list<LoadedAppInfo> apps;
     INotification* notification { nullptr };
-    std::vector<std::pair<string, State>> transitions;
     std::vector<string> terminations;
 };
 
@@ -205,12 +193,30 @@ public:
 };
 
 class Session {
+    struct TransitionLog {
+        std::mutex mutex;
+        std::vector<std::pair<string, Exchange::ILifecycleManager::LifecycleState>> requests;
+        std::vector<string> intents;
+        Core::hresult result { Core::ERROR_NONE };
+    };
 public:
     explicit Session(Monitor* configured = nullptr)
         : monitor(configured ? configured : Core::Service<Monitor>::Create<Monitor>())
         , owned(configured == nullptr)
     {
+        const auto log = transitionLog;
+        lifecycle->setTargetAppStateHandler = [log](const string& id, Exchange::ILifecycleManager::LifecycleState state, const string& intent) {
+            std::lock_guard<std::mutex> lock(log->mutex);
+            log->requests.emplace_back(id, state);
+            log->intents.push_back(intent);
+            return log->result;
+        };
         if (owned) {
+            L0Test::AppManagerServiceMock::Config config;
+            config.lifecycleManager = lifecycle;
+            service.reset(new L0Test::AppManagerServiceMock(config));
+            monitor->_rservice = service.get();
+            monitor->_rservice->AddRef();
             monitor->_appManager = new AppManager();
             monitor->_runtimeManager = new RuntimeManager();
             monitor->_appManager->Register(&monitor->_appManagerNotification);
@@ -221,7 +227,11 @@ public:
         packages = source.get();
         monitor->_lifecycleConfigProvider.reset(new Plugin::PackageLifecycleConfigProvider(std::move(source)));
     }
-    ~Session() { if (owned) { monitor->Release(); } }
+    ~Session()
+    {
+        if (owned) { monitor->Release(); }
+        lifecycle->Release();
+    }
     Session(const Session&) = delete;
     Session& operator=(const Session&) = delete;
 
@@ -232,6 +242,21 @@ public:
             "],\"maxSuspendedSystemMemory\":\"16M\",\"maxTimeToSuspendMemoryState\":10}}";
     }
     void Emit(const string& id, State state) { apps->Emit(id + ".instance", state); }
+    std::vector<std::pair<string, Exchange::ILifecycleManager::LifecycleState>> Transitions()
+    {
+        std::lock_guard<std::mutex> lock(transitionLog->mutex);
+        return transitionLog->requests;
+    }
+    std::vector<string> Intents()
+    {
+        std::lock_guard<std::mutex> lock(transitionLog->mutex);
+        return transitionLog->intents;
+    }
+    void SetTransitionResult(Core::hresult result)
+    {
+        std::lock_guard<std::mutex> lock(transitionLog->mutex);
+        transitionLog->result = result;
+    }
     uint64_t Remaining(const string& id, bool paused)
     {
         std::lock_guard<std::mutex> lock(monitor->_appTimersMutex);
@@ -258,8 +283,11 @@ public:
     AppManager* apps;
     RuntimeManager* runtime;
     PackageSource* packages;
+    L0Test::MockLifecycleManager* lifecycle { new L0Test::MockLifecycleManager() };
 
 private:
+    std::shared_ptr<TransitionLog> transitionLog { new TransitionLog() };
+    std::unique_ptr<L0Test::AppManagerServiceMock> service;
     bool owned;
 };
 

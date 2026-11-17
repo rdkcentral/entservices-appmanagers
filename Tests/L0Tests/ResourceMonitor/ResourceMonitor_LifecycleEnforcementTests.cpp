@@ -5,20 +5,16 @@
  * Copyright 2026 RDK Management
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use, sell, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #include <memory>
@@ -36,7 +32,9 @@
 #include <condition_variable>
 #include "ResourceMonitorConfig.h"
 #define private public
+#define protected public
 #include "ResourceMonitorImplementation.h"
+#undef protected
 #undef private
 #include "../../mocks/ResourceMonitorEnforcementTestSupport.h"
 
@@ -102,7 +100,7 @@ uint32_t Test_RM_AC1_ActiveToPausedStartsTimer()
     session.Emit("app", WPEFramework::Exchange::IAppManager::APP_STATE_PAUSED);
     L0Test::ExpectTrue(tr, session.Remaining("app", true) > 59000 && session.Remaining("app", true) <= 60000,
         "AC1: Active to Paused notification starts the initial 60-second timer");
-    L0Test::ExpectTrue(tr, session.apps->Transitions().empty(), "AC1: Entry alone does not request a transition");
+    L0Test::ExpectTrue(tr, session.Transitions().empty(), "AC1: Entry alone does not request a transition");
     return tr.failures;
 }
 
@@ -115,13 +113,13 @@ uint32_t Test_RM_AC2_PausedTimeoutSelectsAction()
     session.Emit("supported", WPEFramework::Exchange::IAppManager::APP_STATE_PAUSED);
     session.Emit("unsupported", WPEFramework::Exchange::IAppManager::APP_STATE_PAUSED);
     session.monitor->OnLifecycleTimerExpired();
-    L0Test::ExpectTrue(tr, session.apps->Transitions().empty() && session.apps->Terminations().empty(),
+    L0Test::ExpectTrue(tr, session.Transitions().empty() && session.apps->Terminations().empty(),
         "AC2: No action before the deadline");
     session.Expire("supported", true);
     session.Expire("unsupported", true);
-    const auto transitions = session.apps->Transitions();
+    const auto transitions = session.Transitions();
     const auto terminations = session.apps->Terminations();
-    L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].first == "supported",
+    L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].first == "supported.instance",
         "AC2: Timeout selects suspension for the supporting application");
     L0Test::ExpectTrue(tr, terminations.size() == 1 && terminations[0] == "unsupported",
         "AC2: Timeout selects termination without suspension support");
@@ -135,10 +133,10 @@ uint32_t Test_RM_AC3_RequestsSuspended()
     session.Add("app");
     session.Emit("app", WPEFramework::Exchange::IAppManager::APP_STATE_PAUSED);
     session.Expire("app", true);
-    const auto transitions = session.apps->Transitions();
-    L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].first == "app" &&
-        transitions[0].second == WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED,
-        "AC3: Production expiry requests Suspended through AppManager");
+    const auto transitions = session.Transitions();
+    L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].first == "app.instance" &&
+        transitions[0].second == WPEFramework::Exchange::ILifecycleManager::SUSPENDED,
+        "AC3: Production expiry requests Suspended through LifecycleManager");
     L0Test::ExpectTrue(tr, session.apps->Terminations().empty(), "AC3: Supported application is not terminated");
     return tr.failures;
 }
@@ -170,7 +168,7 @@ uint32_t Test_RM_AC5_TerminatesGpuConsumer()
     session.Expire("app", false);
     const auto terminated = session.apps->Terminations();
     L0Test::ExpectTrue(tr, terminated.size() == 1 && terminated[0] == "app", "AC5: Nonzero GPU after grace terminates the app");
-    L0Test::ExpectTrue(tr, session.apps->Transitions().empty(), "AC5: GPU consumer is not hibernated");
+    L0Test::ExpectTrue(tr, session.Transitions().empty(), "AC5: GPU consumer is not hibernated");
     return tr.failures;
 }
 
@@ -207,10 +205,10 @@ uint32_t Test_RM_AC7_RequestsHibernated()
     session.Emit("app", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED);
     session.runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
     session.Expire("app", false);
-    const auto transitions = session.apps->Transitions();
-    L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].first == "app" &&
-        transitions[0].second == WPEFramework::Exchange::IAppManager::APP_STATE_HIBERNATED,
-        "AC7: Supported application with released GPU requests Hibernated through AppManager");
+    const auto transitions = session.Transitions();
+    L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].first == "app.instance" &&
+        transitions[0].second == WPEFramework::Exchange::ILifecycleManager::HIBERNATED,
+        "AC7: Supported application with released GPU requests Hibernated through LifecycleManager");
     return tr.failures;
 }
 
@@ -226,7 +224,7 @@ uint32_t Test_RM_AC8_RejectsUnsupportedStates()
     session.Emit("noHibernate", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED);
     session.runtime->SetInfo("noHibernate.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
     session.Expire("noHibernate", false);
-    L0Test::ExpectTrue(tr, session.apps->Transitions().empty(), "AC8: Neither unsupported state is requested");
+    L0Test::ExpectTrue(tr, session.Transitions().empty(), "AC8: Neither unsupported state is requested");
     L0Test::ExpectEqU32(tr, session.apps->Terminations().size(), 2, "AC8: Unsupported paths select termination");
     return tr.failures;
 }
@@ -241,7 +239,51 @@ uint32_t Test_RM_AC9_TerminatesNonApp()
     session.Expire("service", true);
     const auto terminated = session.apps->Terminations();
     L0Test::ExpectTrue(tr, terminated.size() == 1 && terminated[0] == "service", "AC9: Non-app is terminated after timeout");
-    L0Test::ExpectTrue(tr, session.apps->Transitions().empty(), "AC9: Non-app never enters Suspended or Hibernated");
+    L0Test::ExpectTrue(tr, session.Transitions().empty(), "AC9: Non-app never enters Suspended or Hibernated");
+    return tr.failures;
+}
+
+uint32_t Test_RM_Enforcement_DirectLifecycleRequests()
+{
+    L0Test::TestResult tr;
+    ResourceMonitorTestSupport::Session session;
+    using namespace WPEFramework;
+    session.apps->listResult = Core::ERROR_GENERAL;
+    session.monitor->RequestSuspendedTransition("original.instance");
+    session.monitor->RequestHibernatedTransition("original.instance");
+    const auto requests = session.Transitions();
+    L0Test::ExpectTrue(tr, requests.size() == 2 && requests[0].first == "original.instance" &&
+        requests[1].first == "original.instance" && requests[0].second == Exchange::ILifecycleManager::SUSPENDED &&
+        requests[1].second == Exchange::ILifecycleManager::HIBERNATED,
+        "LifecycleManager receives the exact instance and target without an AppManager lookup");
+    L0Test::ExpectTrue(tr, session.Intents() == std::vector<string>({ "", "" }),
+        "Enforcement does not replace the application's navigation intent");
+    L0Test::ExpectEqU32(tr, session.lifecycle->_refCount.load(), 1, "Successful requests release their interface references");
+    session.SetTransitionResult(Core::ERROR_GENERAL);
+    session.monitor->RequestSuspendedTransition("original.instance");
+    L0Test::ExpectEqU32(tr, session.lifecycle->_refCount.load(), 1, "Failed requests release their interface references");
+
+    auto* originalService = session.monitor->_rservice;
+    session.monitor->_rservice = nullptr;
+    session.monitor->RequestHibernatedTransition("original.instance");
+    session.monitor->_rservice = originalService;
+    L0Test::ExpectEqU32(tr, session.Transitions().size(), 3, "Unavailable service does not issue a transition");
+
+    L0Test::MockLifecycleManager replacement;
+    uint32_t calls = 0;
+    replacement.setTargetAppStateHandler = [&](const string& id, Exchange::ILifecycleManager::LifecycleState state, const string& intent) {
+        if (id == "original.instance" && state == Exchange::ILifecycleManager::HIBERNATED && intent.empty()) { ++calls; }
+        return Core::ERROR_NONE;
+    };
+    L0Test::AppManagerServiceMock::Config config;
+    config.lifecycleManager = &replacement;
+    L0Test::AppManagerServiceMock replacementService(config);
+    session.monitor->_rservice = &replacementService;
+    session.monitor->RequestHibernatedTransition("original.instance");
+    session.monitor->_rservice = originalService;
+    L0Test::ExpectEqU32(tr, calls, 1, "A replacement service is queried instead of reusing the previous implementation");
+    L0Test::ExpectEqU32(tr, replacement._refCount.load(), 1, "Replacement interface reference is released");
+    L0Test::ExpectTrue(tr, session.apps->Terminations().empty(), "RPC failure does not introduce a new termination policy");
     return tr.failures;
 }
 
@@ -300,8 +342,8 @@ uint32_t Test_RM_Enforcement_SnapshotLifetime()
         session.Emit("app", State::APP_STATE_SUSPENDED);
         session.runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
         session.Expire("app", false);
-        const auto transitions = session.apps->Transitions();
-        L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].second == State::APP_STATE_HIBERNATED,
+        const auto transitions = session.Transitions();
+        L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].second == WPEFramework::Exchange::ILifecycleManager::HIBERNATED,
             "First-observed SUSPENDED captures hibernation support");
         L0Test::ExpectTrue(tr, session.apps->Terminations().empty(), "Missing PAUSED notification does not cause termination");
     }
@@ -315,8 +357,8 @@ uint32_t Test_RM_Enforcement_SnapshotLifetime()
             session.Emit("app", State::APP_STATE_PAUSED);
         }
         session.Expire("app", true);
-        const auto transitions = session.apps->Transitions();
-        L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].second == State::APP_STATE_SUSPENDED,
+        const auto transitions = session.Transitions();
+        L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].second == WPEFramework::Exchange::ILifecycleManager::SUSPENDED,
             "Re-entering PAUSED retains capabilities until unload despite unavailable metadata");
     }
     {
@@ -331,8 +373,8 @@ uint32_t Test_RM_Enforcement_SnapshotLifetime()
         session.Emit("app", State::APP_STATE_SUSPENDED);
         session.runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
         session.Expire("app", false);
-        const auto transitions = session.apps->Transitions();
-        L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].second == State::APP_STATE_HIBERNATED,
+        const auto transitions = session.Transitions();
+        L0Test::ExpectTrue(tr, transitions.size() == 1 && transitions[0].second == WPEFramework::Exchange::ILifecycleManager::HIBERNATED,
             "Unresolved capabilities are retried before subsequent enforcement");
     }
     {

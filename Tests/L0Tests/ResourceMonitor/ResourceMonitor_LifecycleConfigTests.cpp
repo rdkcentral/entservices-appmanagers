@@ -5,6 +5,7 @@
 #include "PackageLifecycleConfigProvider.h"
 #include "ResourceMonitorL0Fakes.hpp"
 #include "common/L0Expect.hpp"
+#include "common/AppManagerL0Mock.hpp"
 #include "common/L0TestTypes.hpp"
 
 namespace {
@@ -389,6 +390,55 @@ uint32_t Test_RM_Lifecycle_PackageManagerErrors()
         L0Test::ExpectEqU32(tr, fx.provider.GetSuspendedStateConfig("", config), ERROR_INVALID_PARAMETER,
             "GetSuspendedStateConfig() with empty appId returns ERROR_INVALID_PARAMETER");
         ExpectNoSuspendedConfig(tr, config, "Empty appId");
+    }
+    return tr.failures;
+}
+
+uint32_t Test_RM_Lifecycle_ProductionSourceRequestLifetime()
+{
+    L0Test::TestResult tr;
+    L0Test::MockPackageInstaller installer;
+    L0Test::MockPackageHandler handler;
+    L0Test::AppManagerServiceMock::Config config(&installer);
+    config.packageHandler = &handler;
+    L0Test::AppManagerServiceMock service(config);
+    {
+        WPEFramework::Plugin::PackageManagerLifecycleSource source(&service);
+        std::vector<WPEFramework::Plugin::IPackageLifecycleSource::PackageEntry> packages;
+        bool locked = false;
+        std::string payload;
+        L0Test::ExpectEqU32(tr, source.ListPackages(packages), ERROR_NONE, "Package listing succeeds");
+        L0Test::ExpectEqU32(tr, source.GetLockedInfo("app", "1.0", locked, payload), ERROR_NONE,
+            "Locked info lookup succeeds");
+        L0Test::ExpectEqU32(tr, installer._refCount.load(), 1, "Installer reference released after request");
+        L0Test::ExpectEqU32(tr, handler._refCount.load(), 1, "Handler reference released after request");
+        installer.listHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& iterator) {
+            iterator = nullptr;
+            return WPEFramework::Core::ERROR_GENERAL;
+        };
+        L0Test::ExpectEqU32(tr, source.ListPackages(packages), WPEFramework::Core::ERROR_GENERAL,
+            "RPC error is propagated");
+        L0Test::ExpectEqU32(tr, installer._refCount.load(), 1, "Failed request releases its installer reference");
+    }
+    {
+        L0Test::AppManagerServiceMock::Config handlerConfig;
+        handlerConfig.packageHandler = &handler;
+        L0Test::AppManagerServiceMock handlerService(handlerConfig);
+        WPEFramework::Plugin::PackageManagerLifecycleSource source(&handlerService);
+        bool locked = false;
+        std::string payload;
+        L0Test::ExpectEqU32(tr, source.GetLockedInfo("app", "1.0", locked, payload), ERROR_NONE,
+            "Locked info lookup does not require the installer interface");
+        L0Test::ExpectEqU32(tr, handler._refCount.load(), 1, "Handler-only request releases its reference");
+    }
+    {
+        installer.listHandler = nullptr;
+        L0Test::AppManagerServiceMock installerService{ L0Test::AppManagerServiceMock::Config(&installer) };
+        WPEFramework::Plugin::PackageManagerLifecycleSource source(&installerService);
+        std::vector<WPEFramework::Plugin::IPackageLifecycleSource::PackageEntry> packages;
+        L0Test::ExpectEqU32(tr, source.ListPackages(packages), ERROR_NONE,
+            "Package listing does not require the handler interface");
+        L0Test::ExpectEqU32(tr, installer._refCount.load(), 1, "Installer-only request releases its reference");
     }
     return tr.failures;
 }

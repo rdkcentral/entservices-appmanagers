@@ -34,10 +34,7 @@ namespace Plugin {
     }
 
     PackageManagerLifecycleSource::PackageManagerLifecycleSource(PluginHost::IShell* service)
-        : _lock()
-        , _service(service)
-        , _installer(nullptr)
-        , _handler(nullptr)
+        : _service(service)
     {
         if (_service != nullptr) {
             _service->AddRef();
@@ -46,73 +43,19 @@ namespace Plugin {
 
     PackageManagerLifecycleSource::~PackageManagerLifecycleSource()
     {
-        if (_installer != nullptr) {
-            _installer->Release();
-        }
-        if (_handler != nullptr) {
-            _handler->Release();
-        }
         if (_service != nullptr) {
             _service->Release();
-        }
-    }
-
-    bool PackageManagerLifecycleSource::Acquire(Exchange::IPackageInstaller*& installer, Exchange::IPackageHandler*& handler)
-    {
-        installer = nullptr;
-        handler = nullptr;
-        Core::SafeSyncType<Core::CriticalSection> guard(_lock);
-        if (_service == nullptr) {
-            return false;
-        }
-        if (_installer == nullptr) {
-            _installer = _service->QueryInterfaceByCallsign<Exchange::IPackageInstaller>(kPackageManagerCallsign);
-        }
-        if (_handler == nullptr) {
-            _handler = _service->QueryInterfaceByCallsign<Exchange::IPackageHandler>(kPackageManagerCallsign);
-        }
-        if ((_installer == nullptr) || (_handler == nullptr)) {
-            LOGWARN("%s is unavailable; lifecycle capabilities unavailable", kPackageManagerCallsign);
-            return false;
-        }
-        _installer->AddRef();
-        _handler->AddRef();
-        installer = _installer;
-        handler = _handler;
-        return true;
-    }
-
-    void PackageManagerLifecycleSource::InvalidateOnConnectionError(const Core::hresult result)
-    {
-        if (!IsConnectionError(result)) {
-            return;
-        }
-        Exchange::IPackageInstaller* installer = nullptr;
-        Exchange::IPackageHandler* handler = nullptr;
-        {
-            Core::SafeSyncType<Core::CriticalSection> guard(_lock);
-            installer = _installer;
-            handler = _handler;
-            _installer = nullptr;
-            _handler = nullptr;
-        }
-        if (installer != nullptr) {
-            installer->Release();
-        }
-        if (handler != nullptr) {
-            handler->Release();
         }
     }
 
     Core::hresult PackageManagerLifecycleSource::ListPackages(std::vector<PackageEntry>& packages)
     {
         packages.clear();
-        Exchange::IPackageInstaller* installer = nullptr;
-        Exchange::IPackageHandler* handler = nullptr;
-        if (!Acquire(installer, handler)) {
+        auto* installer = _service ? _service->QueryInterfaceByCallsign<Exchange::IPackageInstaller>(kPackageManagerCallsign) : nullptr;
+        if (installer == nullptr) {
+            LOGWARN("%s installer is unavailable; lifecycle capabilities unavailable", kPackageManagerCallsign);
             return Core::ERROR_UNAVAILABLE;
         }
-        handler->Release();
 
         Exchange::IPackageInstaller::IPackageIterator* iterator = nullptr;
         const Core::hresult result = installer->ListPackages(iterator);
@@ -126,7 +69,6 @@ namespace Plugin {
         if (iterator != nullptr) {
             iterator->Release();
         }
-        InvalidateOnConnectionError(result);
         return result;
     }
 
@@ -135,19 +77,17 @@ namespace Plugin {
     {
         locked = false;
         runtimeConfigPayload.clear();
-        Exchange::IPackageInstaller* installer = nullptr;
-        Exchange::IPackageHandler* handler = nullptr;
-        if (!Acquire(installer, handler)) {
+        auto* handler = _service ? _service->QueryInterfaceByCallsign<Exchange::IPackageHandler>(kPackageManagerCallsign) : nullptr;
+        if (handler == nullptr) {
+            LOGWARN("%s handler is unavailable; lifecycle capabilities unavailable", kPackageManagerCallsign);
             return Core::ERROR_UNAVAILABLE;
         }
-        installer->Release();
 
         std::string unpackedPath;
         std::string gatewayMetadataPath;
         const Core::hresult result = handler->GetLockedInfo(packageId, version, unpackedPath, runtimeConfigPayload,
             gatewayMetadataPath, locked);
         handler->Release();
-        InvalidateOnConnectionError(result);
         return result;
     }
 

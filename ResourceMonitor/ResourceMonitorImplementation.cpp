@@ -19,6 +19,7 @@
 
 
 #include "ResourceMonitorImplementation.h"
+#include <interfaces/ILifecycleManager.h>
 #include "ResourceMonitorConfig.h"
 #include "UtilsLogging.h"
 #include "UtilsMemorySize.h"
@@ -45,6 +46,13 @@
 
 namespace WPEFramework {
     namespace Plugin {
+    namespace {
+        const char* const appManagerCallsign = "org.rdk.AppManager";
+        const char* const runtimeManagerCallsign = "org.rdk.RuntimeManager";
+        const char* const lifecycleManagerCallsign = "org.rdk.LifecycleManager";
+        const char* const victimSelectorCallsign = "org.rdk.VictimSelector";
+    }
+
     SERVICE_REGISTRATION(ResourceMonitorImplementation, 1, 0, 0)
     ResourceMonitorImplementation* ResourceMonitorImplementation::_instance = nullptr;
         ResourceMonitorImplementation::ResourceMonitorImplementation()
@@ -123,8 +131,8 @@ namespace WPEFramework {
                 _victimSelector = nullptr;
                 LOGINFO("VictimSelector notification unregistered");
             }
-            ManagerStateChanged("org.rdk.AppManager", false);
-            ManagerStateChanged("org.rdk.RuntimeManager", false);
+            ManagerStateChanged(appManagerCallsign, false);
+            ManagerStateChanged(runtimeManagerCallsign, false);
 			std::list<Exchange::IResourceMonitor::INotification*> notifications;
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
@@ -161,8 +169,8 @@ namespace WPEFramework {
 
         void ResourceMonitorImplementation::ManagerStateChanged(const string& callsign, bool active)
         {
-            const bool appManager = callsign == "org.rdk.AppManager";
-            if (!appManager && callsign != "org.rdk.RuntimeManager") { return; }
+            const bool appManager = callsign == appManagerCallsign;
+            if (!appManager && callsign != runtimeManagerCallsign) { return; }
             std::lock_guard<std::mutex> update(_managerUpdateMutex);
             if (active) {
                 {
@@ -229,7 +237,7 @@ namespace WPEFramework {
                     _lifecycleConfigProvider.reset(new PackageLifecycleConfigProvider(
                         std::unique_ptr<IPackageLifecycleSource>(new PackageManagerLifecycleSource(_rservice))));
                 }
-                _victimSelector = _rservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IVictimSelector>("org.rdk.VictimSelector");
+                _victimSelector = _rservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IVictimSelector>(victimSelectorCallsign);
                 if (_victimSelector == nullptr) {
                     LOGERR("VictimSelector Interface is unavailable. ResourceMonitor will continue without Evict support");
                     result = Core::ERROR_NONE;
@@ -247,10 +255,10 @@ namespace WPEFramework {
                 }
                 // Subscribe to AppManager lifecycle events for lifecycle enforcement
                 _rservice->Register(&_managerNotification);
-                ManagerStateChanged("org.rdk.AppManager", true);
+                ManagerStateChanged(appManagerCallsign, true);
                 // Continue without lifecycle enforcement - this is not a fatal error
                 // Query RuntimeManager for container info (GPU/memory stats)
-                ManagerStateChanged("org.rdk.RuntimeManager", true);
+                ManagerStateChanged(runtimeManagerCallsign, true);
             }
             if (!_reactiveMonitorRunning) {
                 _reactiveMonitorRunning = true;
@@ -1578,107 +1586,41 @@ namespace WPEFramework {
         // Enforcement helpers
         void ResourceMonitorImplementation::RequestSuspendedTransition(const string& appInstanceId)
         {
-            // Map appInstanceId to appId using GetLoadedApps
-            auto appManager = AcquireAppManager();
-            if (!appManager) {
-                LOGERR("AppManager unavailable, cannot request SUSPENDED transition for appInstanceId=%s", appInstanceId.c_str());
+            // Resolve LifecycleManager for this request without caching its interface.
+            std::unique_ptr<Exchange::ILifecycleManager, ReleaseInterface<Exchange::ILifecycleManager>> lifecycleManager(
+                _rservice ? _rservice->QueryInterfaceByCallsign<Exchange::ILifecycleManager>(lifecycleManagerCallsign) : nullptr);
+            if (!lifecycleManager) {
+                LOGERR("LifecycleManager unavailable, cannot request SUSPENDED transition for appInstanceId=%s", appInstanceId.c_str());
                 return;
             }
-            
-            string appId;
-            Exchange::IAppManager::ILoadedAppInfoIterator* loadedApps = nullptr;
-            const Core::hresult result = appManager->GetLoadedApps(loadedApps);
-            
-            if (result != Core::ERROR_NONE || loadedApps == nullptr) {
-                LOGERR("Failed to get loaded apps for transition, appInstanceId=%s, error=%d", appInstanceId.c_str(), static_cast<int>(result));
-                return;
-            }
-            
-            // Iterate to find the appId corresponding to appInstanceId
-            bool found = false;
-            uint32_t index = 0;
-            while (true) {
-                Exchange::IAppManager::LoadedAppInfo info;
-                const bool hasNext = loadedApps->Next(info);
-                if (!hasNext) {
-                    break;
-                }
-                
-                if (info.appInstanceId == appInstanceId) {
-                    appId = info.appId;
-                    found = true;
-                    break;
-                }
-                index++;
-            }
-            
-            loadedApps->Release();
-            
-            if (!found) {
-                LOGERR("Could not find appId for appInstanceId=%s", appInstanceId.c_str());
-                return;
-            }
-            
-            // Request SUSPENDED transition via AppManager
-            const Core::hresult transitionResult = appManager->SetTargetAppState(appId, Exchange::IAppManager::APP_STATE_SUSPENDED);
+
+            // Request SUSPENDED for the instance that owns the deadline.
+            const Core::hresult transitionResult = lifecycleManager->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::SUSPENDED, string());
             if (transitionResult == Core::ERROR_NONE) {
-                LOGINFO("Requested SUSPENDED transition for appId=%s appInstanceId=%s", appId.c_str(), appInstanceId.c_str());
+                LOGINFO("Requested SUSPENDED transition for appInstanceId=%s", appInstanceId.c_str());
             } else {
-                LOGERR("Failed to request SUSPENDED transition for appId=%s appInstanceId=%s, error=%d", 
-                    appId.c_str(), appInstanceId.c_str(), static_cast<int>(transitionResult));
+                LOGERR("Failed to request SUSPENDED transition for appInstanceId=%s, error=%d",
+                    appInstanceId.c_str(), static_cast<int>(transitionResult));
             }
         }
 
         void ResourceMonitorImplementation::RequestHibernatedTransition(const string& appInstanceId)
         {
-            // Map appInstanceId to appId using GetLoadedApps
-            auto appManager = AcquireAppManager();
-            if (!appManager) {
-                LOGERR("AppManager unavailable, cannot request HIBERNATED transition for appInstanceId=%s", appInstanceId.c_str());
+            // Resolve LifecycleManager for this request without caching its interface.
+            std::unique_ptr<Exchange::ILifecycleManager, ReleaseInterface<Exchange::ILifecycleManager>> lifecycleManager(
+                _rservice ? _rservice->QueryInterfaceByCallsign<Exchange::ILifecycleManager>(lifecycleManagerCallsign) : nullptr);
+            if (!lifecycleManager) {
+                LOGERR("LifecycleManager unavailable, cannot request HIBERNATED transition for appInstanceId=%s", appInstanceId.c_str());
                 return;
             }
-            
-            string appId;
-            Exchange::IAppManager::ILoadedAppInfoIterator* loadedApps = nullptr;
-            const Core::hresult result = appManager->GetLoadedApps(loadedApps);
-            
-            if (result != Core::ERROR_NONE || loadedApps == nullptr) {
-                LOGERR("Failed to get loaded apps for transition, appInstanceId=%s, error=%d", appInstanceId.c_str(), static_cast<int>(result));
-                return;
-            }
-            
-            // Iterate to find the appId corresponding to appInstanceId
-            bool found = false;
-            uint32_t index = 0;
-            while (true) {
-                Exchange::IAppManager::LoadedAppInfo info;
-                const bool hasNext = loadedApps->Next(info);
-                if (!hasNext) {
-                    break;
-                }
-                
-                if (info.appInstanceId == appInstanceId) {
-                    appId = info.appId;
-                    found = true;
-                    break;
-                }
-                index++;
-            }
-            
-            loadedApps->Release();
-            
-            if (!found) {
-                LOGERR("Could not find appId for appInstanceId=%s", appInstanceId.c_str());
-                return;
-            }
-            
-            // Request HIBERNATED transition via AppManager
-            const Core::hresult transitionResult = appManager->SetTargetAppState(appId, Exchange::IAppManager::APP_STATE_HIBERNATED);
+
+            // Request HIBERNATED for the instance that owns the deadline.
+            const Core::hresult transitionResult = lifecycleManager->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::HIBERNATED, string());
             if (transitionResult == Core::ERROR_NONE) {
-                LOGINFO("Requested HIBERNATED transition for appId=%s appInstanceId=%s", appId.c_str(), appInstanceId.c_str());
+                LOGINFO("Requested HIBERNATED transition for appInstanceId=%s", appInstanceId.c_str());
             } else {
-                LOGERR("Failed to request HIBERNATED transition for appId=%s appInstanceId=%s, error=%d", 
-                    appId.c_str(), appInstanceId.c_str(), static_cast<int>(transitionResult));
+                LOGERR("Failed to request HIBERNATED transition for appInstanceId=%s, error=%d",
+                    appInstanceId.c_str(), static_cast<int>(transitionResult));
             }
         }
 

@@ -22,12 +22,14 @@ extern uint32_t Test_RM_Lifecycle_SingleLockedVersionUsed();
 extern uint32_t Test_RM_Lifecycle_ExplicitVersionSkipsListing();
 extern uint32_t Test_RM_Lifecycle_MultipleLockedVersionsUnavailable();
 extern uint32_t Test_RM_Lifecycle_PackageManagerErrors();
+extern uint32_t Test_RM_Lifecycle_ProductionSourceRequestLifetime();
 extern uint32_t Test_RM_Lifecycle_ProductionSourceWithoutService();
 extern uint32_t Test_RM_Lifecycle_ConcurrentQueries();
 extern uint32_t Test_RM_Lifecycle_SlowPackageManagerDoesNotSerializeCallers();
 extern uint32_t Test_RM_Enforcement_ManagerLifetime();
 extern uint32_t Test_RM_Enforcement_SnapshotLifetime();
 extern uint32_t Test_RM_Enforcement_CapabilitySnapshot();
+extern uint32_t Test_RM_Enforcement_DirectLifecycleRequests();
 extern uint32_t Test_RM_Enforcement_GpuStatsValidation();
 extern uint32_t Test_RM_Enforcement_SuspendedConfigParsing();
 extern uint32_t Test_RM_Enforcement_GPUMemoryParsing();
@@ -83,12 +85,14 @@ int main()
         { "Lifecycle_ExplicitVersionSkipsListing", Test_RM_Lifecycle_ExplicitVersionSkipsListing },
         { "Lifecycle_MultipleLockedVersionsUnavailable", Test_RM_Lifecycle_MultipleLockedVersionsUnavailable },
         { "Lifecycle_PackageManagerErrors", Test_RM_Lifecycle_PackageManagerErrors },
+        { "Lifecycle_ProductionSourceRequestLifetime", Test_RM_Lifecycle_ProductionSourceRequestLifetime },
         { "Lifecycle_ProductionSourceWithoutService", Test_RM_Lifecycle_ProductionSourceWithoutService },
         { "Lifecycle_ConcurrentQueries", Test_RM_Lifecycle_ConcurrentQueries },
         { "Lifecycle_SlowPackageManagerDoesNotSerializeCallers", Test_RM_Lifecycle_SlowPackageManagerDoesNotSerializeCallers },
         { "Enforcement_ManagerLifetime", Test_RM_Enforcement_ManagerLifetime },
         { "Enforcement_SnapshotLifetime", Test_RM_Enforcement_SnapshotLifetime },
         { "Enforcement_CapabilitySnapshot", Test_RM_Enforcement_CapabilitySnapshot },
+        { "Enforcement_DirectLifecycleRequests", Test_RM_Enforcement_DirectLifecycleRequests },
         { "Enforcement_GpuStatsValidation", Test_RM_Enforcement_GpuStatsValidation },
         { "Enforcement_SuspendedConfigParsing", Test_RM_Enforcement_SuspendedConfigParsing },
         { "Enforcement_GPUMemoryParsing", Test_RM_Enforcement_GPUMemoryParsing },
