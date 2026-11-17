@@ -69,8 +69,9 @@ namespace Plugin {
     //   must not hold _adminLock, _reconcileMutex or _reactiveMonitorMutex while calling.
     // - appId is used unchanged as the Package Manager packageId. Without a version, exactly one locked
     //   version must exist; otherwise the result is UNAVAILABLE.
-    // - Enforcement should snapshot the result per appInstanceId at launch and treat UNAVAILABLE as
-    //   "do not enforce" (legacy packages, Package Manager outages, ambiguous versions).
+    // - Enforcement captures capabilities per appInstanceId on first PAUSED/SUSPENDED entry and retains
+    //   resolved snapshots until unload. UNAVAILABLE is retried on later enforcement-state entry;
+    //   without a snapshot declaring support, enforcement follows the unsupported-state termination path.
     // - Every outcome returns Core::ERROR_NONE with the matching status, except an empty appId,
     //   which returns Core::ERROR_INVALID_PARAMETER.
     class PackageLifecycleConfigProvider {
