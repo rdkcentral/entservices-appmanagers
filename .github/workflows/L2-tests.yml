@@ -111,7 +111,7 @@ jobs:
         with:
           repository: rdkcentral/entservices-testframework
           path: entservices-testframework
-          ref: 1.0.1
+          ref: develop
 
       - name: Checkout entservices-infra
         uses: actions/checkout@v3
