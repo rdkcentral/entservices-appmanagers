@@ -563,8 +563,8 @@ namespace WPEFramework
         }
         else if (!readPreinstalledUpdateExclusionList())
         {
-            releasePackageManagerObject(packageInstaller);
-            return result;
+            LOGWARN("Failed to read exclusion list from %s; proceeding with preinstall without exclusions", mConfigFileName.c_str());
+            mPreinstalledUpdateExclusionList.clear();
         }
 
         if (!forceInstall || !mPreinstalledUpdateExclusionList.empty())
