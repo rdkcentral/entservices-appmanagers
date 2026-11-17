@@ -604,14 +604,17 @@ namespace WPEFramework
             for (auto toBeInstalledApp = preinstallPackages.begin(); toBeInstalledApp != preinstallPackages.end(); /* skip */)
             {
                 const bool isAppOnExclusionList = mPreinstalledUpdateExclusionList.find(toBeInstalledApp->packageId) != mPreinstalledUpdateExclusionList.end();
-                const bool isInstalled = existingApps.find(toBeInstalledApp->packageId) != existingApps.end();
-                const bool shouldInstall = (forceInstall && !isAppOnExclusionList) || !isInstalled;
+                const auto existingApp = existingApps.find(toBeInstalledApp->packageId);
+                const bool isInstalled = existingApp != existingApps.end();
+                const bool isNewer = isInstalled && isNewerVersion(toBeInstalledApp->version, existingApp->second);
+                const bool shouldInstall = !isInstalled || (!isAppOnExclusionList && (forceInstall || isNewer));
 
                 if (!shouldInstall)
                 {
-                    LOGINFO("Skipping preinstall package: %s version=%s forceInstall=%d excluded=%d installed=%d",
+                    LOGINFO("Skipping preinstall package: %s version=%s installedVersion=%s forceInstall=%d excluded=%d installed=%d newer=%d",
                             toBeInstalledApp->packageId.c_str(), toBeInstalledApp->version.c_str(),
-                            forceInstall, isAppOnExclusionList, isInstalled);
+                            isInstalled ? existingApp->second.c_str() : "NONE",
+                            forceInstall, isAppOnExclusionList, isInstalled, isNewer);
                     toBeInstalledApp = preinstallPackages.erase(toBeInstalledApp); // advances automatically
                 }
                 else
@@ -623,9 +626,9 @@ namespace WPEFramework
                     }
                     else
                     {
-                        const std::string &installedVersion = existingApps[toBeInstalledApp->packageId];
+                        const std::string &installedVersion = existingApp->second;
                         const char *action = "REINSTALL";
-                        if (isNewerVersion(toBeInstalledApp->version, installedVersion))
+                        if (isNewer)
                         {
                             action = "UPGRADE";
                         }
