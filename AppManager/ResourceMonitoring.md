@@ -14,9 +14,13 @@ ResourceMonitor remains responsible for observing platform-level signals such as
 
 ## Feature Gate
 
-All ResourceMonitor integration and inactive-state scheduling is compiled only when CMake receives `-DAPP_MANAGER_RESOURCE_MONITOR=ON`. The `entservices-rdkappmanagers` recipe sets this option only when `DISTRO_FEATURES` contains `resource-monitor`.
+ResourceMonitor integration and inactive-state scheduling are compiled only when CMake receives `-DAPP_MANAGER_RESOURCE_MONITOR=ON`. The `entservices-rdkappmanagers` recipe sets this option only when `DISTRO_FEATURES` contains `resource-monitor`.
 
-When the feature is absent, AppManager has no ResourceMonitor dependency: it does not include or query the interface, register callbacks, start the state-transition worker, alter launch or preload behavior, or add resource-monitoring configuration values.
+At startup, AppManager reads `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Resourcemonitor.Enable` from the existing `Feature.Resourcemonitor` RFC object. The tr69hostif data model defines this RFC as writable and enabled by default. When enabled, AppManager connects to ResourceMonitor and starts the inactive-state worker as described below. When disabled, AppManager does not query/register with ResourceMonitor, submit reconciliation requests, or start automatic inactive-state transitions. Launch and preload requests continue through their regular paths without resource reconciliation.
+
+The RFC value is read during AppManager configuration; changing it takes effect after AppManager restarts. RFC reading is compiled when `rfcapi` is available. If RFC support is unavailable in the build, ResourceMonitor retains its default-enabled behavior.
+
+When the feature is absent at build time, AppManager does not include or query the interface, register callbacks, start the state-transition worker, or add resource-monitoring configuration values.
 
 ## ResourceMonitor Contract
 
