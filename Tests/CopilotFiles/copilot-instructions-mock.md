@@ -15,7 +15,7 @@ Before generating mocks, complete this verification checklist:
 
 1. **List ALL build dependencies** from CMakeLists.txt (`find_package`, `target_link_libraries`)
 2. **For EACH build dependency, verify**:
-   - [ ] Does a wrapper file exist? (e.g., `Iarm.h`, `devicesettings.h`)
+    - [ ] Does a wrapper file exist? (e.g., `Iarm.h`)
    - [ ] Does the wrapper define `*Impl` interfaces?
    - [ ] Does a corresponding `*Mock.h` file exist with `MOCK_METHOD` declarations?
    - [ ] **If wrapper exists but mock doesn't → ADD TO GENERATION LIST**
@@ -80,11 +80,11 @@ Before generating mocks, complete this verification checklist:
         2. File contains `#include <gmock/gmock.h>`
         3. File contains `MOCK_METHOD(...)` declarations
     - **Files are NOT mocks if they**:
-        - Only define wrapper classes with `*Impl` interfaces (e.g., `Iarm.h`, `devicesettings.h`)
+        - Only define wrapper classes with `*Impl` interfaces (e.g., `Iarm.h`)
         - Lack gmock includes or MOCK_METHOD declarations
         - Are pure interface definitions without mock implementations
     - **If existing mock found**: Verify it's complete by comparing method count with similar mocks before deciding to regenerate
-    - **CRITICAL DECISION RULE**: If you find a wrapper file (like `Iarm.h` or `devicesettings.h`) that defines `*Impl` interfaces:
+    - **CRITICAL DECISION RULE**: If you find a wrapper file (like `Iarm.h`) that defines `*Impl` interfaces:
         1. Search for a corresponding mock file (e.g., `IarmBusMock.h`, `IarmMock.h`)
         2. **If NO corresponding mock exists**, you MUST generate the mock
         3. **A wrapper file is NOT a mock file** - it does not meet the 3 criteria above (no "Mock" in filename, no gmock include, no MOCK_METHOD declarations)
@@ -103,7 +103,7 @@ Before generating mocks, complete this verification checklist:
     - Include proper copyright headers matching the repository standard
     
     - **Complete Mock Generation - Critical Steps**:
-        1. **Read the source file FIRST**: Open the wrapper file (e.g., `devicesettings.h`, `Iarm.h`) OR actual header if available, and locate the `*Impl` interface class definition
+        1. **Read the source file FIRST**: Open the wrapper file (e.g., `Iarm.h`) OR actual header if available, and locate the `*Impl` interface class definition
         2. **Copy ALL methods**: For every virtual method in the interface, create a corresponding MOCK_METHOD declaration with the exact signature
         3. **Match signatures exactly**: Copy return types, parameter types (including references/pointers), and const qualifiers directly - do not guess or assume
         4. **Do not skip methods**: Mock every method in the interface, even if not currently called in the code being tested
@@ -252,20 +252,10 @@ Modern plugins often have dependencies that must be mocked even if not directly 
 3. **Find ALL libraries in `target_link_libraries()`** - these are linked dependencies
 4. **Include conditional dependencies** - check inside `if()` blocks
 
-**Example from FrameRate plugin:**
-```cmake
-# These ALL need mocks:
-find_package(IARMBus)          # ← Mock needed: IarmBusMock.h
-find_package(DS)               # ← Mock needed: device settings mocks
-
-target_link_libraries(${PLUGIN_IMPLEMENTATION}
-    PRIVATE ${IARMBUS_LIBRARIES}  # ← Must mock
-            ${DS_LIBRARIES}       # ← Must mock
-)
-```
+For each dependency, verify whether its headers and libraries are used by the target before adding test mocks.
 
 **Verification:**
-- Check if wrapper files exist: `Iarm.h`, `devicesettings.h`
+- Check if wrapper files exist: `Iarm.h`
 - Verify if mocks exist: `IarmBusMock.h`, `HostMock.h`, etc.
 - Even if code doesn't call library functions, the mock is still required for build stability
 
@@ -290,7 +280,7 @@ target_link_libraries(${PLUGIN_IMPLEMENTATION}
   2. Contains `#include <gmock/gmock.h>`
   3. Contains `MOCK_METHOD(...)` declarations
 - **WRAPPER WITHOUT MOCK CHECK**: For each dependency from CMakeLists.txt, verify:
-  1. If a wrapper file exists (e.g., `Iarm.h`, `devicesettings.h`)
+    1. If a wrapper file exists (e.g., `Iarm.h`)
   2. AND the wrapper defines `*Impl` interfaces
   3. THEN a corresponding `*Mock.h` file with MOCK_METHOD declarations MUST exist
   4. If missing, generate the mock file
