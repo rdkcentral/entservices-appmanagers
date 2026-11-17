@@ -833,8 +833,8 @@ namespace WPEFramework
             // A headless daemon can use Rialto without first creating an app display.
             if (isDaemonApp || (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty()))
             {
-            bool requiresRialto = ralfInstance;
-            if (!ralfInstance)
+            bool requiresRialto = ralfInstance && !classicRalfLaunch;
+            if (!requiresRialto)
             {
                 const bool appRequiresRialto = DobbySpecGenerator::hasCapability(parsedCaps, "rialto");
                 const int rialtoOverride = (nullptr != mAIConfiguration) ? mAIConfiguration->getRialtoOverride() : -1;

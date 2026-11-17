@@ -114,6 +114,9 @@ ext4 image when present, otherwise skips the `/home/private` loop mount. It
 never treats the RALF package directory itself as an image. The classic spec
 also enables the networking and AppServices plugins so the browser can discover
 its local AS endpoints from inside the container.
+Base-free RALF launches use the classic widget Rialto capability/override policy;
+layered OCI RALF launches still require Rialto. Without Rialto, the classic
+generator enables VPU and the pre-scanned GStreamer registry.
 RALF package identity and unlock handling remain unchanged. OCI packages with
 a missing base init fail generation before Dobby starts. When
 `RDK_APPMANAGERS_DEBUG` is enabled, the generated RALF OCI config is also
