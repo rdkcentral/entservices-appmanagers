@@ -453,6 +453,11 @@ namespace WPEFramework
     bool PreinstallManagerImplementation::readPreinstalledUpdateExclusionList(std::set<std::string> &exclusionList)
     {
         exclusionList.clear();
+        if (mConfigFileName.empty())
+        {
+            LOGINFO("configFileName is empty; skipping exclusion list load");
+            return true;
+        }
         const char *const storePath = mConfigFileName.c_str();
         std::ifstream input(storePath);
         if (input.is_open())
