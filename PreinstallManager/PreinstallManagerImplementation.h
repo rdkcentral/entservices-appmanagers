@@ -175,7 +175,6 @@ namespace WPEFramework
             std::string mEnabledFactoryReset;
             std::set<std::string> mPreinstalledUpdateExclusionList;
             uint32_t mStartPreinstallCount = 0;
-            std::map<std::string, uint32_t> mInstallAttempts; // "packageId:version" -> attempts
             std::list<Exchange::IPreinstallManager::INotification*> mPreinstallManagerNotifications;
             PluginHost::IShell *mCurrentservice;
             State mPreinstallState;

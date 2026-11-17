@@ -317,7 +317,6 @@ namespace WPEFramework
     {
         ASSERT(nullptr != packageInstaller);
         DIR *dir = opendir(mAppPreinstallDirectory.c_str());
-        LOGINFO("db982 Reading preinstall directory: %s", mAppPreinstallDirectory.c_str());
         if (!dir)
         {
             LOGINFO("Failed to open directory: %s errno=%d", mAppPreinstallDirectory.c_str(), errno);
@@ -412,16 +411,6 @@ namespace WPEFramework
             const uint32_t attempt = ++mInstallAttempts[pkg.packageId + ":" + pkg.version];
             const uint32_t invocation = mStartPreinstallCount;
             mAdminLock.Unlock();
-            if (attempt > 1)
-            {
-                LOGWARN("db982 Duplicate install detected: package=%s version=%s attempt=%u (StartPreinstall invocation #%u)",
-                        pkg.packageId.c_str(), pkg.version.c_str(), attempt, invocation);
-            }
-            else
-            {
-                LOGINFO("db982First install attempt: package=%s version=%s (StartPreinstall invocation #%u)",
-                        pkg.packageId.c_str(), pkg.version.c_str(), invocation);
-            }
 
             FailReason failReason;
             Exchange::IPackageInstaller::IKeyValueIterator* additionalMetadata = nullptr;
@@ -516,10 +505,8 @@ namespace WPEFramework
         Core::hresult result = Core::ERROR_GENERAL;
         bool shouldJoinPreviousThread = false;
         Exchange::IPackageInstaller* packageInstaller = nullptr;
-        LOGINFO("db982 Starting preinstall with forceInstall=%d", forceInstall);
         mAdminLock.Lock();
         ++mStartPreinstallCount;
-        LOGINFO("db982 StartPreinstall invocation #%u forceInstall=%d state=%d", mStartPreinstallCount, forceInstall, static_cast<int>(mPreinstallState));
         if (mInstallThread.joinable())
         {
             if (mPreinstallState != State::COMPLETED)
@@ -635,7 +622,7 @@ namespace WPEFramework
                 {
                     if (!isInstalled)
                     {
-                        LOGINFO("db982 Preinstall action: NEW INSTALL package=%s version=%s",
+                        LOGINFO("Preinstall action: NEW INSTALL package=%s version=%s",
                                 toBeInstalledApp->packageId.c_str(), toBeInstalledApp->version.c_str());
                     }
                     else
@@ -650,7 +637,7 @@ namespace WPEFramework
                         {
                             action = "DOWNGRADE";
                         }
-                        LOGINFO("db982 Preinstall action: %s package=%s installedVersion=%s preinstallVersion=%s forceInstall=%d",
+                        LOGINFO("Preinstall action: %s package=%s installedVersion=%s preinstallVersion=%s forceInstall=%d",
                                 action, toBeInstalledApp->packageId.c_str(), installedVersion.c_str(),
                                 toBeInstalledApp->version.c_str(), forceInstall);
                     }
