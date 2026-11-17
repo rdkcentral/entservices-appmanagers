@@ -144,7 +144,7 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    S0["/usr/share/ralf/oci-base-spec.json"] --> S1["+ graphics config<br/>(EntOS vendor-gpu.json | gpu-layer/config.json)"]
+    S0["/usr/share/ralf/oci-base-spec.json"] --> S1["+ graphics config<br/>(EntOS runtimeConfigFile.gpuConfig | gpu-layer/config.json)"]
     S1 --> S2["for each layer config.json:<br/>entryPoint/args, configuration overrides,<br/>memory, storage, network, permissions, secrets"]
     S2 --> S3["+ payload envVariables"]
     S3 --> S4["[EntOS] setLegacyProcessArgs<br/>base init → … → app"]

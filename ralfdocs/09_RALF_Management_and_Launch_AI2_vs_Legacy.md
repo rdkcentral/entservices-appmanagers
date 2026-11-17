@@ -134,7 +134,7 @@ sequenceDiagram
 | Bundle root | configured base dir, per-app `createBundleDirectory(appId)` | EntOS `/run/sky/bundles/<appInstanceId>` (non-EntOS `/tmp/ralf/`) |
 | Base spec | `OCISpecFactory` (code) | `/usr/share/ralf/oci-base-spec.json` (file) |
 | Overlay order | `app:runtime:vendor:base` | EntOS `app:runtime:vendor:base` (non-EntOS: `gpu-layer:app:runtime:base`) |
-| Vendor GPU layer | **One shared** `OCIVendorLayer` at `<base>/vendor`, built at startup | **One shared** `RalfVendorLayer` at `<bundleRoot>/vendor`, built on first OCI launch per process from `vendor-gpu.json` |
+| Vendor GPU layer | **One shared** `OCIVendorLayer` at `<base>/vendor`, built at startup | **One shared** `RalfVendorLayer` at `<bundleRoot>/vendor`, built on first OCI launch per process from `runtimeConfigFile.gpuConfig` |
 | `process.args` | `[base.exec (init), runtime.exec?, app.exec, app.execArgs…]` | EntOS `setLegacyProcessArgs`: `[base.entryPoint, middle…, app.entryPoint, app.entryArgs…]` – same shape |
 | uid/gid | `appPackage->userId()/groupId()` | app's own uid/gid from the payload |
 | Environment | Built in code from package model + launch params + SystemInfo | entos sysconfig `ralfContainerEnvVars(context)` (platform, secret, watchdog, DIAL, method) + layer `config.json` env + `runtimeSecrets` + payload launch env + `APPLICATION_TOKEN` (see [03 §5](03_entservices-appmanagers_RALF_Changes.md)) |
@@ -186,7 +186,7 @@ flowchart LR
 | `.packages.limits.*` | same limits → `setMaxExtractionBytes/Entries` |
 | `.apps.ociBundleGenerator.enable` | – (always available with `RALF_PACKAGE_SUPPORT`) |
 | `.apps.ociBundleGenerator.mapHostCACertificates` | – (base spec template) |
-| vendor GPU config | `ENTOS_RALF_GPU_CONFIG_FILE` (`/etc/rdk/vendor-gpu.json`) |
+| vendor GPU config | `gpuConfig` in RuntimeManager's configured `runtimeConfigFile` YAML |
 
 ## 8. Summary
 

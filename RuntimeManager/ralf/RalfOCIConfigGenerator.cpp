@@ -36,20 +36,15 @@
 
 namespace ralf
 {
-    bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject)
+    bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config,
+                                                       const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject,
+                                                       const Json::Value &graphicsConfigNode)
     {
         Json::Value ociConfigRootNode;
 
         if (!JsonFromFile(RALF_OCI_BASE_SPEC_FILE, ociConfigRootNode))
         {
             LOGERR("Failed to load base OCI config template");
-            return false;
-        }
-        // Load graphics config and integrate into OCI config
-        Json::Value graphicsConfigNode;
-        if (!JsonFromFile(RALF_GRAPHICS_LAYER_CONFIG, graphicsConfigNode))
-        {
-            LOGERR("Failed to load Ralf graphics config JSON from file: %s", RALF_GRAPHICS_LAYER_CONFIG.c_str());
             return false;
         }
         // Apply graphics configuration

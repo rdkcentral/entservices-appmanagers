@@ -44,18 +44,21 @@ namespace ralf
         }
     }
 
-    bool RalfPackageBuilder::generateOCIRootfsPackage(const std::string &appInstanceId, std::string &ociRootfsPath)
+    bool RalfPackageBuilder::generateOCIRootfsPackage(const std::string &appInstanceId,
+                                                       const Json::Value &graphicsConfigNode,
+                                                       std::string &ociRootfsPath)
     {
         // Let us extract the mount points.
 #ifdef ENTOS_RALF_SUPPORT
         const std::string vendorGpuLayerPath = RALF_APP_ROOTFS_DIR + "vendor";
-        if (!RalfVendorLayer::createShared(vendorGpuLayerPath, RALF_GRAPHICS_LAYER_CONFIG))
+        if (!RalfVendorLayer::createShared(vendorGpuLayerPath, graphicsConfigNode))
         {
             LOGERR("Failed to create shared vendor GPU layer for appInstanceId: %s", appInstanceId.c_str());
             return false;
         }
         std::string packageLayers;
 #else
+        (void)graphicsConfigNode;
         std::string packageLayers = RALF_GRAPHICS_LAYER_ROOTFS;
 #endif
         // RDKEMW-15736 We need to reverse iterate to maintain the correct order of layers
@@ -110,9 +113,29 @@ namespace ralf
         return status;
     }
 
-    bool RalfPackageBuilder::generateRalfDobbySpec(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, std::string &dobbySpec)
+    bool RalfPackageBuilder::generateRalfDobbySpec(const WPEFramework::Plugin::ApplicationConfiguration &config,
+                                                   const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject,
+                                                   std::string &dobbySpec,
+                                                   const Json::Value &runtimeConfigNode)
     {
         std::string ralfPkgPath = runtimeConfigObject.ralfPkgPath;
+        Json::Value graphicsConfigNode;
+#ifdef ENTOS_RALF_SUPPORT
+        graphicsConfigNode = runtimeConfigNode;
+        if (!graphicsConfigNode.isMember("vendorGpuSupport"))
+        {
+            graphicsConfigNode["vendorGpuSupport"]["devNodes"] = Json::Value(Json::arrayValue);
+            graphicsConfigNode["vendorGpuSupport"]["groupIds"] = Json::Value(Json::arrayValue);
+            graphicsConfigNode["vendorGpuSupport"]["files"] = Json::Value(Json::arrayValue);
+        }
+#else
+        (void)runtimeConfigNode;
+        if (!JsonFromFile(RALF_GRAPHICS_LAYER_CONFIG, graphicsConfigNode))
+        {
+            LOGERR("Failed to load RALF graphics config: %s", RALF_GRAPHICS_LAYER_CONFIG.c_str());
+            return false;
+        }
+#endif
 
         // Step one: Extract Ralf package details from metadata
         bool status = parseRalPkgInfo(ralfPkgPath, mRalfPackages);
@@ -124,7 +147,7 @@ namespace ralf
         LOGDBG("Extracted %d Ralf packages from config\n", (int)mRalfPackages.size());
         // Step two: Generate overlay OCI rootfs package for the application instance
         std::string ociRootfsPath;
-        status = generateOCIRootfsPackage(config.mAppInstanceId, ociRootfsPath);
+        status = generateOCIRootfsPackage(config.mAppInstanceId, graphicsConfigNode, ociRootfsPath);
         if (!status)
         {
             LOGERR("Failed to generate OCI rootfs package for appInstanceId: %s\n", config.mAppInstanceId.c_str());
@@ -136,7 +159,7 @@ namespace ralf
         std::string configFilePath = RALF_APP_ROOTFS_DIR + config.mAppInstanceId + "/config.json";
 
         RalfOCIConfigGenerator ralfOciGen(configFilePath, mRalfPackages);
-        status = ralfOciGen.generateRalfOCIConfig(config, runtimeConfigObject);
+        status = ralfOciGen.generateRalfOCIConfig(config, runtimeConfigObject, graphicsConfigNode);
         if (!status)
         {
             unmountOverlayfsIfExists(config.mAppInstanceId);

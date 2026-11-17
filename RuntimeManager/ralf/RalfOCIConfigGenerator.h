@@ -36,7 +36,9 @@ namespace ralf
          * @param runtimeConfigObject The runtime configuration.
          * @return true if the OCI config was generated successfully, false otherwise.
          */
-        bool generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject);
+        bool generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config,
+                       const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject,
+                       const Json::Value &graphicsConfigNode = Json::Value());
 
     private:
         /**

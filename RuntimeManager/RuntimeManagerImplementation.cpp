@@ -556,7 +556,17 @@ namespace WPEFramework
             {
                 LOGINFO("Generating Ralf Package Config : %s", runtimeConfigObject.ralfPkgPath.c_str());
                 ralf::RalfPackageBuilder ralfBuilder;
+#ifdef ENTOS_RALF_SUPPORT
+                Json::Value gpuConfig;
+                if ((nullptr == mAIConfiguration) || !mAIConfiguration->getRalfGpuConfig(gpuConfig))
+                {
+                    LOGERR("Failed to read RALF GPU config from runtime YAML");
+                    return false;
+                }
+                return ralfBuilder.generateRalfDobbySpec(config, runtimeConfigObject, dobbySpec, gpuConfig);
+#else
                 return ralfBuilder.generateRalfDobbySpec(config, runtimeConfigObject, dobbySpec);
+#endif
             }
             LOGINFO("ralfPkgPath is empty, using legacy Dobby spec generation");
 #endif // RALF_PACKAGE_SUPPORT_ENABLED

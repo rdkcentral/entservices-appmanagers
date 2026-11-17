@@ -36,7 +36,7 @@ flowchart TB
 | `ENABLE_RALF_PACKAGE_SUPPORT` | `ref/libpackage-sky/CMakeLists.txt` | libPackage.so | **OFF** | EntOS widget-only builds from libralf and from any RALF code path |
 | `RALF_PACKAGE_SUPPORT_ENABLED` | `RuntimeManager/CMakeLists.txt`, `AppStorageManager/CMakeLists.txt` (`add_definitions`, directory scope) | RuntimeManager, AppStorageManager | **ON** (`RALF_PACKAGE_SUPPORT` option) | Non-RALF builds from `ralf/*.cpp`, jsoncpp link, OCI bundle code |
 | `ENTOS_RALF_SUPPORT` | `RuntimeManager/CMakeLists.txt` (`target_compile_definitions PRIVATE`) | RuntimeManager implementation lib only | **ON** | **Non-EntOS RALF behaviour** (paths, GPU layer, args, graphics semantics) |
-| `ENTOS_RALF_GPU_CONFIG_FILE` / `ENTOS_RALF_BUNDLE_ROOT` | `RalfConstants.h` `#ifndef` | RuntimeManager | Sky paths | Lets an EntOS integrator override paths without code edits |
+| `ENTOS_RALF_BUNDLE_ROOT` | `RalfConstants.h` `#ifndef` | RuntimeManager | Sky bundle path | Lets an EntOS integrator override the bundle path without code edits |
 | `USE_LIBPACKAGE_RALF` | `PackageManager/CMakeLists.txt` | PackageManager | **OFF** | Generic-libpackage companion runtime locking (not needed for libpackage-sky) |
 | `ralfEnabled` | RuntimeManager plugin config | runtime | `true` | Field kill-switch for RALF launches |
 
@@ -68,7 +68,7 @@ endif()
 
 | # | File / function | `ENTOS_RALF_SUPPORT` ON (EntOS) | OFF (RDK generic, = develop behaviour) |
 |---|-----------------|--------------------------------|-----------------------------------------|
-| 1 | `RalfConstants.h` – `RALF_GRAPHICS_LAYER_CONFIG` | `ENTOS_RALF_GPU_CONFIG_FILE` = `/etc/rdk/vendor-gpu.json` | `/usr/share/gpu-layer/config.json` |
+| 1 | graphics config source | `gpuConfig` in RuntimeManager's configured `runtimeConfigFile` YAML | `/usr/share/gpu-layer/config.json` |
 | 2 | `RalfConstants.h` – `RALF_APP_ROOTFS_DIR` | `ENTOS_RALF_BUNDLE_ROOT` = `/run/sky/bundles/` | `/tmp/ralf/` |
 | 3 | `RalfPackageBuilder::generateOCIRootfsPackage` – layer seed | shared `RalfVendorLayer::createShared(<bundleRoot>/vendor, gpuConfig)` (built once per process, AI1 parity); start with empty lowerdir list | lowerdir starts with `/usr/share/gpu-layer/rootfs` (prebuilt GPU layer, top priority) |
 | 4 | same – loop | inserts `vendor` **just above the first `base` layer** encountered (reverse iteration) | plain `app:runtime:…:base` after the GPU layer |
@@ -76,14 +76,14 @@ endif()
 | 6 | same – on failure | `removeDirectoryRecursively(<bundle root>/<instance>)` | no cleanup (develop behaviour) |
 | 7 | `RalfOCIConfigGenerator::generateRalfOCIConfig` – collect configs | keeps every layer `config.json` in `packageConfigs` | – |
 | 8 | same – process args | `setLegacyProcessArgs()`: `[base.entryPoint, middle…, app.entryPoint, app.entryArgs…]`; **fails** without a base init | per-layer `entryPoint`/`entryArgs` appended in manifest order |
-| 9 | `applyGraphicsConfigToOCIConfig` – `files[]` | typed entries; only `type=="bind"` mounted `ro,bind,nosuid,nodev` (non-recursive) with the configured source; `file`/`symlink` handled by `RalfVendorLayer` (no source rewriting – library versions are a `vendor-gpu.json` concern) | every `{source,destination}` becomes an `rbind` (rw) mount |
+| 9 | `applyGraphicsConfigToOCIConfig` – `files[]` | typed entries from YAML; only `type=="bind"` mounted `ro,bind,nosuid,nodev` (non-recursive); `file`/`symlink` handled by `RalfVendorLayer` | every `{source,destination}` becomes an `rbind` (rw) mount |
 | 10 | `addDeviceNodeEntriesToOCIConfig` – `devs[]` | `glob()` each pattern (e.g. `/dev/dri/*`) | literal paths |
 
 ```mermaid
 flowchart LR
     subgraph ON["ENTOS_RALF_SUPPORT = ON"]
         direction TB
-        a1[vendor-gpu.json] --> a2[RalfVendorLayer shared bundleRoot/vendor]
+        a1[runtimeConfigFile gpuConfig] --> a2[RalfVendorLayer shared bundleRoot/vendor]
         a2 --> a3["lowerdir: app:runtime:vendor:base"]
         a3 --> a4["args: base init → … → app"]
         a1 --> a5["bind-only file mounts, glob devs"]

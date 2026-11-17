@@ -21,7 +21,7 @@ namespace ralf
     {
     }
 
-    bool RalfVendorLayer::createShared(const std::string &layerPath, const std::string &configPath)
+    bool RalfVendorLayer::createShared(const std::string &layerPath, const Json::Value &config)
     {
         static std::mutex creationLock;
         static bool created = false;
@@ -30,25 +30,24 @@ namespace ralf
         if (!created)
         {
             RalfVendorLayer layer(layerPath);
-            created = layer.create(configPath);
+            created = layer.create(config);
         }
         return created;
     }
 
-    bool RalfVendorLayer::create(const std::string &configPath)
+    bool RalfVendorLayer::create(const Json::Value &config)
     {
-        Json::Value config;
-        if (!JsonFromFile(configPath, config) || !config.isMember("vendorGpuSupport") ||
+        if (!config.isMember("vendorGpuSupport") ||
             !config["vendorGpuSupport"].isObject())
         {
-            LOGERR("Invalid vendor GPU config: %s", configPath.c_str());
+            LOGERR("Invalid vendor GPU config node");
             return false;
         }
 
         const Json::Value &files = config["vendorGpuSupport"]["files"];
         if (!files.isArray())
         {
-            LOGERR("Vendor GPU config files is not an array: %s", configPath.c_str());
+            LOGERR("Vendor GPU config files is not an array");
             return false;
         }
 
@@ -67,7 +66,7 @@ namespace ralf
         {
             if (!entry.isObject() || !entry["type"].isString())
             {
-                LOGERR("Invalid entry in vendor GPU config files: %s", configPath.c_str());
+                LOGERR("Invalid entry in vendor GPU config files");
                 removeDirectoryRecursively(mLayerPath);
                 return false;
             }

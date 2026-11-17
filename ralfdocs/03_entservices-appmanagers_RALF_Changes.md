@@ -106,13 +106,13 @@ if (!runtimeConfig.ralfPkgPath.empty()) {          // classic RALF only
 | `RalfOCIConfigGenerator::generateRalfOCIConfig` | new `addPackageSecretsToOCIConfig` (`runtimeSecrets.applicationSecret` → `APPLICATION_SECRET`, `credentialsManager`), new `addRuntimeEnvironmentToOCIConfig` (payload env vars → OCI env), EntOS `setLegacyProcessArgs` | secrets/env: none; args: `ENTOS_RALF_SUPPORT` |
 | `applyRuntimeAndAppConfigToOCIConfig` | Rialto socket from `appConfig.mRialtoSocketPath` (was hard-coded `/tmp/rlto-<id>`); `APPLICATION_TOKEN=<appInstanceId>` (same as the classic widget spec; ASAppManager derives its AS token from it); widget `data.img` (`unpackedPath` regular file) loop-mounted at `/home/private` via the Dobby `storage` rdkPlugin (`addPrivateDataToOCIConfig`, AI1 `setPrivateDataMount` parity) | none |
 | `saveOCIConfigToFile` | no chown; mode `0600` if secrets present else `0644`; debug dump redacts `APPLICATION_SECRET` | none |
-| graphics `files[]` | EntOS: typed entries, only `type=="bind"` mounted (ro, bind, nosuid, nodev) exactly as configured – the former `libwayland-egl.so.1.20.0` → `.so.1` source rewrite was **removed**; library-version differences must be expressed in `vendor-gpu.json` (bind the soname the image ships and add `symlink` entries in the vendor layer, see `docs/VENDOR_GPU_CONFIG_PROCESSING.md`) | `ENTOS_RALF_SUPPORT` |
+| graphics `files[]` | EntOS: typed entries from `gpuConfig.files` in RuntimeManager's `runtimeConfigFile` YAML; only `type=="bind"` is mounted (ro, bind, nosuid, nodev), while `file` and `symlink` entries populate the vendor layer. Library-version differences use bind/symlink entries in that YAML (see `docs/VENDOR_GPU_CONFIG_PROCESSING.md`) | `ENTOS_RALF_SUPPORT` |
 | graphics `devs[]` | EntOS: `glob()` patterns | `ENTOS_RALF_SUPPORT` |
 | `prepareMergedRootfsMountTargets` | sorted creation of non-bind mount dirs + `/home` | none |
 | `addBindMountToOCIConfig` | new `recursive/noSuid/noDev` params (defaults keep old `rbind`) | none |
 | `parseRalPkgInfo` | strict validation, no partial append | none |
-| `RalfConstants.h` | EntOS: GPU config `/etc/rdk/vendor-gpu.json`, bundle root `/run/sky/bundles/` | `ENTOS_RALF_SUPPORT` |
-| `RalfVendorLayer` (**new**) | builds the shared `<bundleRoot>/vendor` from the GPU config (`file` copies, `symlink`s, `bind`/`socket` mount targets); `createShared()` builds it once per process and reuses it for every bundle | used only under `ENTOS_RALF_SUPPORT` (compiled always) |
+| `RalfPackageBuilder` | EntOS: reads `gpuConfig` from the RuntimeManager runtime YAML; bundle root `/run/sky/bundles/` | `ENTOS_RALF_SUPPORT` |
+| `RalfVendorLayer` (**new**) | builds the shared `<bundleRoot>/vendor` from parsed GPU config (`file` copies, `symlink`s, `bind`/`socket` mount targets); `createShared()` builds it once per process and reuses it for every bundle | used only under `ENTOS_RALF_SUPPORT` (compiled always) |
 
 #### Overlay layer order
 
@@ -164,7 +164,7 @@ semantics: PackageManager itself locks `state.runtimeApp` after the app and unlo
 | libpackage (aisettings) | `.packages.extractedTmpDir` | (existing) | RALF extraction fallback under `ralf/` |
 | libpackage (aisettings) | XML-DSig CA enables/locations | (existing) | RALF verification bundle |
 | libpackage (compile) | `RALF_PACKAGE_FILE_NAME` | `package.wgt` | RALF file name in the shared slot |
-| RuntimeManager (compile) | `ENTOS_RALF_GPU_CONFIG_FILE` | `/etc/rdk/vendor-gpu.json` | EntOS GPU layer config |
+| RuntimeManager (config) | `runtimeConfigFile.gpuConfig` | RuntimeManager's configured YAML path | EntOS GPU devices, groups, and vendor-layer files |
 | RuntimeManager (compile) | `ENTOS_RALF_BUNDLE_ROOT` | `/run/sky/bundles/` | EntOS OCI bundle root (shared vendor layer at `<root>/vendor`) |
 
 ---

@@ -27,10 +27,6 @@ namespace ralf
     const std::string RALF_GRAPHICS_LAYER_PATH = "/usr/share/gpu-layer/";
     const std::string RALF_GRAPHICS_LAYER_ROOTFS = RALF_GRAPHICS_LAYER_PATH + "rootfs";
 #ifdef ENTOS_RALF_SUPPORT
-#ifndef ENTOS_RALF_GPU_CONFIG_FILE
-#define ENTOS_RALF_GPU_CONFIG_FILE "/etc/rdk/vendor-gpu.json"
-#endif
-    const std::string RALF_GRAPHICS_LAYER_CONFIG = ENTOS_RALF_GPU_CONFIG_FILE;
 #ifndef ENTOS_RALF_BUNDLE_ROOT
 #define ENTOS_RALF_BUNDLE_ROOT "/run/sky/bundles/"
 #endif

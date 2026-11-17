@@ -478,12 +478,12 @@ flowchart TB
   <h3>ENTOS_RALF_SUPPORT sites</h3>
   <table>
     <tr><th>Site</th><th>EntOS (ON)</th><th>RDK generic (OFF)</th></tr>
-    <tr><td>GPU config</td><td><code>/etc/rdk/vendor-gpu.json</code></td><td><code>/usr/share/gpu-layer/config.json</code></td></tr>
+    <tr><td>GPU config</td><td><code>runtimeConfigFile.gpuConfig</code></td><td><code>/usr/share/gpu-layer/config.json</code></td></tr>
     <tr><td>Bundle root</td><td><code>/run/sky/bundles/</code></td><td><code>/tmp/ralf/</code></td></tr>
     <tr><td>GPU layer</td><td>shared <code>RalfVendorLayer</code> (built once per process, AI1 parity), inserted above base</td><td>prebuilt <code>/usr/share/gpu-layer/rootfs</code> on top</td></tr>
     <tr><td>Bundle cleanup on failure</td><td>yes</td><td>no</td></tr>
     <tr><td>Process args</td><td><code>setLegacyProcessArgs</code>: base init → runtime → app entryPoint (optional) → app args</td><td>per-layer entryPoints</td></tr>
-    <tr><td>Graphics files</td><td>typed; only <code>bind</code> mounted ro/nosuid/nodev as configured (symlinks via vendor-gpu.json, no source rewriting)</td><td>every entry rbind</td></tr>
+    <tr><td>Graphics files</td><td>typed YAML entries; only <code>bind</code> mounted ro/nosuid/nodev as configured (files/symlinks populate vendor layer)</td><td>every entry rbind</td></tr>
     <tr><td>Graphics devs</td><td><code>glob()</code></td><td>literal</td></tr>
   </table>
 

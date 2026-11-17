@@ -202,41 +202,9 @@ uint32_t Test_RalfOCIConfigGenerator_GenerateFailsWhenBaseSpecFileMissing()
     return tr.failures;
 }
 
-/* Test_RalfOCIConfigGenerator_GenerateFailsWhenGraphicsConfigMissing
- *
- * When the base OCI spec file exists but the graphics config does not,
- * generateRalfOCIConfig() should return false.
- * This test only runs when the base spec is present but graphics config is absent.
- */
-uint32_t Test_RalfOCIConfigGenerator_GenerateFailsWhenGraphicsConfigMissing()
-{
-    L0Test::TestResult tr;
-
-    // Only meaningful when base spec exists but graphics config does not
-    if (!ralf::checkIfPathExists(ralf::RALF_OCI_BASE_SPEC_FILE) ||
-         ralf::checkIfPathExists(ralf::RALF_GRAPHICS_LAYER_CONFIG)) {
-        // Architecture guard: skip if preconditions aren't met in this environment
-        L0Test::ExpectTrue(tr, true,
-                           "SKIP: preconditions for graphics-config-missing test not met");
-        return tr.failures;
-    }
-
-    std::vector<ralf::RalfPkgInfoPair> packages;
-    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_oci_out2.json", packages);
-
-    auto config = MakeAppConfig_OCI("com.test.app2", "inst-oci-002");
-    auto runtimeCfg = MakeRuntimeConfig_OCI();
-
-    const bool result = gen.generateRalfOCIConfig(config, runtimeCfg);
-    L0Test::ExpectTrue(tr, !result,
-                       "generateRalfOCIConfig() returns false when graphics config is absent");
-
-    return tr.failures;
-}
-
 /* Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec
  *
- * Provides a minimal mock OCI base spec and graphics config JSON, and
+ * Provides a minimal mock OCI base spec and empty graphics config, and
  * verifies that generateRalfOCIConfig() processes them without crashing.
  * The test verifies the error path caused by missing package-specific files.
  */
@@ -335,11 +303,10 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
 {
     L0Test::TestResult tr;
 
-    // Skip if system files are already present so production files are not overwritten.
-    if (ralf::checkIfPathExists(ralf::RALF_OCI_BASE_SPEC_FILE) ||
-        ralf::checkIfPathExists(ralf::RALF_GRAPHICS_LAYER_CONFIG)) {
+    // Skip if the system base spec is already present so production files are not overwritten.
+    if (ralf::checkIfPathExists(ralf::RALF_OCI_BASE_SPEC_FILE)) {
         L0Test::ExpectTrue(tr, true,
-                           "SKIP: system OCI base spec or graphics config present, skipping log path test");
+                           "SKIP: system OCI base spec present, skipping log path test");
         return tr.failures;
     }
 
@@ -348,12 +315,10 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
     const std::string appId            = "com.test.logpathapp";
     const std::string expectedLogPath  = appStoragePath + "/" + appId + ".log";
 
-    // Write minimal valid JSON to the required system paths.
-    const bool baseSpecWritten  = WriteFile_OCIGen(ralf::RALF_OCI_BASE_SPEC_FILE, "{}");
-    const bool graphicsWritten  = WriteFile_OCIGen(ralf::RALF_GRAPHICS_LAYER_CONFIG, "{}");
-    if (!baseSpecWritten || !graphicsWritten) {
-        if (baseSpecWritten)  std::remove(ralf::RALF_OCI_BASE_SPEC_FILE.c_str());
-        if (graphicsWritten)  std::remove(ralf::RALF_GRAPHICS_LAYER_CONFIG.c_str());
+    // Write a minimal valid OCI base spec. GPU configuration is passed in-memory.
+    const bool baseSpecWritten = WriteFile_OCIGen(ralf::RALF_OCI_BASE_SPEC_FILE, "{}");
+    if (!baseSpecWritten) {
+        std::remove(ralf::RALF_OCI_BASE_SPEC_FILE.c_str());
         L0Test::ExpectTrue(tr, true,
                            "SKIP: could not write mock OCI spec files, skipping log path test");
         return tr.failures;
@@ -371,11 +336,10 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
     std::vector<ralf::RalfPkgInfoPair> packages;
     ralf::RalfOCIConfigGenerator gen(outputConfigPath, packages);
 
-    const bool result = gen.generateRalfOCIConfig(config, runtimeCfg);
+    const bool result = gen.generateRalfOCIConfig(config, runtimeCfg, Json::Value(Json::objectValue));
 
-    // Remove mock system files before asserting, so cleanup always happens.
+    // Remove the mock system file before asserting, so cleanup always happens.
     std::remove(ralf::RALF_OCI_BASE_SPEC_FILE.c_str());
-    std::remove(ralf::RALF_GRAPHICS_LAYER_CONFIG.c_str());
 
     L0Test::ExpectTrue(tr, result,
                        "generateRalfOCIConfig() should succeed with minimal mock base spec");

@@ -83,7 +83,7 @@ cat /sys/dev/block/<maj>:<min>/dm/name 2>/dev/null
 | Container cannot read `/runtime` files (Mode 3) | EROFS image file modes not readable by widget uid | fix image permissions (world-readable) |
 | Upgrade does not take effect | old version still mounted (other locks) | release all locks; next lock mounts new inode |
 | Missing REGION/PARTNER_ID/APPLICATION_SECRET env in RALF container | sysconfig `.so` not loaded, or provider without the context override | check `ralfContainerEnvVars` syslog line; load `rdkappmanagers-sysconfig` |
-| GPU library missing in OCI container (e.g. `libwayland-egl.so.1.20.0`) | `vendor-gpu.json` binds a source that the image does not ship (no automatic fallback any more) | bind the soname the image ships and add `symlink` entries for versioned names in `vendor-gpu.json` |
+| GPU library missing in OCI container (e.g. `libwayland-egl.so.1.20.0`) | `runtimeConfigFile.gpuConfig.files` references a source that the image does not ship | bind the soname the image ships and add a `symlink` entry in the runtime YAML |
 
 ## 4. Known limits / parity gaps
 

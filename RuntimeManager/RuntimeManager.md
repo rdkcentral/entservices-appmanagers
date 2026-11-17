@@ -80,12 +80,13 @@ locks through the normal unlock lifecycle.
 
 `ENTOS_RALF_SUPPORT` is a RuntimeManager build option enabled by default (requires
 `RALF_PACKAGE_SUPPORT` and LibXml2 headers/libraries in the build sysroot).
-When enabled, RALF reads
-`/etc/rdk/vendor-gpu.json`, generates an instance-scoped
-vendor layer under `/run/sky/bundles/<instance>/vendor`, and uses the Broadcom-style
-device glob, bind, file-copy, and symlink entries instead of the preinstalled
-`/usr/share/gpu-layer/rootfs`. With the option off, the existing static GPU
-layer behavior is unchanged. RuntimeManager checks bundle-directory creation
+When enabled, RALF reads `gpuConfig` from the YAML file selected by
+RuntimeManager's `runtimeConfigFile`, generates an instance-scoped vendor layer
+under `/run/sky/bundles/<instance>/vendor`, and applies its device glob, bind,
+file-copy, and symlink entries instead of the preinstalled
+`/usr/share/gpu-layer/rootfs`. An absent `gpuConfig` is treated as an empty GPU
+configuration. With the option off, the existing static GPU layer behavior is
+unchanged. RuntimeManager checks bundle-directory creation
 and keeps the bundle tree owned by the RuntimeManager process with `0755`
 directories before passing it to Dobby. The generated OCI config remains
 process-owned with mode `0644`; app UID/GID values are applied through the OCI
@@ -544,7 +545,7 @@ ans(configuration)
 | `PLUGIN_RUNTIME_MANAGER_MODE` | Execution mode (Off/Local) | Off |
 | `PLUGIN_RUNTIME_MANAGER_AUTOSTART` | Auto-start on boot | false |
 | `PLUGIN_RUNTIME_APP_PORTAL` | Runtime app portal identifier | "" |
-| `PLUGIN_RUNTIME_CONFIG_FILE` | Path to runtime config YAML | "" |
+| `PLUGIN_RUNTIME_CONFIG_FILE` | Path to runtime config YAML | `""` |
 | `RALF_PACKAGE_SUPPORT` | Enable RALF package support | ON |
 | `RIALTO_IN_DAC_FEATURE` | Enable Rialto in DAC | OFF |
 

@@ -63,13 +63,23 @@ namespace Plugin
         , mPreloads()
         , mEnvVariables()
         , mExtraMounts()
+    #ifdef ENTOS_RALF_SUPPORT
+        , mRalfGpuConfig(Json::objectValue)
+        , mRalfGpuConfigValid(true)
+    #endif
         , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
         , mRialtoOverride(-1)
         , mHibernationEnabled(false)
         , mHibernateCompression("lz4")
         , mHibernateFlashStoragePath("/media/apps/memcr")
     {
-        // All members initialized in initialization list above
+#ifdef ENTOS_RALF_SUPPORT
+        Json::Value vendorGpuSupport(Json::objectValue);
+        vendorGpuSupport["devNodes"] = Json::Value(Json::arrayValue);
+        vendorGpuSupport["groupIds"] = Json::Value(Json::arrayValue);
+        vendorGpuSupport["files"] = Json::Value(Json::arrayValue);
+        mRalfGpuConfig["vendorGpuSupport"] = vendorGpuSupport;
+#endif
     }
 
 
@@ -80,6 +90,12 @@ namespace Plugin
     void AIConfiguration::initialize(const std::string& runtimeConfigFile)
     {
         mExtraMounts.clear();
+#ifdef ENTOS_RALF_SUPPORT
+        mRalfGpuConfigValid = true;
+        mRalfGpuConfig["vendorGpuSupport"]["devNodes"] = Json::Value(Json::arrayValue);
+        mRalfGpuConfig["vendorGpuSupport"]["groupIds"] = Json::Value(Json::arrayValue);
+        mRalfGpuConfig["vendorGpuSupport"]["files"] = Json::Value(Json::arrayValue);
+#endif
         readFromConfigFile();
 #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
         readFromYamlConfigFile(runtimeConfigFile);
@@ -431,13 +447,81 @@ namespace Plugin
         }
         LOGINFO("AIConfiguration reading from YAML at %s", configPath);
 
+    #ifdef ENTOS_RALF_SUPPORT
+        bool ralfGpuConfigRead = false;
+    #endif
         try {
             YAML::Node root = YAML::LoadFile(configPath);
 
             if (!root || !root.IsMap()) {
                 LOGWARN("Invalid YAML format: root must be a mapping");
+#ifdef ENTOS_RALF_SUPPORT
+                mRalfGpuConfigValid = false;
+#endif
                 return;
             }
+
+#ifdef ENTOS_RALF_SUPPORT
+            const YAML::Node gpuConfig = root["gpuConfig"];
+            if (gpuConfig && !gpuConfig.IsMap()) {
+                LOGERR("gpuConfig in runtime YAML is not a map");
+                mRalfGpuConfigValid = false;
+            } else if (gpuConfig) {
+                Json::Value& vendorGpuSupport = mRalfGpuConfig["vendorGpuSupport"];
+                const char* sequenceKeys[] = {"devNodes", "groupIds"};
+                for (const char* key : sequenceKeys) {
+                    const YAML::Node values = gpuConfig[key];
+                    if (!values) {
+                        continue;
+                    }
+                    if (!values.IsSequence()) {
+                        LOGERR("gpuConfig.%s in runtime YAML is not a sequence", key);
+                        mRalfGpuConfigValid = false;
+                        continue;
+                    }
+                    for (const YAML::Node& value : values) {
+                        if (!value.IsScalar()) {
+                            LOGERR("gpuConfig.%s contains a non-scalar value", key);
+                            mRalfGpuConfigValid = false;
+                            continue;
+                        }
+                        vendorGpuSupport[key].append(value.as<std::string>());
+                    }
+                }
+
+                const YAML::Node files = gpuConfig["files"];
+                if (files && !files.IsSequence()) {
+                    LOGERR("gpuConfig.files in runtime YAML is not a sequence");
+                    mRalfGpuConfigValid = false;
+                } else if (files) {
+                    for (const YAML::Node& file : files) {
+                        if (!file.IsMap()) {
+                            LOGERR("gpuConfig.files contains a non-map entry");
+                            mRalfGpuConfigValid = false;
+                            continue;
+                        }
+                        Json::Value fileConfig(Json::objectValue);
+                        bool validEntry = true;
+                        for (auto field = file.begin(); field != file.end(); ++field) {
+                            if (!field->first.IsScalar() || !field->second.IsScalar()) {
+                                LOGERR("gpuConfig.files contains a non-scalar key or value");
+                                validEntry = false;
+                                break;
+                            }
+                            fileConfig[field->first.as<std::string>()] = field->second.as<std::string>();
+                        }
+                        if (validEntry) {
+                            vendorGpuSupport["files"].append(fileConfig);
+                        } else {
+                            mRalfGpuConfigValid = false;
+                        }
+                    }
+                }
+            }
+#endif
+#ifdef ENTOS_RALF_SUPPORT
+            ralfGpuConfigRead = true;
+#endif
 
             const YAML::Node preloads = root["preloads"];
             if (preloads.IsDefined() && preloads.IsSequence()) {
@@ -609,9 +693,22 @@ namespace Plugin
 
         } catch (const std::exception& ex) {
             LOGWARN("Error parsing YAML: %s", ex.what());
+#ifdef ENTOS_RALF_SUPPORT
+            if (!ralfGpuConfigRead) {
+                mRalfGpuConfigValid = false;
+            }
+#endif
         }
 #endif
     }
+
+#ifdef ENTOS_RALF_SUPPORT
+    bool AIConfiguration::getRalfGpuConfig(Json::Value& config) const
+    {
+        config = mRalfGpuConfig;
+        return mRalfGpuConfigValid;
+    }
+#endif
 
     int AIConfiguration::getRialtoOverride() const
     {

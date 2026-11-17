@@ -37,6 +37,7 @@
 #include "ralf/RalfPackageBuilder.h"
 #include "ralf/RalfVendorLayer.h"
 #include "ralf/RalfSupport.h"
+#include "AIConfiguration.h"
 #include "ApplicationConfiguration.h"
 #include "RuntimeManagerImplementation.h"
 #include <interfaces/IRuntimeManager.h>
@@ -110,7 +111,6 @@ uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets()
     L0Test::TestResult tr;
     const std::string testRoot = "/tmp/ralf_l0test_vendor_layer_" + std::to_string(getpid());
     const std::string sourcePath = testRoot + "/source.so";
-    const std::string configPath = testRoot + "/vendor-gpu.json";
     const std::string layerPath = testRoot + "/layer";
     const std::string copiedPath = layerPath + "/usr/lib/copied.so";
     const std::string symlinkPath = layerPath + "/usr/lib/libEGL.so.1";
@@ -148,12 +148,8 @@ uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets()
     files.append(missingBind);
     config["vendorGpuSupport"]["files"] = files;
 
-    Json::StreamWriterBuilder writer;
-    L0Test::ExpectTrue(tr, WriteFile_PB(configPath, Json::writeString(writer, config)),
-                       "Write test Broadcom vendor GPU config");
-
     ralf::RalfVendorLayer layer(layerPath);
-    const bool created = layer.create(configPath);
+    const bool created = layer.create(config);
     L0Test::ExpectTrue(tr, created, "Create vendor GPU layer from typed file entries");
 
     struct stat copiedStat;
@@ -176,6 +172,73 @@ uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets()
     ralf::removeDirectoryRecursively(testRoot);
     return tr.failures;
 }
+
+#ifdef ENTOS_RALF_SUPPORT
+uint32_t Test_AIConfiguration_LoadsGpuConfigFromRuntimeYaml()
+{
+    L0Test::TestResult tr;
+    const std::string testRoot = "/tmp/ralf_l0test_gpu_yaml_" + std::to_string(getpid());
+    const std::string runtimeConfigPath = testRoot + "/runtimeconfig.yaml";
+    const std::string layerPath = testRoot + "/layer";
+    const std::string yamlConfig =
+        "gpuConfig:\n"
+        "  devNodes:\n"
+        "    - /dev/dri/card*\n"
+        "    - /dev/nexus\n"
+        "  groupIds:\n"
+        "    - video\n"
+        "  files:\n"
+        "    - type: symlink\n"
+        "      target: /usr/lib/libv3ddriver.so\n"
+        "      linkPath: /usr/lib/libEGL.so.1\n";
+    L0Test::ExpectTrue(tr, WriteFile_PB(runtimeConfigPath, yamlConfig),
+                       "Write runtime YAML GPU config fixture");
+
+    WPEFramework::Plugin::AIConfiguration aiConfiguration;
+    aiConfiguration.initialize(runtimeConfigPath);
+    Json::Value config;
+    const bool parsed = aiConfiguration.getRalfGpuConfig(config);
+    L0Test::ExpectTrue(tr, parsed, "Read gpuConfig through AIConfiguration");
+    if (parsed)
+    {
+        const Json::Value &gpuConfig = config["vendorGpuSupport"];
+        L0Test::ExpectTrue(tr, gpuConfig["devNodes"].isArray() && 2U == gpuConfig["devNodes"].size(),
+                           "Preserve gpuConfig.devNodes entries");
+        L0Test::ExpectTrue(tr, gpuConfig["groupIds"].isArray() && 1U == gpuConfig["groupIds"].size(),
+                           "Preserve gpuConfig.groupIds entries");
+        L0Test::ExpectTrue(tr, gpuConfig["files"].isArray() && 1U == gpuConfig["files"].size(),
+                           "Preserve gpuConfig.files entries");
+        if (gpuConfig["files"].isArray() && 1U == gpuConfig["files"].size())
+        {
+            L0Test::ExpectTrue(tr, "symlink" == gpuConfig["files"][0]["type"].asString() &&
+                                   "/usr/lib/libEGL.so.1" == gpuConfig["files"][0]["linkPath"].asString(),
+                               "Preserve typed GPU symlink fields");
+        }
+
+        ralf::RalfVendorLayer layer(layerPath);
+        L0Test::ExpectTrue(tr, layer.create(config), "Create vendor layer from parsed runtime YAML");
+        struct stat linkInfo;
+        L0Test::ExpectTrue(tr, 0 == lstat((layerPath + "/usr/lib/libEGL.so.1").c_str(), &linkInfo) &&
+                               S_ISLNK(linkInfo.st_mode),
+                           "Materialize YAML GPU symlink in vendor layer");
+    }
+
+    const std::string configWithoutGpuPath = testRoot + "/no-gpu.yaml";
+    L0Test::ExpectTrue(tr, WriteFile_PB(configWithoutGpuPath, "memoryLimit: 1234\n"),
+                       "Write runtime YAML without optional gpuConfig");
+    WPEFramework::Plugin::AIConfiguration configWithoutGpu;
+    configWithoutGpu.initialize(configWithoutGpuPath);
+    Json::Value emptyConfig;
+    L0Test::ExpectTrue(tr, configWithoutGpu.getRalfGpuConfig(emptyConfig),
+                       "Accept runtime YAML without gpuConfig");
+    L0Test::ExpectTrue(tr, emptyConfig["vendorGpuSupport"]["files"].isArray() &&
+                           emptyConfig["vendorGpuSupport"]["files"].empty(),
+                       "Default missing GPU files to an empty list");
+
+    ralf::removeDirectoryRecursively(testRoot);
+    return tr.failures;
+}
+#endif
 
 // ──────────────────────────────────────────────────────────────────────────────
 // unmountOverlayfsIfExists() tests

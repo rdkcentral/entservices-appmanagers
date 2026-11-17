@@ -344,13 +344,14 @@ if(PLUGIN_RUNTIME_MANAGER)
         target_link_libraries(runtimemanager_l0test PRIVATE yaml-cpp)
     endif()
     if(ENTOS_RALF_SUPPORT)
+        find_package(yaml-cpp REQUIRED)
         find_package(LibXml2 REQUIRED)
         target_include_directories(runtimemanager_l0test PRIVATE ${LIBXML2_INCLUDE_DIRS})
-        target_link_libraries(runtimemanager_l0test PRIVATE LibXml2::LibXml2)
+        target_link_libraries(runtimemanager_l0test PRIVATE LibXml2::LibXml2 yaml-cpp)
         target_compile_definitions(runtimemanager_l0test PRIVATE
+            ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
             ENTOS_RALF_SUPPORT
             ENTOS_RALF_BUNDLE_ROOT=\"/tmp/ralf_l0test_bundle_root/\"
-            ENTOS_RALF_GPU_CONFIG_FILE=\"/tmp/ralf_l0test_vendor_gpu_config.json\"
         )
     endif()
 

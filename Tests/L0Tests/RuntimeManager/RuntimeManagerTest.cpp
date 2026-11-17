@@ -203,6 +203,9 @@ extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_H
 // ── ralf/RalfPackageBuilder tests ─────────────────────────────────────────────
 extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
 extern uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets();
+#ifdef ENTOS_RALF_SUPPORT
+extern uint32_t Test_AIConfiguration_LoadsGpuConfigFromRuntimeYaml();
+#endif
 extern uint32_t Test_RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse();
 extern uint32_t Test_RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse();
@@ -220,7 +223,6 @@ extern uint32_t Test_RalfOCIConfigGenerator_ConstructionAndDestruction();
 extern uint32_t Test_RalfOCIConfigGenerator_ConstructionWithEmptyPackages();
 extern uint32_t Test_RalfOCIConfigGenerator_ConstructionWithMultiplePackages();
 extern uint32_t Test_RalfOCIConfigGenerator_GenerateFailsWhenBaseSpecFileMissing();
-extern uint32_t Test_RalfOCIConfigGenerator_GenerateFailsWhenGraphicsConfigMissing();
 extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec();
 extern uint32_t Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash();
 extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances();
@@ -609,6 +611,9 @@ int main()
         // ── ralf/RalfPackageBuilder tests ────────────────────────────────────
         { "RalfPackageBuilder_ConstructionAndDestruction",                           Test_RalfPackageBuilder_ConstructionAndDestruction },
         { "RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets",          Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets },
+    #ifdef ENTOS_RALF_SUPPORT
+        { "AIConfiguration_LoadsGpuConfigFromRuntimeYaml",                          Test_AIConfiguration_LoadsGpuConfigFromRuntimeYaml },
+    #endif
         { "RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse", Test_RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse },
         { "RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId",          Test_RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse",   Test_RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse },
@@ -626,7 +631,6 @@ int main()
         { "RalfOCIConfigGenerator_ConstructionWithEmptyPackages",                    Test_RalfOCIConfigGenerator_ConstructionWithEmptyPackages },
         { "RalfOCIConfigGenerator_ConstructionWithMultiplePackages",                 Test_RalfOCIConfigGenerator_ConstructionWithMultiplePackages },
         { "RalfOCIConfigGenerator_GenerateFailsWhenBaseSpecFileMissing",             Test_RalfOCIConfigGenerator_GenerateFailsWhenBaseSpecFileMissing },
-        { "RalfOCIConfigGenerator_GenerateFailsWhenGraphicsConfigMissing",           Test_RalfOCIConfigGenerator_GenerateFailsWhenGraphicsConfigMissing },
         { "RalfOCIConfigGenerator_GenerateWithMockBaseSpec",                         Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec },
         { "RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash",                  Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash },
         { "RalfOCIConfigGenerator_GenerateWithDifferentAppInstances",                Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances },
