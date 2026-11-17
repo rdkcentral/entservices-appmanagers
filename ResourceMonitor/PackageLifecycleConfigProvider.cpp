@@ -127,8 +127,9 @@ namespace Plugin {
             bool locked = false;
             std::string candidate;
             const Core::hresult result = _source->GetLockedInfo(package.packageId, package.version, locked, candidate);
-            if (IsConnectionError(result)) {
-                LOGWARN("Package Manager unavailable while resolving %s (result=%u)", appId.c_str(), result);
+            if (IsConnectionError(result) || (Core::ERROR_GENERAL == result)) {
+                LOGWARN("Package lookup failed while resolving %s (result=%u)", appId.c_str(), result);
+                payload.clear();
                 return false;
             }
             if ((result == Core::ERROR_NONE) && locked) {

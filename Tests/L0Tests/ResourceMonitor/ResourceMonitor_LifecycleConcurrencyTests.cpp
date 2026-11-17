@@ -45,9 +45,10 @@ uint32_t Test_RM_Lifecycle_ConcurrentQueries()
     constexpr uint32_t kThreads = 8;
     constexpr uint32_t kIterations = 25;
     std::atomic<uint32_t> mismatches(0);
-    std::vector<std::future<void>> workers;
+    std::atomic<uint32_t> completed(0);
+    std::vector<std::thread> workers;
     for (uint32_t thread = 0; thread < kThreads; ++thread) {
-        workers.push_back(std::async(std::launch::async, [&provider, &mismatches, thread]() {
+        workers.emplace_back([&provider, &mismatches, &completed, thread]() {
             for (uint32_t i = 0; i < kIterations; ++i) {
                 const bool configured = ((thread + i) % 2) == 0;
                 AppLifecycleCapabilities caps;
@@ -60,18 +61,27 @@ uint32_t Test_RM_Lifecycle_ConcurrentQueries()
                     ++mismatches;
                 }
             }
-        }));
+            ++completed;
+        });
     }
 
-    bool completed = true;
-    for (auto& worker : workers) {
-        completed = (worker.wait_for(std::chrono::seconds(60)) == std::future_status::ready) && completed;
-    }
-    L0Test::ExpectTrue(tr, completed, "Concurrent queries complete without deadlock");
+    const bool allCompleted = [&]() {
+        for (uint32_t elapsed = 0; elapsed < 60; ++elapsed) {
+            if (completed.load() == kThreads) {
+                return true;
+            }
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+        return false;
+    }();
+
+    L0Test::ExpectTrue(tr, allCompleted, "Concurrent queries complete without deadlock");
     L0Test::ExpectEqU32(tr, mismatches.load(), 0U, "Every concurrent query returns the result it would return on its own");
-    if (!completed) {
-        // Do not destroy the provider while workers may still use it.
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+
+    for (auto& worker : workers) {
+        if (worker.joinable()) {
+            worker.join();
+        }
     }
     return tr.failures;
 }

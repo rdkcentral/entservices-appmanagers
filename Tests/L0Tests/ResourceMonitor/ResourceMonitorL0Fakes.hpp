@@ -55,6 +55,14 @@ public:
         versions[std::make_pair(packageId, version)] = data;
     }
 
+    void SetGetLockedInfoError(const std::string& packageId, const std::string& version, const WPEFramework::Core::hresult error)
+    {
+        const auto it = versions.find(std::make_pair(packageId, version));
+        if (it != versions.end()) {
+            it->second.result = error;
+        }
+    }
+
     WPEFramework::Core::hresult ListPackages(std::vector<PackageEntry>& packages) override
     {
         ++listCalls;
