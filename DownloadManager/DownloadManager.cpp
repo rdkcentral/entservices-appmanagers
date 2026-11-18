@@ -53,10 +53,26 @@ namespace Plugin
         string message;
         RDKAM_RECORD_BOOTSTRAP_TIME(service);
 
-        ASSERT(service != nullptr);
-        ASSERT(mService == nullptr);
-        ASSERT(mConnectionId == 0);
-        ASSERT(mDownloadManagerImpl == nullptr);
+        if (service == nullptr)
+        {
+            LOGERR("Initialize failed: service is null");
+            return _T("DownloadManager initialization failed: service is null");
+        }
+        if (mService != nullptr)
+        {
+            LOGERR("Initialize failed: mService is already initialized");
+            return _T("DownloadManager is already initialized");
+        }
+        if (mConnectionId != 0)
+        {
+            LOGERR("Initialize failed: mConnectionId is not zero (value: %u)", mConnectionId);
+            return _T("DownloadManager has invalid connection ID");
+        }
+        if (mDownloadManagerImpl != nullptr)
+        {
+            LOGERR("Initialize failed: mDownloadManagerImpl is already set");
+            return _T("DownloadManager implementation is already set");
+        }
         mService = service;
         mService->AddRef();
 
@@ -87,7 +103,11 @@ namespace Plugin
         LOGINFO();
         if (mService != nullptr)
         {
-            ASSERT(mService == service);
+            if (mService != service)
+            {
+                LOGERR("Deinitialize: service mismatch. Expected %p but got %p", mService, service);
+                return;
+            }
             mService->Unregister(&mNotificationSink);
             if (mDownloadManagerImpl != nullptr)
             {
@@ -135,7 +155,11 @@ namespace Plugin
         // on a seperate thread. Also make sure this call-stack can be unwound before we are totally destructed.
         if (mConnectionId == connection->Id())
         {
-            ASSERT(mService != nullptr);
+            if (mService == nullptr)
+            {
+                LOGERR("Deactivated: mService is null, cannot submit deactivation job");
+                return;
+            }
             LOGINFO();
             Core::IWorkerPool::Instance().Submit(PluginHost::IShell::Job::Create(mService, PluginHost::IShell::DEACTIVATED, PluginHost::IShell::FAILURE));
         }
