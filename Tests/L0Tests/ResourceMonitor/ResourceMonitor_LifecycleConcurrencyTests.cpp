@@ -80,7 +80,11 @@ uint32_t Test_RM_Lifecycle_ConcurrentQueries()
 
     for (auto& worker : workers) {
         if (worker.joinable()) {
-            worker.join();
+            if (allCompleted) {
+                worker.join();
+            } else {
+                worker.detach();
+            }
         }
     }
     return tr.failures;
@@ -110,6 +114,14 @@ uint32_t Test_RM_Lifecycle_SlowPackageManagerDoesNotSerializeCallers()
     L0Test::ExpectTrue(tr, caps.status == LifecycleConfigStatus::CONFIGURED, "Fast query succeeds while a slow query is pending");
     L0Test::ExpectTrue(tr, !slowDone.load(), "Fast query finished before the slow Package Manager call");
     L0Test::ExpectTrue(tr, elapsed.count() < 1000, "Fast query is not blocked by the slow Package Manager call");
-    L0Test::ExpectTrue(tr, slow.wait_for(std::chrono::seconds(30)) == std::future_status::ready, "Slow query completes");
+
+    const bool slowCompleted = (slow.wait_for(std::chrono::seconds(30)) == std::future_status::ready);
+    L0Test::ExpectTrue(tr, slowCompleted, "Slow query completes");
+
+    if (!slowCompleted) {
+        // Detach the hung future to avoid blocking in the destructor
+        std::future<void> detached = std::move(slow);
+        (void)detached;
+    }
     return tr.failures;
 }

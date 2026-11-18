@@ -107,6 +107,7 @@ namespace WPEFramework {
                 _timerStopping = true;
             }
             _timerHandler.Revoke(*_timer);
+            _timerHandler.Flush();
             {
                 std::lock_guard<std::mutex> lock(_reactiveMonitorMutex);
                 _reactiveMonitorRunning = false;
