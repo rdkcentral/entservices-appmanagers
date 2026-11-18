@@ -452,10 +452,11 @@ namespace WPEFramework
 
     bool PreinstallManagerImplementation::readPreinstalledUpdateExclusionList(std::set<std::string> &exclusionList)
     {
+        LOGINFO("db982 Reading preinstalled update exclusion list");
         exclusionList.clear();
         if (mConfigFileName.empty())
         {
-            LOGINFO("configFileName is empty; skipping exclusion list load");
+            LOGINFO("configFileName is empty; skipping exclusion list load (exclusion list empty)");
             return true;
         }
         const char *const storePath = mConfigFileName.c_str();
@@ -476,22 +477,36 @@ namespace WPEFramework
             {
                 if (Core::JSON::Variant::type::STRING != settings[key].Content())
                 {
-                    LOGERR("Invalid PreinstalledUpdateExclusionList value in %s", storePath);
+                    LOGERR("db982 Invalid PreinstalledUpdateExclusionList value in %s", storePath);
                     return false;
                 }
                 std::istringstream appIds(settings[key].String());
                 std::string appId;
                 while (appIds >> appId)
                 {
+                    LOGINFO("db982 Adding appId to exclusion list: %s", appId.c_str());
                     exclusionList.insert(appId);
                 }
+                if (exclusionList.empty())
+                {
+                    LOGINFO("Exclusion list empty: %s value is empty or whitespace in %s", key, storePath);
+                }
+            }
+            else
+            {
+                LOGINFO("Exclusion list empty: key %s not found in %s", key, storePath);
             }
         }
         else if (ENOENT != errno)
         {
-            LOGERR("Failed to open package manager store: %s errno=%d", storePath, errno);
+            LOGERR("db982 Failed to open package manager store: %s errno=%d", storePath, errno);
             return false;
         }
+        else
+        {
+            LOGINFO("Exclusion list empty: store file %s does not exist", storePath);
+        }
+        LOGINFO("db982 Successfully read preinstalled update exclusion list");
         return true;
     }
 
@@ -508,6 +523,7 @@ namespace WPEFramework
         Exchange::IPackageInstaller* packageInstaller = nullptr;
         mAdminLock.Lock();
         ++mStartPreinstallCount;
+        LOGINFO("Starting preinstall: forceInstall=%d", forceInstall);
         if (mInstallThread.joinable())
         {
             if (mPreinstallState != State::COMPLETED)
@@ -574,14 +590,19 @@ namespace WPEFramework
 
         if (factoryResetMarkerPresent)
         {
-            LOGINFO("Factory reset marker present: %s, skipping exclusion list read", mEnabledFactoryReset.c_str());
+            LOGINFO("Factory reset marker present: %s, skipping exclusion list read (exclusion list empty)", mEnabledFactoryReset.c_str());
         }
         else if (!readPreinstalledUpdateExclusionList(exclusionList))
         {
-            LOGWARN("Failed to read exclusion list from %s; proceeding with preinstall without exclusions", mConfigFileName.c_str());
+            LOGWARN("Failed to read exclusion list from %s; proceeding with preinstall without exclusions (exclusion list empty)", mConfigFileName.c_str());
             exclusionList.clear();
         }
-
+        if (exclusionList.empty())
+        {
+            LOGINFO("Exclusion list is empty: forceInstall=%d -> %s", forceInstall,
+                    forceInstall ? "all packages will be force installed" : "filtering by installed version only");
+        }
+        LOGINFO("db982 Exclusion list size: %zu, isEmpty: %d, forceInstall: %d", exclusionList.size(),!exclusionList.empty(), forceInstall);
         if (!forceInstall || !exclusionList.empty())
         {
             LOGINFO("Checking preinstall packages: forceInstall=%d exclusionListSize=%zu", forceInstall, exclusionList.size());
