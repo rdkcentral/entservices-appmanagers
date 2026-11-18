@@ -48,7 +48,7 @@ namespace Plugin
 
             AIConfiguration();
             virtual ~AIConfiguration();
-            void initialize(const std::string& runtimeConfigFile = "");
+            void initialize(const std::string& runtimeConfigFile = "", const std::string& rdkAppManagersConfigFile = "");
             size_t getContainerConsoleLogCap();
             std::bitset<32> getAppsCpuSet() const;
             ssize_t getNonHomeAppMemoryLimit();
@@ -83,7 +83,7 @@ namespace Plugin
 
         private:
             void readFromCustomData();
-            void readFromConfigFile();
+            void readFromConfigFile(const std::string& configFilePath);
             void readFromYamlConfigFile(const std::string& runtimeConfigFile);
             std::bitset<32> parseCpuSetBitset(const std::string& bits, const std::bitset<32>& defaultValue);
 
@@ -120,4 +120,5 @@ namespace Plugin
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 

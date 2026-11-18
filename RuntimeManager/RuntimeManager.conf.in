@@ -11,3 +11,5 @@ rootobject.add("locator", "lib@PLUGIN_IMPLEMENTATION@.so")
 configuration.add("root", rootobject)
 configuration.add("runtimeAppPortal","@PLUGIN_RUNTIME_APP_PORTAL@")
 configuration.add("runtimeConfigFile","@PLUGIN_RUNTIME_CONFIG_FILE@")
+configuration.add("rdkAppManagersConfigFile","@PLUGIN_RDKAPPMANAGERS_CONFIG_FILE@")
+

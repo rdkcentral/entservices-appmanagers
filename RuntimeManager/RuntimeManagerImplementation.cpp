@@ -347,7 +347,7 @@ namespace WPEFramework
                 }
                 LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
                 mAIConfiguration = new AIConfiguration();
-                mAIConfiguration->initialize(mRuntimeConfigFile);
+                mAIConfiguration->initialize(mRuntimeConfigFile, config.rdkAppManagersConfigFile.Value());
                 if (config.hibernation.enable.IsSet() || config.hibernation.defaultCompression.IsSet())
                 {
                     mAIConfiguration->overrideHibernationSettings(
@@ -1624,5 +1624,6 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
 
