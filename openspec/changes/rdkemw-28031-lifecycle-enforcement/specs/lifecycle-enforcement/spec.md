@@ -30,14 +30,14 @@ The system SHALL enforce a GPU grace period when an application enters the SUSPE
 
 #### Scenario: GPU memory reduced below threshold within grace period
 - **WHEN** an application enters the SUSPENDED state
-- **THEN** the system starts a timer for `suspendedToHibernatedTimeout` (default 15 seconds)
+- **THEN** the system starts a timer for `suspended_gpu_grace_period` (default 10 seconds)
 - **WHEN** the timer expires
 - **THEN** the system queries the application's GPU memory usage via RuntimeManager/Dobby
 - **THEN** if GPU memory usage is at or below `maxGPUallowedInSuspended` (default 20 MiB), the system proceeds to hibernation condition checks
 
 #### Scenario: GPU memory still above threshold after grace period
 - **WHEN** an application enters the SUSPENDED state
-- **THEN** the system starts a timer for `suspendedToHibernatedTimeout`
+- **THEN** the system starts a timer for `suspended_gpu_grace_period`
 - **WHEN** the timer expires
 - **THEN** the system queries the application's GPU memory usage
 - **THEN** if GPU memory usage exceeds `maxGPUallowedInSuspended`, the system requests termination of the application via AppManager
@@ -106,16 +106,16 @@ The system SHALL identify non-app workloads (e.g., system services) using AppMan
 - **THEN** the system requests termination of the workload via AppManager
 
 ### Requirement: Subscribe to lifecycle state changes
-AppManager SHALL detect lifecycle state changes internally via its own notification handlers to determine when applications enter PAUSED or SUSPENDED states and when they transition out of these states.
+ResourceMonitor SHALL subscribe to AppManager lifecycle state change events to determine when applications enter PAUSED or SUSPENDED states and when they transition out of these states.
 
 #### Scenario: Application enters PAUSED
-- **WHEN** AppManager detects an application enters PAUSED state
-- **THEN** AppManager's `AppStateTransitionManager` starts a PAUSED timer for the application
+- **WHEN** ResourceMonitor receives a PAUSED state change notification from AppManager
+- **THEN** ResourceMonitor starts a PAUSED timer for the application instance
 
 #### Scenario: Application enters SUSPENDED
-- **WHEN** AppManager detects an application enters SUSPENDED state
-- **THEN** AppManager's `AppStateTransitionManager` starts a SUSPENDED timer (GPU grace period) for the application
+- **WHEN** ResourceMonitor receives a SUSPENDED state change notification from AppManager
+- **THEN** ResourceMonitor starts a SUSPENDED timer (GPU grace period) for the application instance
 
 #### Scenario: Application transitions away from PAUSED or SUSPENDED
-- **WHEN** AppManager detects an application transitions away from PAUSED or SUSPENDED
-- **THEN** AppManager's `AppStateTransitionManager` cancels the corresponding timer for the application
+- **WHEN** ResourceMonitor receives a state change notification indicating the application left PAUSED or SUSPENDED
+- **THEN** ResourceMonitor cancels the corresponding timer for the application instance

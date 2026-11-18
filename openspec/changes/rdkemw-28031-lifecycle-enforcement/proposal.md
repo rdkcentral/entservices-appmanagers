@@ -4,14 +4,15 @@ The HLA defines lifecycle state timeouts (PAUSED→SUSPENDED after 60s, SUSPENDE
 
 ## What Changes
 
-ResourceMonitor will enforce lifecycle state timers:
+ResourceMonitor will enforce lifecycle state timers using Thunder's timer framework:
 - Subscribe to AppManager lifecycle state change events (`onAppLifecycleStateChanged`)
-- Maintain per-app timers for PAUSED and SUSPENDED states
-- When PAUSED timer expires: check if app supports SUSPENDED (using RDKEMW-28030's `IsLifecycleStateSupported`), request SUSPENDED transition via LifecycleManager if supported, or request termination via AppManager if not
-- When app enters SUSPENDED: start GPU grace period timer (`suspendedToHibernatedTimeout`, default 15s), sample GPU memory via RuntimeManager/Dobby
+- Maintain per-app timers for PAUSED and SUSPENDED states using a single shared Thunder callback
+- When PAUSED timer expires: check if app supports SUSPENDED (using RDKEMW-28030's lifecycle capabilities), request SUSPENDED transition via LifecycleManager if supported, or request termination via AppManager if not
+- When app enters SUSPENDED: start GPU grace period timer (`suspended_gpu_grace_period`, default 10s), sample GPU memory via RuntimeManager/Dobby
 - After grace period: if GPU memory still above `maxGPUallowedInSuspended` (default 20 MiB), request termination; if GPU released, check hibernation conditions (device support, app support, memory floor below `maxSuspendedSystemMemory`)
 - If hibernation conditions not met after SUSPENDED timeout: request termination
-- Add configuration for `pausedToSuspendedTimeout` (default 60s, global setting)
+- Add configuration for `paused_to_suspended_timeout` (default 60s) and `suspended_gpu_grace_period` (default 10s) in ResourceMonitor config
+- Capture lifecycle capabilities per appInstanceId on first PAUSED/SUSPENDED entry and retain until unload
 
 ## Capabilities
 
