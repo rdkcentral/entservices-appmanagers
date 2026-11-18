@@ -1018,6 +1018,22 @@ uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesStandardAndNonBindMoun
     L0Test::ExpectTrue(tr, ralf::checkIfPathExists(rootfsPath + "/home"),
                        "legacy standard /home directory is created in merged rootfs");
 
+    const std::string outsidePath = rootBase + "/outside";
+    ralf::create_directories(outsidePath);
+    ralf::removeDirectoryRecursively(rootfsPath + "/dev");
+    const std::string symlinkPath = rootfsPath + "/dev";
+    const bool symlinkCreated = (0 == ::symlink("../outside", symlinkPath.c_str()));
+    L0Test::ExpectTrue(tr, symlinkCreated, "Create a symlinked mount ancestor in the merged rootfs");
+    if (symlinkCreated)
+    {
+        const bool symlinkStatus = ralf::prepareMergedRootfsMountTargets(ociConfig, rootfsPath, 0, 0);
+        L0Test::ExpectTrue(tr, !symlinkStatus,
+                           "Mount target preparation rejects symlinked rootfs ancestors");
+        L0Test::ExpectTrue(tr, !ralf::checkIfPathExists(outsidePath + "/pts"),
+                           "Mount target preparation does not create paths outside the merged rootfs");
+        ::remove(symlinkPath.c_str());
+    }
+
     ralf::removeDirectoryRecursively(rootBase);
     return tr.failures;
 }

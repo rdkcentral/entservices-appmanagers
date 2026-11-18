@@ -226,7 +226,6 @@ namespace ralf
 
     void RalfOCIConfigGenerator::addPrivateDataToOCIConfig(Json::Value &ociConfigRootNode, const std::string &dataImagePath)
     {
-        // Mount a legacy private data image when one is present; AppStorageManager storage is mounted separately.
         struct stat imageInfo;
         if (dataImagePath.empty() || 0 != stat(dataImagePath.c_str(), &imageInfo) || !S_ISREG(imageInfo.st_mode))
         {
@@ -947,8 +946,29 @@ namespace ralf
                 LOGERR("Invalid RALF runtime environment variable");
                 return false;
             }
-            addToEnvironment(ociConfigRootNode, value.substr(0, separator),
-                             value.substr(separator + 1));
+            const std::string key = value.substr(0, separator);
+            if ("APPLICATION_SECRET" == key)
+            {
+                const Json::Value &environment = ociConfigRootNode[PROCESS][ENV];
+                const std::string prefix = key + "=";
+                bool secretAlreadySet = false;
+                if (environment.isArray())
+                {
+                    for (const auto &entry : environment)
+                    {
+                        if (entry.isString() && 0 == entry.asString().rfind(prefix, 0))
+                        {
+                            secretAlreadySet = true;
+                            break;
+                        }
+                    }
+                }
+                if (secretAlreadySet)
+                {
+                    continue;
+                }
+            }
+            addToEnvironment(ociConfigRootNode, key, value.substr(separator + 1));
         }
 
         return true;

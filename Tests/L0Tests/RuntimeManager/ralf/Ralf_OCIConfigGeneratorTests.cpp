@@ -593,7 +593,10 @@ uint32_t Test_DobbySpecGenerator_GenerateClassicRalfArgsAndSecrets()
     appConfig.mAppInstanceId = "classic-001";
     appConfig.mUserId = 1000;
     appConfig.mGroupId = 1000;
+    appConfig.mAppStorageInfo.path = "/tmp/classic-ralf-app-storage";
     WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.ralfPkgPath = "/tmp/classic-ralf-manifest.json";
+    runtimeConfig.envVariables = { "PERSIST_STORAGE_PATH=/override" };
     runtimeConfig.command = "bin/app";
     runtimeConfig.commandArgs = {"--profile", "tv"};
     runtimeConfig.systemMemoryLimit = 128 * 1024 * 1024;
@@ -621,11 +624,61 @@ uint32_t Test_DobbySpecGenerator_GenerateClassicRalfArgsAndSecrets()
             foundSecret = foundSecret || "APPLICATION_SECRET=test-secret" == env.asString();
         }
         L0Test::ExpectTrue(tr, foundSecret, "Preserve classic RALF application secret");
+        bool foundStorageMount = false;
+        for (const Json::Value &mount : spec["mounts"])
+        {
+            foundStorageMount = foundStorageMount ||
+                ("/tmp/classic-ralf-app-storage" == mount["source"].asString() &&
+                 "/data" == mount["destination"].asString() && "bind" == mount["type"].asString());
+        }
+        L0Test::ExpectTrue(tr, foundStorageMount,
+                           "Classic RALF mounts AppStorageManager storage at /data");
+        bool foundStorageEnvironment = false;
+        bool foundOverride = false;
+        for (const Json::Value &env : spec["env"])
+        {
+            foundStorageEnvironment = foundStorageEnvironment || "PERSIST_STORAGE_PATH=/data" == env.asString();
+            foundOverride = foundOverride || "PERSIST_STORAGE_PATH=/override" == env.asString();
+        }
+        L0Test::ExpectTrue(tr, foundStorageEnvironment && !foundOverride,
+                           "Classic RALF exports the mounted storage path instead of a generic override");
         L0Test::ExpectTrue(tr,
                            "test-certificate" == spec["rdkPlugins"]["credentialsmanager"]["data"]["certificate"].asString() &&
                            "test-private-key" == spec["rdkPlugins"]["credentialsmanager"]["data"]["privateKey"].asString(),
                            "Preserve classic RALF credentials-manager data");
     }
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_PrivateDataUsesResolvedImagePath()
+{
+    L0Test::TestResult tr;
+
+    const std::string dataDirectory = "/tmp/ralf_l0test_private_data";
+    const std::string imagePath = dataDirectory + "/private-image.img";
+    if (ralf::checkIfPathExists(dataDirectory))
+    {
+        ralf::removeDirectoryRecursively(dataDirectory);
+    }
+    L0Test::ExpectTrue(tr, ralf::create_directories(dataDirectory) && WriteFile_OCIGen(imagePath, "image"),
+                       "Create a package directory and private image file");
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator generator("/tmp/ralf_l0test_private_data.json", packages);
+    Json::Value directoryConfig(Json::objectValue);
+    generator.addPrivateDataToOCIConfig(directoryConfig, dataDirectory);
+    const Json::Value &directoryLoopback = directoryConfig["rdkPlugins"]["storage"]["data"]["loopback"];
+    L0Test::ExpectTrue(tr, !directoryLoopback.isArray() || 0 == directoryLoopback.size(),
+                       "RuntimeManager does not infer an image path from a package directory");
+
+    Json::Value imageConfig(Json::objectValue);
+    generator.addPrivateDataToOCIConfig(imageConfig, imagePath);
+    L0Test::ExpectTrue(tr, imageConfig["rdkPlugins"]["storage"]["data"]["loopback"].isArray() &&
+                           1 == imageConfig["rdkPlugins"]["storage"]["data"]["loopback"].size() &&
+                           imagePath == imageConfig["rdkPlugins"]["storage"]["data"]["loopback"][0]["source"].asString(),
+                       "RuntimeManager mounts the resolved private-data image path");
+
+    ralf::removeDirectoryRecursively(dataDirectory);
     return tr.failures;
 }
 
@@ -761,9 +814,17 @@ uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()
     ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_runtime_environment.json", packages);
     Json::Value ociConfigRootNode(Json::objectValue);
 
+    Json::Value packageConfig(Json::objectValue);
+    packageConfig["runtimeSecrets"]["applicationSecret"] = "test-secret";
+    packageConfig["runtimeSecrets"]["credentialsManager"]["certificate"] = "test-certificate";
+    packageConfig["runtimeSecrets"]["credentialsManager"]["privateKey"] = "test-private-key";
+    const bool secretsApplied = gen.addPackageSecretsToOCIConfig(ociConfigRootNode, packageConfig);
+    L0Test::ExpectTrue(tr, secretsApplied, "package secrets are applied to OCI config");
+
     const std::vector<std::string> envVariables = {
         "APP_CONFIG_OVERRIDES_JSON=eyJ0ZXN0Ijp0cnVlfQ==",
-        "EXTRA_VALUE=first=second"
+        "EXTRA_VALUE=first=second",
+        "APPLICATION_SECRET=generic-secret"
     };
     const bool status = gen.addRuntimeEnvironmentToOCIConfig(ociConfigRootNode, envVariables);
 
@@ -773,15 +834,10 @@ uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()
                        "RALF config overrides are added to process environment");
     L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode, "EXTRA_VALUE=first=second"),
                        "environment values preserve equals signs");
-
-    Json::Value packageConfig(Json::objectValue);
-    packageConfig["runtimeSecrets"]["applicationSecret"] = "test-secret";
-    packageConfig["runtimeSecrets"]["credentialsManager"]["certificate"] = "test-certificate";
-    packageConfig["runtimeSecrets"]["credentialsManager"]["privateKey"] = "test-private-key";
-    const bool secretsApplied = gen.addPackageSecretsToOCIConfig(ociConfigRootNode, packageConfig);
-    L0Test::ExpectTrue(tr, secretsApplied, "package secrets are applied to OCI config");
     L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode, "APPLICATION_SECRET=test-secret"),
                        "application secret is added to process environment");
+    L0Test::ExpectTrue(tr, !HasEnvEntry_OCIGen(ociConfigRootNode, "APPLICATION_SECRET=generic-secret"),
+                       "generic runtime environment cannot replace the package application secret");
     L0Test::ExpectTrue(tr, !HasEnvEntry_OCIGen(ociConfigRootNode,
                                                "RALF_CREDMGR_CERTIFICATE=test-certificate"),
                        "credentials are not exposed as process environment variables");

@@ -720,18 +720,6 @@ namespace WPEFramework
                     launchConfig.credentialsCertificate, launchConfig.credentialsPrivateKey);
                 if (classicRalfLaunch)
                 {
-                    const std::string privateImagePath = launchConfig.unpackedPath + "/data.img";
-                    launchConfig.unpackedPath.clear();
-                    struct stat privateImageInfo;
-                    if (0 == stat(privateImagePath.c_str(), &privateImageInfo) && S_ISREG(privateImageInfo.st_mode))
-                    {
-                        launchConfig.unpackedPath = privateImagePath;
-                    }
-                    else
-                    {
-                        LOGWARN("RALF private data image not found at '%s'; omitting /home/private loop mount",
-                                privateImagePath.c_str());
-                    }
                     LOGINFO("Base-free RALF launch: launching %s from %s using classic Dobby spec",
                             launchConfig.command.c_str(), launchConfig.runtimePath.c_str());
                 }

@@ -1963,7 +1963,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts()
     auto rtCfg  = MakeValidRuntimeConfiguration();
     appCfg.mPorts.push_back(8080u);
     rtCfg.ralfPkgPath = "/tmp/xumo-manifest";
-    rtCfg.unpackedPath = "/tmp/xumo/data.img";
+    rtCfg.unpackedPath = "/tmp/xumo/private-image.img";
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
@@ -1972,7 +1972,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts()
                        "RALF widget spec enables AppServices plugin");
     L0Test::ExpectTrue(tr, spec.find("\"networking\"") != std::string::npos,
                        "RALF widget spec enables networking plugin");
-    L0Test::ExpectTrue(tr, spec.find("\"source\":\"/tmp/xumo/data.img\"") != std::string::npos,
+    L0Test::ExpectTrue(tr, spec.find("\"source\":\"/tmp/xumo/private-image.img\"") != std::string::npos,
                        "RALF widget spec mounts the private image rather than the package directory");
 
     return tr.failures;

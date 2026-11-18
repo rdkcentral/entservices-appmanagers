@@ -123,7 +123,7 @@ namespace ralf
          */
 
         bool addAppStorageToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath);
-        /// Loop-mounts data.img at /home/private when present; AppStorageManager storage is mounted separately.
+        /// Loop-mounts the resolved private-data image path at /home/private when present.
         void addPrivateDataToOCIConfig(Json::Value &ociConfigRootNode, const std::string &dataImagePath);
 
         /**

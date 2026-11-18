@@ -490,6 +490,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
 {
     Json::Value env(Json::arrayValue);
     env.append(std::string("APPLICATION_NAME=") + config.mAppId);
+    const bool useRalfStoragePath = !runtimeConfig.ralfPkgPath.empty() && !config.mAppStorageInfo.path.empty();
     
      //TODO YET TO ANALYZE SUPPORT APPLICATION_LAUNCH_PARAMETERS
      //TODO YET TO ANALYZE SUPPORT APPLICATION_LAUNCH_METHOD
@@ -497,6 +498,10 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
 
    for (const std::string& envInputItem : runtimeConfig.envVariables)
    {
+       if (useRalfStoragePath && 0 == envInputItem.rfind("PERSIST_STORAGE_PATH=", 0))
+       {
+           continue;
+       }
        if (!runtimeConfig.applicationSecret.empty() &&
            0 == envInputItem.rfind("APPLICATION_SECRET=", 0))
        {
@@ -508,12 +513,20 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
    std::list<std::string> configEnvs = mAIConfiguration->getEnvs();
    for (auto it = configEnvs.begin(); it != configEnvs.end(); ++it)
    {
+       if (useRalfStoragePath && 0 == it->rfind("PERSIST_STORAGE_PATH=", 0))
+       {
+           continue;
+       }
        if (!runtimeConfig.applicationSecret.empty() &&
            0 == it->rfind("APPLICATION_SECRET=", 0))
        {
            continue;
        }
        env.append(*it);
+   }
+   if (useRalfStoragePath)
+   {
+       env.append("PERSIST_STORAGE_PATH=/data");
    }
 
    if (!config.mWesterosSocketPath.empty())
@@ -606,6 +619,11 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
 
     mounts.append(createBindMount("/etc/ssl/certs", "/etc/ssl/certs",
                                (MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV)));
+
+    if (!runtimeConfig.ralfPkgPath.empty() && !config.mAppStorageInfo.path.empty())
+    {
+        mounts.append(createBindMount(config.mAppStorageInfo.path, "/data", MS_BIND | MS_REC));
+    }
 
     if (!runtimeConfig.unpackedPath.empty())
     {

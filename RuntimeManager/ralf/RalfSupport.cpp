@@ -32,6 +32,7 @@
 #include <cstdio>  //for ::remove
 
 #include <dirent.h>
+#include <fcntl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -127,11 +128,76 @@ namespace
         }
     }
 
+    int openRootfsDirectory(const std::string& rootfsMountPath,
+                            const std::string& containerPath)
+    {
+        if (rootfsMountPath.empty() || containerPath.empty() || '/' != containerPath[0] ||
+            std::string::npos != containerPath.find('\0'))
+        {
+            return -1;
+        }
+
+        int currentFd = ::open(rootfsMountPath.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        if (currentFd < 0)
+        {
+            return -1;
+        }
+
+        size_t componentStart = 0;
+        while (componentStart < containerPath.size())
+        {
+            while (componentStart < containerPath.size() && '/' == containerPath[componentStart])
+            {
+                ++componentStart;
+            }
+            if (componentStart == containerPath.size())
+            {
+                break;
+            }
+
+            const size_t componentEnd = containerPath.find('/', componentStart);
+            const std::string component = containerPath.substr(componentStart, componentEnd - componentStart);
+            if ("." == component || ".." == component)
+            {
+                ::close(currentFd);
+                return -1;
+            }
+
+            int nextFd = ::openat(currentFd, component.c_str(),
+                                  O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+            if (nextFd < 0 && ENOENT == errno)
+            {
+                if (0 != ::mkdirat(currentFd, component.c_str(), 0777) && EEXIST != errno)
+                {
+                    ::close(currentFd);
+                    return -1;
+                }
+                nextFd = ::openat(currentFd, component.c_str(),
+                                  O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+            }
+            if (nextFd < 0)
+            {
+                ::close(currentFd);
+                return -1;
+            }
+
+            ::close(currentFd);
+            currentFd = nextFd;
+            componentStart = (std::string::npos == componentEnd) ? containerPath.size() : componentEnd + 1;
+        }
+
+        return currentFd;
+    }
+
     bool ensureDirectoryExistsInRootfs(const std::string& rootfsMountPath,
                                        const std::string& containerPath)
     {
-        const std::string targetPath = rootfsMountPath + containerPath;
-        return ralf::create_directories(targetPath);
+        const int directoryFd = openRootfsDirectory(rootfsMountPath, containerPath);
+        if (directoryFd < 0)
+        {
+            return false;
+        }
+        return 0 == ::close(directoryFd);
     }
 
     bool ensureFileExistsInRootfs(const std::string& rootfsMountPath,
@@ -140,45 +206,75 @@ namespace
                                   const int gid)
     {
         const size_t lastSlash = containerPath.find_last_of('/');
-        if (std::string::npos == lastSlash)
+        if (containerPath.empty() || std::string::npos == lastSlash ||
+            lastSlash + 1 == containerPath.size() || std::string::npos != containerPath.find('\0'))
         {
             LOGERR("Invalid container file path: %s", containerPath.c_str());
             return false;
         }
 
-        const std::string parentPath = containerPath.substr(0, lastSlash);
-        if (!parentPath.empty() && !ensureDirectoryExistsInRootfs(rootfsMountPath, parentPath))
+        const std::string parentPath = (0 == lastSlash) ? "/" : containerPath.substr(0, lastSlash);
+        const std::string fileName = containerPath.substr(lastSlash + 1);
+        if ("." == fileName || ".." == fileName)
+        {
+            LOGERR("Invalid container file path: %s", containerPath.c_str());
+            return false;
+        }
+
+        const int parentFd = openRootfsDirectory(rootfsMountPath, parentPath);
+        if (parentFd < 0)
         {
             LOGERR("Failed to create parent directory in merged rootfs: %s", parentPath.c_str());
             return false;
         }
 
-        const std::string filePath = rootfsMountPath + containerPath;
-
-        struct stat buffer;
-        const bool isNewFile = (stat(filePath.c_str(), &buffer) != 0);
-
-        std::ofstream outputFile(filePath, std::ios::app);
-        if (!outputFile.is_open())
+        struct stat existingStat;
+        const bool isNewFile = (0 != ::fstatat(parentFd, fileName.c_str(), &existingStat, AT_SYMLINK_NOFOLLOW));
+        if (isNewFile && ENOENT != errno)
         {
-            LOGERR("Failed to create file in merged rootfs: %s", filePath.c_str());
+            LOGERR("Failed to inspect merged-rootfs file target: %s", containerPath.c_str());
+            ::close(parentFd);
             return false;
         }
-        outputFile.close();
 
-        if (isNewFile && (uid != 0 || gid != 0))
+        const int fileFd = ::openat(parentFd, fileName.c_str(),
+                                    O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK, 0666);
+        if (fileFd < 0)
         {
-            const uid_t targetUid = (uid == 0) ? -1 : static_cast<uid_t>(uid);
-            const gid_t targetGid = (gid == 0) ? -1 : static_cast<gid_t>(gid);
+            LOGERR("Failed to create file in merged rootfs: %s: %s", containerPath.c_str(), strerror(errno));
+            ::close(parentFd);
+            return false;
+        }
 
-            if (chown(filePath.c_str(), targetUid, targetGid) != 0)
+        struct stat fileStat;
+        bool status = (0 == ::fstat(fileFd, &fileStat) && S_ISREG(fileStat.st_mode));
+        if (!status)
+        {
+            LOGERR("Merged-rootfs file target is not a regular file: %s", containerPath.c_str());
+        }
+
+        if (status && isNewFile && (uid != 0 || gid != 0))
+        {
+            const uid_t targetUid = (uid == 0) ? static_cast<uid_t>(-1) : static_cast<uid_t>(uid);
+            const gid_t targetGid = (gid == 0) ? static_cast<gid_t>(-1) : static_cast<gid_t>(gid);
+
+            if (::fchown(fileFd, targetUid, targetGid) != 0)
             {
-                LOGERR("Failed to chown file %s to %d:%d: %s", filePath.c_str(), uid, gid, strerror(errno));
-                return false;
+                LOGERR("Failed to chown merged-rootfs file %s to %d:%d: %s",
+                       containerPath.c_str(), uid, gid, strerror(errno));
+                status = false;
             }
         }
 
-        return true;
+        if (0 != ::close(fileFd))
+        {
+            status = false;
+        }
+        if (0 != ::close(parentFd))
+        {
+            status = false;
+        }
+        return status;
     }
 
     bool getPathTypeFromHostSource(const std::string& hostPath, bool& isDirectory)
