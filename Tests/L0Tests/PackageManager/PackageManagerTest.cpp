@@ -16,6 +16,10 @@ extern uint32_t Test_PM_Impl_ListPackagesAndPackageStateForDummyData();
 extern uint32_t Test_PM_Impl_SystemApplicationClassification();
 extern uint32_t Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator();
 extern uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization();
+extern uint32_t Test_PM_Impl_RuntimeConfigPayloadObjectAccessors();
+extern uint32_t Test_PM_Impl_ParseMemorySize();
+extern uint32_t Test_PM_Impl_LockAddsApplicationLifecycle();
+extern uint32_t Test_PM_Impl_LockWithoutApplicationLifecycle();
 extern uint32_t Test_PM_Impl_RuntimeConfigPayloadBooleanTypes();
 extern uint32_t Test_PM_Impl_RuntimeConfigPayloadIntegerTypes();
 extern uint32_t Test_PM_Impl_RuntimeConfigPayloadUnsignedEdgeCases();
@@ -68,13 +72,17 @@ int main()
         { "PM_Impl_SystemApplicationClassification", Test_PM_Impl_SystemApplicationClassification },
         { "PM_Impl_ConfigAndGetConfigForPackageEmptyLocator", Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator },
         { "PM_Impl_RuntimeConfigPayloadSerialization", Test_PM_Impl_RuntimeConfigPayloadSerialization },
+        { "PM_Impl_RuntimeConfigPayloadObjectAccessors", Test_PM_Impl_RuntimeConfigPayloadObjectAccessors },
+        { "PM_Impl_ParseMemorySize", Test_PM_Impl_ParseMemorySize },
+        { "PM_Impl_LockAddsApplicationLifecycle", Test_PM_Impl_LockAddsApplicationLifecycle },
+        { "PM_Impl_LockWithoutApplicationLifecycle", Test_PM_Impl_LockWithoutApplicationLifecycle },
         { "PM_Impl_RuntimeConfigPayloadBooleanTypes", Test_PM_Impl_RuntimeConfigPayloadBooleanTypes },
         { "PM_Impl_RuntimeConfigPayloadIntegerTypes", Test_PM_Impl_RuntimeConfigPayloadIntegerTypes },
         { "PM_Impl_RuntimeConfigPayloadUnsignedEdgeCases", Test_PM_Impl_RuntimeConfigPayloadUnsignedEdgeCases },
         { "PM_Impl_RuntimeConfigPayloadAppendString", Test_PM_Impl_RuntimeConfigPayloadAppendString },
         { "PM_Impl_RuntimeConfigPayloadUpsertEnvironmentEdgeCases", Test_PM_Impl_RuntimeConfigPayloadUpsertEnvironmentEdgeCases },
         { "PM_Impl_RuntimeConfigPayloadStringArrayValidation", Test_PM_Impl_RuntimeConfigPayloadStringArrayValidation },
-        { "PM_Impl_RuntimeConfigPayloadComplexScenarios", Test_PM_Impl_RuntimeConfigPayloadComplexScenarios },        
+        { "PM_Impl_RuntimeConfigPayloadComplexScenarios", Test_PM_Impl_RuntimeConfigPayloadComplexScenarios },
         { "PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload", Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload },
         { "PM_Impl_DeleteFilePaths", Test_PM_Impl_DeleteFilePaths },
         { "PM_Impl_InstallAndUninstallFlowWithNotifications", Test_PM_Impl_InstallAndUninstallFlowWithNotifications },

@@ -20,10 +20,24 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "ResourceMonitor.h"
+#include "ResourceMonitorConfig.h"
+#include "PackageLifecycleConfigProvider.h"
+#include <queue>
+#include <condition_variable>
+#define private public
+#define protected public
 #include "ResourceMonitorImplementation.h"
+#undef protected
+#undef private
+#include "../../mocks/ResourceMonitorEnforcementTestSupport.h"
 #include "ServiceMock.h"
+#include "PackageManagerMock.h"
 #include "ThunderPortability.h"
 #include <core/core.h>
+#include <list>
+#include <map>
+#include <utility>
+#include <vector>
 #include <fstream>
 #include <cstdio>
 #include <unistd.h>
@@ -112,6 +126,70 @@ public:
 };
 
 
+class ResourceMonitorTimerTest : public ::testing::Test {
+protected:
+    std::unique_ptr<TestableResourceMonitorImplementation> implementation { new TestableResourceMonitorImplementation() };
+
+    void SetDeadline(const string& id, bool paused, uint64_t delayMs)
+    {
+        std::lock_guard<std::mutex> lock(implementation->_appTimersMutex);
+        const uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        auto& state = implementation->_appTimers.at(id);
+        (paused ? state.pausedTimerExpiryMs : state.suspendedTimerExpiryMs) = now + delayMs;
+        implementation->ScheduleNextTimerLocked();
+    }
+
+    bool WaitForExpiry(const string& id, bool paused)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while (std::chrono::steady_clock::now() < deadline) {
+            {
+                std::lock_guard<std::mutex> lock(implementation->_appTimersMutex);
+                const auto& state = implementation->_appTimers.at(id);
+                if ((paused ? state.pausedTimerExpiryMs : state.suspendedTimerExpiryMs) == 0) {
+                    return true;
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        return false;
+    }
+};
+
+TEST_F(ResourceMonitorTimerTest, IdleWakeAndEarlierDeadline)
+{
+    implementation->StartPausedTimer("later", Plugin::AppLifecycleCapabilities());
+    SetDeadline("later", true, 10000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    implementation->StartSuspendedTimer("earlier");
+    SetDeadline("earlier", false, 20);
+    EXPECT_TRUE(WaitForExpiry("earlier", false));
+    {
+        std::lock_guard<std::mutex> lock(implementation->_appTimersMutex);
+        EXPECT_NE(0u, implementation->_appTimers.at("later").pausedTimerExpiryMs);
+    }
+    implementation->CancelAllTimers("later");
+    EXPECT_FALSE(implementation->_timerHandler.HasEntry(*implementation->_timer));
+    implementation->StartPausedTimer("next", Plugin::AppLifecycleCapabilities());
+    SetDeadline("next", true, 20);
+    EXPECT_TRUE(WaitForExpiry("next", true));
+}
+
+TEST_F(ResourceMonitorTimerTest, CancellationAndPendingShutdown)
+{
+    implementation->StartPausedTimer("app", Plugin::AppLifecycleCapabilities());
+    implementation->StartSuspendedTimer("app");
+    implementation->CancelPausedTimer("app");
+    EXPECT_TRUE(implementation->_timerHandler.HasEntry(*implementation->_timer));
+    implementation->CancelSuspendedTimer("app");
+    EXPECT_FALSE(implementation->_timerHandler.HasEntry(*implementation->_timer));
+    implementation->StartPausedTimer("app", Plugin::AppLifecycleCapabilities());
+    const auto start = std::chrono::steady_clock::now();
+    implementation.reset();
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds(2));
+}
+
 class ResourceMonitorTest : public ::testing::Test {
 
 protected:
@@ -188,6 +266,456 @@ public:
         delete mockAuth;
     }
 };
+
+class ResourceMonitorAcceptanceTest : public ResourceMonitorTest {
+protected:
+    NiceMock<ServiceMock> service;
+    NiceMock<MockAuthenticate> authentication;
+    ResourceMonitorTestSupport::AppManager* apps { new ResourceMonitorTestSupport::AppManager() };
+    ResourceMonitorTestSupport::RuntimeManager* runtime { new ResourceMonitorTestSupport::RuntimeManager() };
+    std::unique_ptr<ResourceMonitorTestSupport::Session> session;
+    bool initialized { false };
+    PluginHost::IPlugin::INotification* managerNotifications { nullptr };
+    bool appManagerAvailable { true };
+    bool runtimeManagerAvailable { true };
+    bool lifecycleManagerAvailable { true };
+    Exchange::ILifecycleManager* lifecycleInterface { nullptr };
+
+    virtual string Configuration() const { return "{\"root\":{\"low_memory_warnings_enabled\":false}}"; }
+
+    void SetUp() override
+    {
+        ON_CALL(service, ConfigLine()).WillByDefault(Return(Configuration()));
+        ON_CALL(service, Register(::testing::A<PluginHost::IPlugin::INotification*>())).WillByDefault(
+            [this](PluginHost::IPlugin::INotification* sink) { managerNotifications = sink; });
+        ON_CALL(service, Unregister(::testing::A<PluginHost::IPlugin::INotification*>())).WillByDefault(
+            [this](PluginHost::IPlugin::INotification* sink) {
+                if (managerNotifications == sink) { managerNotifications = nullptr; }
+            });
+        ON_CALL(service, QueryInterfaceByCallsign(_, _)).WillByDefault(
+            [this](const uint32_t, const string& name) -> void* {
+                if (name == "org.rdk.AppManager") {
+                    if (!appManagerAvailable) { return nullptr; }
+                    apps->AddRef();
+                    return static_cast<Exchange::IAppManager*>(apps);
+                }
+                if (name == "org.rdk.RuntimeManager") {
+                    if (!runtimeManagerAvailable) { return nullptr; }
+                    runtime->AddRef();
+                    return static_cast<Exchange::IRuntimeManager*>(runtime);
+                }
+                if (name == "org.rdk.LifecycleManager" && lifecycleManagerAvailable && session) {
+                    auto* manager = lifecycleInterface ? lifecycleInterface : session->lifecycle;
+                    manager->AddRef();
+                    return manager;
+                }
+                if (name == "SecurityAgent") { return &authentication; }
+                return nullptr;
+            });
+        const auto error = plugin->Initialize(&service);
+        initialized = error.empty();
+        ASSERT_TRUE(initialized) << error;
+        ASSERT_NE(nullptr, Plugin::ResourceMonitorImplementation::_instance);
+        session.reset(new ResourceMonitorTestSupport::Session(Plugin::ResourceMonitorImplementation::_instance));
+    }
+
+    void TearDown() override
+    {
+        if (initialized) { plugin->Deinitialize(&service); }
+        session.reset();
+        apps->Release();
+        runtime->Release();
+    }
+};
+
+TEST_F(ResourceMonitorAcceptanceTest, DirectLifecycleRequestsUseInstanceIdentityAndScopedReferences)
+{
+    apps->listResult = Core::ERROR_GENERAL;
+    session->monitor->RequestSuspendedTransition("original.instance");
+    session->monitor->RequestHibernatedTransition("original.instance");
+    const auto requests = session->Transitions();
+    ASSERT_EQ(2u, requests.size());
+    EXPECT_EQ("original.instance", requests[0].first);
+    EXPECT_EQ("original.instance", requests[1].first);
+    EXPECT_EQ(Exchange::ILifecycleManager::SUSPENDED, requests[0].second);
+    EXPECT_EQ(Exchange::ILifecycleManager::HIBERNATED, requests[1].second);
+    EXPECT_EQ(std::vector<string>({ "", "" }), session->Intents());
+    EXPECT_EQ(1u, session->lifecycle->_refCount.load());
+
+    session->SetTransitionResult(Core::ERROR_GENERAL);
+    session->monitor->RequestSuspendedTransition("original.instance");
+    EXPECT_EQ(1u, session->lifecycle->_refCount.load());
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, LifecycleManagerUnavailableThenReplacementUsesFreshInterface)
+{
+    session->monitor->RequestSuspendedTransition("original.instance");
+    lifecycleManagerAvailable = false;
+    session->monitor->RequestHibernatedTransition("original.instance");
+    EXPECT_EQ(1u, session->Transitions().size());
+    lifecycleManagerAvailable = true;
+
+    L0Test::MockLifecycleManager replacement;
+    uint32_t calls = 0;
+    replacement.setTargetAppStateHandler = [&](const string& id, Exchange::ILifecycleManager::LifecycleState state, const string& intent) {
+        EXPECT_EQ("original.instance", id);
+        EXPECT_EQ(Exchange::ILifecycleManager::HIBERNATED, state);
+        EXPECT_TRUE(intent.empty());
+        ++calls;
+        return Core::ERROR_NONE;
+    };
+    lifecycleInterface = &replacement;
+    session->monitor->RequestHibernatedTransition("original.instance");
+    lifecycleInterface = nullptr;
+    EXPECT_EQ(1u, calls);
+    EXPECT_EQ(1u, replacement._refCount.load());
+    EXPECT_EQ(1u, session->lifecycle->_refCount.load());
+    EXPECT_EQ(1u, session->Transitions().size());
+}
+
+class ResourceMonitorLateManagerTest : public ResourceMonitorAcceptanceTest {
+protected:
+    void SetUp() override
+    {
+        appManagerAvailable = false;
+        runtimeManagerAvailable = false;
+        ResourceMonitorAcceptanceTest::SetUp();
+    }
+};
+
+TEST_F(ResourceMonitorLateManagerTest, ManagersActivatedAfterMonitorRestoreEnforcement)
+{
+    ASSERT_NE(nullptr, managerNotifications);
+    appManagerAvailable = true;
+    runtimeManagerAvailable = true;
+    managerNotifications->Activated("org.rdk.AppManager", nullptr);
+    managerNotifications->Activated("org.rdk.RuntimeManager", nullptr);
+    session.reset(new ResourceMonitorTestSupport::Session(Plugin::ResourceMonitorImplementation::_instance));
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+    session->Expire("app", false);
+    const auto transitions = session->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ(Exchange::ILifecycleManager::HIBERNATED, transitions[0].second);
+}
+
+TEST_F(ResourceMonitorLateManagerTest, LateActivationReconcilesAlreadyPausedApplications)
+{
+    ASSERT_NE(nullptr, managerNotifications);
+    apps->Add("app", "app.instance", "INTERACTIVE_APP");
+    apps->Emit("app.instance", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->packages->payloads["app"] = "{\"ralfPkgPath\":\"/metadata.json\",\"applicationLifecycle\":{\"supportedNonActiveStates\":[\"paused\",\"suspended\"]}}";
+    appManagerAvailable = true;
+    managerNotifications->Activated("org.rdk.AppManager", nullptr);
+    ASSERT_EQ(1u, session->monitor->_appTimers.count("app.instance"));
+    session->Expire("app", true);
+    const auto transitions = session->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ(Exchange::ILifecycleManager::SUSPENDED, transitions[0].second);
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, ManagerDeactivationDropsInterfacesAndActivationRestoresSubscriptions)
+{
+    ASSERT_NE(nullptr, managerNotifications);
+    session->Add("app");
+    managerNotifications->Deactivated("org.rdk.AppManager", nullptr);
+    managerNotifications->Unavailable("org.rdk.RuntimeManager", nullptr);
+    EXPECT_EQ(nullptr, session->monitor->_appManager);
+    EXPECT_EQ(nullptr, session->monitor->_runtimeManager);
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    EXPECT_EQ(0u, session->monitor->_appTimers.count("app.instance"));
+    managerNotifications->Activated("org.rdk.AppManager", nullptr);
+    managerNotifications->Activated("org.rdk.RuntimeManager", nullptr);
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+    session->Expire("app", false);
+    const auto transitions = session->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ(Exchange::ILifecycleManager::HIBERNATED, transitions[0].second);
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC1_ActiveToPausedStartsSixtySecondTimer)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    EXPECT_GT(session->Remaining("app", true), 59000u);
+    EXPECT_LE(session->Remaining("app", true), 60000u);
+    EXPECT_TRUE(session->Transitions().empty());
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC2_DeadlineDeterminesNextAction)
+{
+    session->Add("supported");
+    session->Add("unsupported", "\"paused\"");
+    session->Emit("supported", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Emit("unsupported", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->monitor->OnLifecycleTimerExpired();
+    EXPECT_TRUE(session->Transitions().empty());
+    EXPECT_TRUE(apps->Terminations().empty());
+    session->Expire("supported", true);
+    session->Expire("unsupported", true);
+    const auto transitions = session->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ("supported.instance", transitions[0].first);
+    EXPECT_EQ(std::vector<string>({ "unsupported" }), apps->Terminations());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC3_RequestsSuspendedThroughLifecycleManager)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Expire("app", true);
+    const auto transitions = session->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ("app.instance", transitions[0].first);
+    EXPECT_EQ(Exchange::ILifecycleManager::SUSPENDED, transitions[0].second);
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC4_QueriesGpuOnlyAfterGraceExpires)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+    session->monitor->OnLifecycleTimerExpired();
+    EXPECT_EQ(0u, runtime->calls.load());
+    session->Expire("app", false);
+    EXPECT_EQ(1u, runtime->calls.load());
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC5_TerminatesAnyRemainingGpuConsumer)
+{
+    for (const uint64_t usage : { uint64_t(1), uint64_t(20 * 1024 * 1024), uint64_t(32 * 1024 * 1024) }) {
+        const string id = "app" + std::to_string(usage);
+        session->Add(id);
+        session->Emit(id, Exchange::IAppManager::APP_STATE_PAUSED);
+        session->Emit(id, Exchange::IAppManager::APP_STATE_SUSPENDED);
+        runtime->SetInfo(id + ".instance", "{\"gpu\":{\"memory\":{\"usage\":" + std::to_string(usage) + "}}}");
+        session->Expire(id, false);
+    }
+    EXPECT_EQ(3u, apps->Terminations().size());
+    EXPECT_TRUE(session->Transitions().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC6_DefaultGraceIsTenSeconds)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    EXPECT_GT(session->Remaining("app", false), 9000u);
+    EXPECT_LE(session->Remaining("app", false), 10000u);
+}
+
+class ResourceMonitorConfiguredGraceTest : public ResourceMonitorAcceptanceTest {
+protected:
+    string Configuration() const override
+    {
+        return "{\"root\":{\"low_memory_warnings_enabled\":false,\"suspended_gpu_grace_period\":7}}";
+    }
+};
+
+TEST_F(ResourceMonitorConfiguredGraceTest, AC6_PluginUsesConfiguredGrace)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    EXPECT_GT(session->Remaining("app", false), 6000u);
+    EXPECT_LE(session->Remaining("app", false), 7000u);
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC7_RequestsHibernatedWhenSupportedAndGpuReleased)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+    session->Expire("app", false);
+    const auto transitions = session->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ("app.instance", transitions[0].first);
+    EXPECT_EQ(Exchange::ILifecycleManager::HIBERNATED, transitions[0].second);
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, FirstObservedSuspendedCapturesCapabilities)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+    session->Expire("app", false);
+    const auto transitions = session->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ(Exchange::ILifecycleManager::HIBERNATED, transitions[0].second);
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, RepeatedPausedRetainsSnapshotDuringMetadataUnavailability)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->packages->payloads.clear();
+    for (const auto state : { Exchange::IAppManager::APP_STATE_ACTIVE,
+        Exchange::IAppManager::APP_STATE_HIBERNATED, Exchange::IAppManager::APP_STATE_TERMINATING }) {
+        session->Emit("app", state);
+        session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    }
+    session->Expire("app", true);
+    const auto transitions = session->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ(Exchange::ILifecycleManager::SUSPENDED, transitions[0].second);
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, ChangedMetadataDoesNotReplaceInstanceSnapshot)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->packages->payloads["app"] = "{\"ralfPkgPath\":\"/metadata.json\",\"applicationLifecycle\":{\"supportedNonActiveStates\":[\"paused\"]}}";
+    session->Emit("app", Exchange::IAppManager::APP_STATE_ACTIVE);
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Expire("app", true);
+    const auto transitions = session->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ(Exchange::ILifecycleManager::SUSPENDED, transitions[0].second);
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, UnavailableSnapshotIsRetried)
+{
+    session->Add("app");
+    const auto payload = session->packages->payloads.at("app");
+    session->packages->payloads.clear();
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    EXPECT_FALSE(session->monitor->_appTimers.at("app.instance").hasSnapshot);
+    session->packages->payloads["app"] = payload;
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    runtime->SetInfo("app.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+    session->Expire("app", false);
+    const auto transitions = session->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ(Exchange::ILifecycleManager::HIBERNATED, transitions[0].second);
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, UnloadDiscardsSnapshotAndAllowsFreshCapture)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->monitor->_appManagerNotification.OnAppUnloaded("app", "app.instance");
+    EXPECT_EQ(0u, session->monitor->_appTimers.count("app.instance"));
+    session->packages->payloads["app"] = "{\"ralfPkgPath\":\"/metadata.json\",\"applicationLifecycle\":{\"supportedNonActiveStates\":[\"paused\"]}}";
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Expire("app", true);
+    EXPECT_TRUE(session->Transitions().empty());
+    EXPECT_EQ(std::vector<string>({ "app" }), apps->Terminations());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, UnloadedLifecycleEventDiscardsInstanceState)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    session->Emit("app", Exchange::IAppManager::APP_STATE_UNLOADED);
+    EXPECT_EQ(0u, session->monitor->_appTimers.count("app.instance"));
+    session->monitor->OnLifecycleTimerExpired();
+    EXPECT_TRUE(session->Transitions().empty());
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, UnloadDuringSnapshotLookupDoesNotRestoreInstance)
+{
+    session->Add("app");
+    session->packages->onGetLockedInfo = [this] {
+        session->monitor->_appManagerNotification.OnAppUnloaded("app", "app.instance");
+    };
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    EXPECT_EQ(0u, session->monitor->_appTimers.count("app.instance"));
+    EXPECT_TRUE(session->Transitions().empty());
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, ReplacedInstanceRejectsStaleSnapshotLookup)
+{
+    session->Add("app");
+    session->packages->onGetLockedInfo = [this] {
+        session->monitor->_appManagerNotification.OnAppUnloaded("app", "app.instance");
+        session->packages->payloads["app"] = "{\"ralfPkgPath\":\"/metadata.json\",\"applicationLifecycle\":{\"supportedNonActiveStates\":[\"paused\"]}}";
+        session->Emit("app", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    };
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    const auto& state = session->monitor->_appTimers.at("app.instance");
+    EXPECT_EQ(0u, state.pausedTimerExpiryMs);
+    EXPECT_NE(0u, state.suspendedTimerExpiryMs);
+    EXPECT_FALSE(state.lifecycleSnapshot.IsSupported(Plugin::AppLifecycleState::HIBERNATED));
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC8_DoesNotRequestUnsupportedStates)
+{
+    session->Add("pausedOnly", "\"paused\"");
+    session->Emit("pausedOnly", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Expire("pausedOnly", true);
+    session->Add("noHibernate", "\"paused\",\"suspended\"");
+    session->Emit("noHibernate", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Emit("noHibernate", Exchange::IAppManager::APP_STATE_SUSPENDED);
+    runtime->SetInfo("noHibernate.instance", "{\"gpu\":{\"memory\":{\"usage\":0}}}");
+    session->Expire("noHibernate", false);
+    EXPECT_TRUE(session->Transitions().empty());
+    EXPECT_EQ(2u, apps->Terminations().size());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, AC9_TerminatesNonAppInsteadOfSuspending)
+{
+    session->Add("service", "\"paused\",\"suspended\",\"hibernated\"", "SYSTEM_APP");
+    session->Emit("service", Exchange::IAppManager::APP_STATE_PAUSED);
+    EXPECT_GT(session->Remaining("service", true), 59000u);
+    session->Expire("service", true);
+    EXPECT_EQ(std::vector<string>({ "service" }), apps->Terminations());
+    EXPECT_TRUE(session->Transitions().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, UnknownGpuUsageDoesNotAuthorizeHibernation)
+{
+    uint32_t index = 0;
+    for (const auto& info : { "{}", "not-json", "{\"gpu\":{\"memory\":{\"usage\":-1}}}",
+        "{\"gpu\":{\"memory\":{\"usage\":1.5}}}", "{\"gpu\":{\"memory\":{\"usage\":\"unknown\"}}}" }) {
+        const string id = "app" + std::to_string(index++);
+        session->Add(id);
+        session->Emit(id, Exchange::IAppManager::APP_STATE_PAUSED);
+        session->Emit(id, Exchange::IAppManager::APP_STATE_SUSPENDED);
+        runtime->SetInfo(id + ".instance", info);
+        session->Expire(id, false);
+    }
+    EXPECT_TRUE(session->Transitions().empty());
+    EXPECT_TRUE(apps->Terminations().empty());
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, ThunderTimerDispatchesSuspensionRequest)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    {
+        std::lock_guard<std::mutex> lock(session->monitor->_appTimersMutex);
+        session->monitor->_appTimers.at("app.instance").pausedTimerExpiryMs = session->Now() + 20;
+        session->monitor->ScheduleNextTimerLocked();
+    }
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (session->Transitions().empty() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    const auto transitions = session->Transitions();
+    ASSERT_EQ(1u, transitions.size());
+    EXPECT_EQ(Exchange::ILifecycleManager::SUSPENDED, transitions[0].second);
+}
+
+TEST_F(ResourceMonitorAcceptanceTest, StateChangeCancelsEnforcement)
+{
+    session->Add("app");
+    session->Emit("app", Exchange::IAppManager::APP_STATE_PAUSED);
+    session->Emit("app", Exchange::IAppManager::APP_STATE_ACTIVE);
+    EXPECT_EQ(0u, session->Remaining("app", true));
+    session->monitor->OnLifecycleTimerExpired();
+    EXPECT_TRUE(session->Transitions().empty());
+    EXPECT_TRUE(apps->Terminations().empty());
+}
 
 // Notification Mock
 class NotificationMock : public Exchange::IResourceMonitor::INotification
@@ -481,6 +1009,345 @@ TEST(ResourceMonitorImplementationTest, RegisterAndUnregister)
     EXPECT_EQ(Core::ERROR_NONE, impl.Register(&notification));
     EXPECT_CALL(notification, Release()).WillOnce(Return(0));
     EXPECT_EQ(Core::ERROR_NONE, impl.Unregister(&notification));
+}
+
+// ---------------------------------------------------------------------------
+// RDKEMW-28030: lifecycle capabilities from Package Manager
+// ---------------------------------------------------------------------------
+
+namespace {
+    const char* const kAllStatesBlock =
+        "{\"supportedNonActiveStates\":[\"paused\",\"suspended\",\"hibernated\"],"
+        "\"maxSuspendedSystemMemory\":\"16M\",\"maxTimeToSuspendMemoryState\":10}";
+    const char* const kPausedSuspendedBlock =
+        "{\"supportedNonActiveStates\":[\"paused\",\"suspended\"],"
+        "\"maxSuspendedSystemMemory\":\"100M\",\"maxTimeToSuspendMemoryState\":15}";
+
+    string RuntimePayload(const string& ralfPkgPath, const string& lifecycle)
+    {
+        string payload = "{\"appPath\":\"/apps/test\",\"command\":\"run\"";
+        if (!ralfPkgPath.empty()) {
+            payload += ",\"ralfPkgPath\":\"" + ralfPkgPath + "\"";
+        }
+        if (!lifecycle.empty()) {
+            payload += ",\"applicationLifecycle\":" + lifecycle;
+        }
+        return payload + "}";
+    }
+
+    string RalfPayload(const string& lifecycle)
+    {
+        return RuntimePayload("/tmp/com.example.app_1.0.0_metadata.json", lifecycle);
+    }
+}
+
+class ResourceMonitorLifecycleTest : public ResourceMonitorTest {
+protected:
+    NiceMock<ServiceMock> service;
+    NiceMock<MockAuthenticate>* mockAuth = nullptr;
+    NiceMock<PackageManagerMock> packageHandler;
+    NiceMock<PackageInstallerMock> packageInstaller;
+    NiceMock<PackageManagerMock> replacementPackageHandler;
+    NiceMock<PackageInstallerMock> replacementPackageInstaller;
+    Exchange::IPackageHandler* handlerInterface { &packageHandler };
+    Exchange::IPackageInstaller* installerInterface { &packageInstaller };
+    std::atomic<int> handlerReferences { 0 };
+    std::atomic<int> installerReferences { 0 };
+    bool packageManagerAvailable = true;
+    std::vector<std::pair<string, string>> installed;          // (packageId, version)
+    std::map<std::pair<string, string>, std::pair<bool, string>> lockState; // -> (locked, payload)
+    string initResult;
+
+    void SetUp() override
+    {
+        ASSERT_TRUE(initResult.empty()) << "Plugin initialization failed: " << initResult;
+        ASSERT_NE(nullptr, Plugin::ResourceMonitorImplementation::_instance);
+    }
+
+public:
+    ResourceMonitorLifecycleTest()
+    {
+        mockAuth = new NiceMock<MockAuthenticate>();
+        ON_CALL(packageHandler, AddRef()).WillByDefault([this]() { return ++handlerReferences; });
+        ON_CALL(packageHandler, Release()).WillByDefault([this]() { return --handlerReferences; });
+        ON_CALL(packageInstaller, AddRef()).WillByDefault([this]() { return ++installerReferences; });
+        ON_CALL(packageInstaller, Release()).WillByDefault([this]() { return --installerReferences; });
+        ON_CALL(replacementPackageHandler, AddRef()).WillByDefault(Return(1));
+        ON_CALL(replacementPackageHandler, Release()).WillByDefault(Return(0));
+        ON_CALL(replacementPackageInstaller, AddRef()).WillByDefault(Return(1));
+        ON_CALL(replacementPackageInstaller, Release()).WillByDefault(Return(0));
+
+        ON_CALL(service, QueryInterfaceByCallsign(_, _))
+            .WillByDefault([this](const uint32_t id, const std::string& name) -> void* {
+                if (name == "SecurityAgent") {
+                    mockAuth->AddRef();
+                    return static_cast<void*>(mockAuth);
+                }
+                if ((name == "org.rdk.AppPackageManager") && packageManagerAvailable) {
+                    if (id == Exchange::IPackageHandler::ID && handlerInterface) {
+                        handlerInterface->AddRef();
+                        return static_cast<void*>(handlerInterface);
+                    }
+                    if (id == Exchange::IPackageInstaller::ID && installerInterface) {
+                        installerInterface->AddRef();
+                        return static_cast<void*>(installerInterface);
+                    }
+                }
+                return nullptr;
+            });
+
+        ON_CALL(packageInstaller, ListPackages(_))
+            .WillByDefault([this](Exchange::IPackageInstaller::IPackageIterator*& packages) -> Core::hresult {
+                std::list<Exchange::IPackageInstaller::Package> list;
+                for (const auto& entry : installed) {
+                    Exchange::IPackageInstaller::Package package {};
+                    package.packageId = entry.first;
+                    package.version = entry.second;
+                    package.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
+                    list.push_back(package);
+                }
+                packages = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<
+                    Exchange::IPackageInstaller::IPackageIterator>(list);
+                return Core::ERROR_NONE;
+            });
+
+        ON_CALL(packageHandler, GetLockedInfo(_, _, _, _, _, _))
+            .WillByDefault([this](const string& packageId, const string& version, string& unpackedPath,
+                               string& runtimeConfigPayload, string& gatewayMetadataPath, bool& locked) -> Core::hresult {
+                const auto it = lockState.find(std::make_pair(packageId, version));
+                if (it == lockState.end()) {
+                    return Core::ERROR_INVALID_PARAMETER;
+                }
+                unpackedPath = "/apps/" + packageId;
+                gatewayMetadataPath.clear();
+                locked = it->second.first;
+                runtimeConfigPayload = it->second.second;
+                return Core::ERROR_NONE;
+            });
+
+        initResult = plugin->Initialize(&service);
+    }
+
+    ~ResourceMonitorLifecycleTest() override
+    {
+        if (initResult.empty()) {
+            plugin->Deinitialize(&service);
+        }
+        delete mockAuth;
+    }
+
+    void AddPackage(const string& packageId, const string& version, const bool locked, const string& payload)
+    {
+        installed.emplace_back(packageId, version);
+        lockState[std::make_pair(packageId, version)] = std::make_pair(locked, payload);
+    }
+
+    Plugin::ResourceMonitorImplementation& Impl() const
+    {
+        return *Plugin::ResourceMonitorImplementation::_instance;
+    }
+};
+
+TEST_F(ResourceMonitorLifecycleTest, PackageManagerReplacementUsesFreshInterfaces)
+{
+    AddPackage("com.example.app", "1.0.0", true, RalfPayload(kAllStatesBlock));
+    Plugin::AppLifecycleCapabilities caps;
+    ASSERT_EQ(Core::ERROR_NONE, Impl().GetAppLifecycleCapabilities("com.example.app", caps));
+    ASSERT_TRUE(caps.IsSupported(Plugin::AppLifecycleState::HIBERNATED));
+
+    packageManagerAvailable = false;
+    EXPECT_EQ(Core::ERROR_NONE, Impl().GetAppLifecycleCapabilities("com.example.app", caps));
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::UNAVAILABLE, caps.status);
+    packageManagerAvailable = true;
+    installerInterface = &replacementPackageInstaller;
+    handlerInterface = &replacementPackageHandler;
+    EXPECT_CALL(packageInstaller, ListPackages(_)).Times(0);
+    EXPECT_CALL(packageHandler, GetLockedInfo(_, _, _, _, _, _)).Times(0);
+    EXPECT_CALL(replacementPackageInstaller, ListPackages(_))
+        .WillOnce([](Exchange::IPackageInstaller::IPackageIterator*& iterator) {
+            Exchange::IPackageInstaller::Package package {};
+            package.packageId = "com.example.app";
+            package.version = "1.0.0";
+            std::list<Exchange::IPackageInstaller::Package> packages { package };
+            iterator = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<
+                Exchange::IPackageInstaller::IPackageIterator>(packages);
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(replacementPackageHandler, GetLockedInfo("com.example.app", "1.0.0", _, _, _, _))
+        .WillOnce([](const string&, const string&, string&, string& payload, string&, bool& locked) {
+            locked = true;
+            payload = RalfPayload(kPausedSuspendedBlock);
+            return Core::ERROR_NONE;
+        });
+    EXPECT_EQ(Core::ERROR_NONE, Impl().GetAppLifecycleCapabilities("com.example.app", caps));
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::CONFIGURED, caps.status);
+    EXPECT_FALSE(caps.IsSupported(Plugin::AppLifecycleState::HIBERNATED));
+    EXPECT_EQ(0, installerReferences.load());
+    EXPECT_EQ(0, handlerReferences.load());
+}
+
+TEST_F(ResourceMonitorLifecycleTest, PackageManagerReferencesReleasedOnRpcFailure)
+{
+    AddPackage("com.example.app", "1.0.0", true, RalfPayload(kAllStatesBlock));
+    ON_CALL(packageInstaller, ListPackages(_)).WillByDefault(Return(Core::ERROR_GENERAL));
+    Plugin::AppLifecycleCapabilities caps;
+    EXPECT_EQ(Core::ERROR_NONE, Impl().GetAppLifecycleCapabilities("com.example.app", caps));
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::UNAVAILABLE, caps.status);
+    EXPECT_EQ(0, installerReferences.load());
+    EXPECT_EQ(0, handlerReferences.load());
+
+    ON_CALL(packageHandler, GetLockedInfo(_, _, _, _, _, _)).WillByDefault(Return(Core::ERROR_GENERAL));
+    EXPECT_EQ(Core::ERROR_NONE, Impl().GetAppLifecycleCapabilities("com.example.app", caps, "1.0.0"));
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::UNAVAILABLE, caps.status);
+    EXPECT_EQ(0, installerReferences.load());
+    EXPECT_EQ(0, handlerReferences.load());
+}
+
+TEST_F(ResourceMonitorLifecycleTest, PackageManagerConcurrentRequestsReleaseReferences)
+{
+    AddPackage("com.example.app", "1.0.0", true, RalfPayload(kAllStatesBlock));
+    std::atomic<uint32_t> failures { 0 };
+    std::vector<std::thread> threads;
+    for (unsigned i = 0; i < 4; ++i) {
+        threads.emplace_back([this, &failures]() {
+            for (unsigned request = 0; request < 8; ++request) {
+                Plugin::AppLifecycleCapabilities caps;
+                if (Impl().GetAppLifecycleCapabilities("com.example.app", caps) != Core::ERROR_NONE ||
+                    !caps.IsSupported(Plugin::AppLifecycleState::HIBERNATED)) {
+                    ++failures;
+                }
+            }
+        });
+    }
+    for (auto& thread : threads) { thread.join(); }
+    EXPECT_EQ(0u, failures.load());
+    EXPECT_EQ(0, installerReferences.load());
+    EXPECT_EQ(0, handlerReferences.load());
+}
+
+// AC1: supported lifecycle states are returned from the Package Manager configuration.
+TEST_F(ResourceMonitorLifecycleTest, AC1_AllLifecycleStatesConfigured)
+{
+    AddPackage("com.example.app", "1.0.0", true, RalfPayload(kAllStatesBlock));
+
+    Plugin::AppLifecycleCapabilities caps;
+    EXPECT_EQ(Core::ERROR_NONE, Impl().GetAppLifecycleCapabilities("com.example.app", caps));
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::CONFIGURED, caps.status);
+    EXPECT_TRUE(caps.IsSupported(Plugin::AppLifecycleState::ACTIVE));
+    EXPECT_TRUE(caps.IsSupported(Plugin::AppLifecycleState::PAUSED));
+    EXPECT_TRUE(caps.IsSupported(Plugin::AppLifecycleState::SUSPENDED));
+    EXPECT_TRUE(caps.IsSupported(Plugin::AppLifecycleState::HIBERNATED));
+}
+
+// AC2: only the configured subset of Paused, Suspended and Hibernated is reported.
+TEST_F(ResourceMonitorLifecycleTest, AC2_PartialLifecycleSupport)
+{
+    AddPackage("com.example.app", "1.0.0", true, RalfPayload(kPausedSuspendedBlock));
+
+    bool supported = false;
+    EXPECT_EQ(Core::ERROR_NONE, Impl().IsAppLifecycleStateSupported("com.example.app", Plugin::AppLifecycleState::PAUSED, supported));
+    EXPECT_TRUE(supported);
+    EXPECT_EQ(Core::ERROR_NONE, Impl().IsAppLifecycleStateSupported("com.example.app", Plugin::AppLifecycleState::SUSPENDED, supported));
+    EXPECT_TRUE(supported);
+    EXPECT_EQ(Core::ERROR_NONE, Impl().IsAppLifecycleStateSupported("com.example.app", Plugin::AppLifecycleState::HIBERNATED, supported));
+    EXPECT_FALSE(supported);
+}
+
+// AC3: a package without optional lifecycle configuration reports those states as unsupported.
+TEST_F(ResourceMonitorLifecycleTest, AC3_NoOptionalLifecycleConfiguration)
+{
+    AddPackage("com.ralf.app", "1.0.0", true, RalfPayload(""));
+    AddPackage("com.legacy.app", "1.0.0", true, RuntimePayload("", ""));
+
+    Plugin::AppLifecycleCapabilities caps;
+    EXPECT_EQ(Core::ERROR_NONE, Impl().GetAppLifecycleCapabilities("com.ralf.app", caps));
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::NOT_CONFIGURED, caps.status);
+    EXPECT_TRUE(caps.IsSupported(Plugin::AppLifecycleState::ACTIVE));
+    EXPECT_FALSE(caps.IsSupported(Plugin::AppLifecycleState::PAUSED));
+    EXPECT_FALSE(caps.IsSupported(Plugin::AppLifecycleState::SUSPENDED));
+    EXPECT_FALSE(caps.IsSupported(Plugin::AppLifecycleState::HIBERNATED));
+
+    EXPECT_EQ(Core::ERROR_NONE, Impl().GetAppLifecycleCapabilities("com.legacy.app", caps));
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::UNAVAILABLE, caps.status);
+    EXPECT_FALSE(caps.IsSupported(Plugin::AppLifecycleState::PAUSED));
+}
+
+// AC4: the configured Suspended values are returned; missing or invalid values are unavailable.
+TEST_F(ResourceMonitorLifecycleTest, AC4_SuspendedConfiguration)
+{
+    AddPackage("com.example.app", "1.0.0", true, RalfPayload(kAllStatesBlock));
+    AddPackage("com.partial.app", "1.0.0", true,
+        RalfPayload("{\"supportedNonActiveStates\":[\"paused\",\"suspended\"],\"maxSuspendedSystemMemory\":\"16X\"}"));
+
+    Plugin::SuspendedStateConfig config;
+    EXPECT_EQ(Core::ERROR_NONE, Impl().GetAppSuspendedStateConfig("com.example.app", config));
+    EXPECT_TRUE(config.hasMaxSystemMemory);
+    EXPECT_EQ(16777216ULL, config.maxSystemMemoryBytes);
+    EXPECT_TRUE(config.hasMaxTimeToSuspend);
+    EXPECT_EQ(10U, config.maxTimeToSuspendSec);
+
+    EXPECT_EQ(Core::ERROR_NONE, Impl().GetAppSuspendedStateConfig("com.partial.app", config));
+    EXPECT_FALSE(config.hasMaxSystemMemory);
+    EXPECT_FALSE(config.hasMaxTimeToSuspend);
+}
+
+// AC5: the reported values reflect the Package Manager configuration.
+TEST_F(ResourceMonitorLifecycleTest, AC5_ValuesFollowPackageManager)
+{
+    AddPackage("com.example.app", "1.0.0", true, RalfPayload(kPausedSuspendedBlock));
+
+    Plugin::AppLifecycleCapabilities caps;
+    Impl().GetAppLifecycleCapabilities("com.example.app", caps);
+    EXPECT_FALSE(caps.IsSupported(Plugin::AppLifecycleState::HIBERNATED));
+    EXPECT_EQ(15U, caps.suspended.maxTimeToSuspendSec);
+
+    lockState[std::make_pair(string("com.example.app"), string("1.0.0"))].second = RalfPayload(kAllStatesBlock);
+    Impl().GetAppLifecycleCapabilities("com.example.app", caps);
+    EXPECT_TRUE(caps.IsSupported(Plugin::AppLifecycleState::HIBERNATED));
+    EXPECT_EQ(10U, caps.suspended.maxTimeToSuspendSec);
+}
+
+// Package Manager unavailable is handled without failure and retried on the next request.
+TEST_F(ResourceMonitorLifecycleTest, PackageManagerUnavailableThenAvailable)
+{
+    AddPackage("com.example.app", "1.0.0", true, RalfPayload(kAllStatesBlock));
+    packageManagerAvailable = false;
+
+    Plugin::AppLifecycleCapabilities caps;
+    EXPECT_EQ(Core::ERROR_NONE, Impl().GetAppLifecycleCapabilities("com.example.app", caps));
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::UNAVAILABLE, caps.status);
+    EXPECT_FALSE(caps.IsSupported(Plugin::AppLifecycleState::PAUSED));
+
+    packageManagerAvailable = true;
+    EXPECT_EQ(Core::ERROR_NONE, Impl().GetAppLifecycleCapabilities("com.example.app", caps));
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::CONFIGURED, caps.status);
+    EXPECT_TRUE(caps.IsSupported(Plugin::AppLifecycleState::HIBERNATED));
+
+    uint32_t result = handler.Invoke(connection, _T("getMemInfo"), _T("{}"), response);
+    EXPECT_TRUE(result == Core::ERROR_NONE || result == Core::ERROR_GENERAL);
+}
+
+// The locked version is used; ambiguous locks need an explicit version; empty appId is rejected.
+TEST_F(ResourceMonitorLifecycleTest, VersionResolution)
+{
+    AddPackage("com.example.app", "1.0.0", false, RalfPayload(kAllStatesBlock));
+    AddPackage("com.example.app", "1.1.0", true, RalfPayload(kPausedSuspendedBlock));
+    AddPackage("com.twice.app", "1.0.0", true, RalfPayload(kAllStatesBlock));
+    AddPackage("com.twice.app", "2.0.0", true, RalfPayload(kPausedSuspendedBlock));
+
+    Plugin::AppLifecycleCapabilities caps;
+    Impl().GetAppLifecycleCapabilities("com.example.app", caps);
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::CONFIGURED, caps.status);
+    EXPECT_FALSE(caps.IsSupported(Plugin::AppLifecycleState::HIBERNATED));
+
+    Impl().GetAppLifecycleCapabilities("com.twice.app", caps);
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::UNAVAILABLE, caps.status);
+
+    Impl().GetAppLifecycleCapabilities("com.twice.app", caps, "1.0.0");
+    EXPECT_EQ(Plugin::LifecycleConfigStatus::CONFIGURED, caps.status);
+    EXPECT_TRUE(caps.IsSupported(Plugin::AppLifecycleState::HIBERNATED));
+
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, Impl().GetAppLifecycleCapabilities("", caps));
 }
 
 TEST(ResourceMonitorImplementationTest, RegisterNotificationForReconcile)

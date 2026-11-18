@@ -22,6 +22,7 @@
 
 // @stubgen:skip
 
+#include <cstdlib>
 #include <string>
 #include <memory>
 #include <map>
@@ -151,7 +152,15 @@ namespace packagemanager
         }
         virtual Result Uninstall(const std::string &packageId) { return SUCCESS; }
 
-        virtual Result Lock(const std::string &packageId, const std::string &version, std::string &unpackedPath, ConfigMetaData &configMetadata, NameValues &additionalLocks) { return SUCCESS; }
+        // Test hook: when PACKAGEMANAGER_TEST_RALF_PKG_PATH is set, Lock() reports it as ralfPkgPath,
+        // as RALF libpackage does. An environment variable works across the test and plugin libraries.
+        virtual Result Lock(const std::string &packageId, const std::string &version, std::string &unpackedPath, ConfigMetaData &configMetadata, NameValues &additionalLocks) {
+            const char* ralfPkgPath = std::getenv("PACKAGEMANAGER_TEST_RALF_PKG_PATH");
+            if (ralfPkgPath != nullptr) {
+                configMetadata.ralfPkgPath = ralfPkgPath;
+            }
+            return SUCCESS;
+        }
         virtual Result Unlock(const std::string &packageId, const std::string &version) { return SUCCESS; }
 
         // XXX: Below THREE functions will be removed after RDK-M is updated, so don't need to time the changes in RDK-M

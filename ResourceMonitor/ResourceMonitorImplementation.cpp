@@ -19,8 +19,10 @@
 
 
 #include "ResourceMonitorImplementation.h"
+#include <interfaces/ILifecycleManager.h>
 #include "ResourceMonitorConfig.h"
 #include "UtilsLogging.h"
+#include "UtilsMemorySize.h"
 #include <tracing/Logging.h>
 
 #include <stdlib.h>
@@ -44,6 +46,13 @@
 
 namespace WPEFramework {
     namespace Plugin {
+    namespace {
+        const char* const appManagerCallsign = "org.rdk.AppManager";
+        const char* const runtimeManagerCallsign = "org.rdk.RuntimeManager";
+        const char* const lifecycleManagerCallsign = "org.rdk.LifecycleManager";
+        const char* const victimSelectorCallsign = "org.rdk.VictimSelector";
+    }
+
     SERVICE_REGISTRATION(ResourceMonitorImplementation, 1, 0, 0)
     ResourceMonitorImplementation* ResourceMonitorImplementation::_instance = nullptr;
         ResourceMonitorImplementation::ResourceMonitorImplementation()
@@ -67,6 +76,17 @@ namespace WPEFramework {
             , _pendingEvictionType(Exchange::IVictimSelector::EVICTION_TYPE_SOFT)
             , _victimSelector(nullptr)
             , _victimSelectorNotification(this)
+            , _lifecycleConfigProvider()
+            , _appManager(nullptr)
+            , _appManagerNotification(this)
+            , _runtimeManager(nullptr)
+            , _managerStopping(false)
+            , _managerNotification(this)
+            , _appTimersMutex()
+            , _nextTimerGeneration(0)
+            , _timerStopping(false)
+            , _timer(Core::ProxyType<LifecycleTimer>::Create(this))
+            , _timerHandler(1024 * 64, _T("ResourceLifecycleTimer"))
             , _adminLock()
             , _rservice(nullptr)
             {
@@ -77,6 +97,17 @@ namespace WPEFramework {
         ResourceMonitorImplementation::~ResourceMonitorImplementation() 
         {
             LOGINFO("ResourceMonitorImplementation Destructor");
+            {
+                std::lock_guard<std::mutex> lock(_managerMutex);
+                _managerStopping = true;
+            }
+            if (_rservice != nullptr) { _rservice->Unregister(&_managerNotification); }
+            {
+                std::lock_guard<std::mutex> lock(_appTimersMutex);
+                _timerStopping = true;
+            }
+            _timerHandler.Revoke(*_timer);
+            _timerHandler.Flush();
             {
                 std::lock_guard<std::mutex> lock(_reactiveMonitorMutex);
                 _reactiveMonitorRunning = false;
@@ -101,6 +132,8 @@ namespace WPEFramework {
                 _victimSelector = nullptr;
                 LOGINFO("VictimSelector notification unregistered");
             }
+            ManagerStateChanged(appManagerCallsign, false);
+            ManagerStateChanged(runtimeManagerCallsign, false);
 			std::list<Exchange::IResourceMonitor::INotification*> notifications;
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
@@ -109,12 +142,85 @@ namespace WPEFramework {
             for (auto* notification : notifications) {
                 notification->Release();
             }
+            _lifecycleConfigProvider.reset();
             if (_rservice != nullptr) {
                 _rservice->Release();
                 _rservice = nullptr;
             }
             if (_instance == this) {
                 _instance = nullptr;
+            }
+        }
+
+        ResourceMonitorImplementation::AppManagerReference ResourceMonitorImplementation::AcquireAppManager()
+        {
+            std::lock_guard<std::mutex> lock(_managerMutex);
+            auto* manager = _managerStopping ? nullptr : _appManager;
+            if (manager != nullptr) { manager->AddRef(); }
+            return AppManagerReference(manager);
+        }
+
+        ResourceMonitorImplementation::RuntimeManagerReference ResourceMonitorImplementation::AcquireRuntimeManager()
+        {
+            std::lock_guard<std::mutex> lock(_managerMutex);
+            auto* manager = _managerStopping ? nullptr : _runtimeManager;
+            if (manager != nullptr) { manager->AddRef(); }
+            return RuntimeManagerReference(manager);
+        }
+
+        void ResourceMonitorImplementation::ManagerStateChanged(const string& callsign, bool active)
+        {
+            const bool appManager = callsign == appManagerCallsign;
+            if (!appManager && callsign != runtimeManagerCallsign) { return; }
+            std::lock_guard<std::mutex> update(_managerUpdateMutex);
+            if (active) {
+                {
+                    std::lock_guard<std::mutex> lock(_managerMutex);
+                    if (_managerStopping || (appManager ? _appManager != nullptr : _runtimeManager != nullptr)) { return; }
+                }
+                if (_rservice == nullptr) { return; }
+                if (appManager) {
+                    AppManagerReference candidate(_rservice->QueryInterfaceByCallsign<Exchange::IAppManager>(callsign));
+                    if (!candidate || candidate->Register(&_appManagerNotification) != Core::ERROR_NONE) { return; }
+                    {
+                        std::lock_guard<std::mutex> lock(_managerMutex);
+                        if (!_managerStopping) { _appManager = candidate.release(); }
+                    }
+                    if (candidate) {
+                        candidate->Unregister(&_appManagerNotification);
+                    } else {
+                        auto manager = AcquireAppManager();
+                        Exchange::IAppManager::ILoadedAppInfoIterator* loaded = nullptr;
+                        const auto result = manager ? manager->GetLoadedApps(loaded) : Core::ERROR_UNAVAILABLE;
+                        std::unique_ptr<Exchange::IAppManager::ILoadedAppInfoIterator,
+                            ReleaseInterface<Exchange::IAppManager::ILoadedAppInfoIterator>> apps(loaded);
+                        if (result == Core::ERROR_NONE && apps) {
+                            Exchange::IAppManager::LoadedAppInfo info;
+                            while (apps->Next(info)) {
+                                OnAppLifecycleStateChanged(info.appId, info.appInstanceId, info.lifecycleState,
+                                    Exchange::IAppManager::APP_STATE_UNKNOWN, Exchange::IAppManager::APP_ERROR_NONE);
+                            }
+                        }
+                    }
+                } else {
+                    RuntimeManagerReference candidate(_rservice->QueryInterfaceByCallsign<Exchange::IRuntimeManager>(callsign));
+                    std::lock_guard<std::mutex> lock(_managerMutex);
+                    if (!_managerStopping) { _runtimeManager = candidate.release(); }
+                }
+            } else {
+                AppManagerReference previousApp;
+                RuntimeManagerReference previousRuntime;
+                {
+                    std::lock_guard<std::mutex> lock(_managerMutex);
+                    if (appManager) {
+                        previousApp.reset(_appManager);
+                        _appManager = nullptr;
+                    } else {
+                        previousRuntime.reset(_runtimeManager);
+                        _runtimeManager = nullptr;
+                    }
+                }
+                if (previousApp) { previousApp->Unregister(&_appManagerNotification); }
             }
         }
 
@@ -128,7 +234,11 @@ namespace WPEFramework {
             } else {
                 _rservice = service;
                 _rservice->AddRef();
-                _victimSelector = _rservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IVictimSelector>("org.rdk.VictimSelector");
+                if (!_lifecycleConfigProvider) {
+                    _lifecycleConfigProvider.reset(new PackageLifecycleConfigProvider(
+                        std::unique_ptr<IPackageLifecycleSource>(new PackageManagerLifecycleSource(_rservice))));
+                }
+                _victimSelector = _rservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IVictimSelector>(victimSelectorCallsign);
                 if (_victimSelector == nullptr) {
                     LOGERR("VictimSelector Interface is unavailable. ResourceMonitor will continue without Evict support");
                     result = Core::ERROR_NONE;
@@ -144,6 +254,12 @@ namespace WPEFramework {
                         result = Core::ERROR_NONE;
                     }
                 }
+                // Subscribe to AppManager lifecycle events for lifecycle enforcement
+                _rservice->Register(&_managerNotification);
+                ManagerStateChanged(appManagerCallsign, true);
+                // Continue without lifecycle enforcement - this is not a fatal error
+                // Query RuntimeManager for container info (GPU/memory stats)
+                ManagerStateChanged(runtimeManagerCallsign, true);
             }
             if (!_reactiveMonitorRunning) {
                 _reactiveMonitorRunning = true;
@@ -175,6 +291,34 @@ namespace WPEFramework {
             LOGINFO("ResourceMonitorImplementation configuration loaded");
             return Core::ERROR_NONE;
 
+        }
+
+        Core::hresult ResourceMonitorImplementation::GetAppLifecycleCapabilities(const string& appId,
+            AppLifecycleCapabilities& capabilities, const string& version)
+        {
+            if (!_lifecycleConfigProvider) {
+                capabilities = AppLifecycleCapabilities();
+                return appId.empty() ? Core::ERROR_INVALID_PARAMETER : Core::ERROR_NONE;
+            }
+            return _lifecycleConfigProvider->GetLifecycleCapabilities(appId, capabilities, version);
+        }
+
+        Core::hresult ResourceMonitorImplementation::IsAppLifecycleStateSupported(const string& appId,
+            const AppLifecycleState state, bool& supported, const string& version)
+        {
+            AppLifecycleCapabilities capabilities;
+            const Core::hresult result = GetAppLifecycleCapabilities(appId, capabilities, version);
+            supported = (result == Core::ERROR_NONE) && capabilities.IsSupported(state);
+            return result;
+        }
+
+        Core::hresult ResourceMonitorImplementation::GetAppSuspendedStateConfig(const string& appId,
+            SuspendedStateConfig& config, const string& version)
+        {
+            AppLifecycleCapabilities capabilities;
+            const Core::hresult result = GetAppLifecycleCapabilities(appId, capabilities, version);
+            config = capabilities.suspended;
+            return result;
         }
 
         Core::hresult ResourceMonitorImplementation::Register(WPEFramework::Exchange::IResourceMonitor::INotification* notification)
@@ -1023,6 +1167,615 @@ namespace WPEFramework {
                 _reconcileEvictionRetryPending = true;
             }
             _reconcileConditionVariable.notify_one();
+        }
+
+        // Lifecycle enforcement: AppManager lifecycle state change handler
+        void ResourceMonitorImplementation::OnAppLifecycleStateChanged(const string& appId,
+            const string& appInstanceId, const Exchange::IAppManager::AppLifecycleState newState,
+            const Exchange::IAppManager::AppLifecycleState oldState, const Exchange::IAppManager::AppErrorReason errorReason)
+        {
+            LOGINFO("App lifecycle state changed: appId=%s appInstanceId=%s oldState=%d newState=%d error=%d",
+                appId.c_str(), appInstanceId.c_str(), static_cast<int>(oldState),
+                static_cast<int>(newState), static_cast<int>(errorReason));
+
+            if (appInstanceId.empty()) {
+                return;
+            }
+            if (newState == Exchange::IAppManager::APP_STATE_UNLOADED) {
+                OnAppUnloaded(appInstanceId);
+                return;
+            }
+
+            // Handle PAUSED entry
+            if (newState == Exchange::IAppManager::APP_STATE_PAUSED) {
+                StartLifecycleTimer(appId, appInstanceId, true);
+            }
+            // Handle PAUSED exit
+            else if (oldState == Exchange::IAppManager::APP_STATE_PAUSED) {
+                CancelPausedTimer(appInstanceId);
+            }
+
+            // Handle SUSPENDED entry
+            if (newState == Exchange::IAppManager::APP_STATE_SUSPENDED) {
+                StartLifecycleTimer(appId, appInstanceId, false);
+            }
+            // Handle SUSPENDED exit
+            else if (oldState == Exchange::IAppManager::APP_STATE_SUSPENDED) {
+                CancelSuspendedTimer(appInstanceId);
+            }
+
+            // If app is TERMINATED or HIBERNATED, cancel all timers
+            if (newState == Exchange::IAppManager::APP_STATE_HIBERNATED ||
+                newState == Exchange::IAppManager::APP_STATE_TERMINATING ||
+                (newState == Exchange::IAppManager::APP_STATE_ACTIVE && oldState != Exchange::IAppManager::APP_STATE_ACTIVE)) {
+                CancelAllTimers(appInstanceId);
+            }
+        }
+
+        void ResourceMonitorImplementation::StartLifecycleTimer(const string& appId,
+            const string& appInstanceId, bool paused)
+        {
+            AppLifecycleCapabilities capabilities;
+            uint64_t generation;
+            bool capture;
+            {
+                std::lock_guard<std::mutex> lock(_appTimersMutex);
+                if (_timerStopping) { return; }
+                auto& state = _appTimers[appInstanceId];
+                if (state.generation == 0) { state.generation = ++_nextTimerGeneration; }
+                generation = state.generation;
+                capture = !state.hasSnapshot;
+                capabilities = state.lifecycleSnapshot;
+            }
+            if (capture) {
+                GetAppLifecycleCapabilities(appId, capabilities);
+            }
+            std::lock_guard<std::mutex> lock(_appTimersMutex);
+            const auto it = _appTimers.find(appInstanceId);
+            if (_timerStopping || it == _appTimers.end() || it->second.generation != generation) {
+                return;
+            }
+            auto& state = it->second;
+            if (!state.hasSnapshot && capabilities.status != LifecycleConfigStatus::UNAVAILABLE) {
+                state.lifecycleSnapshot = capabilities;
+                state.hasSnapshot = true;
+            }
+            if (paused) {
+                StartPausedTimerLocked(appInstanceId, state.lifecycleSnapshot);
+            } else {
+                StartSuspendedTimerLocked(appInstanceId);
+            }
+        }
+
+        void ResourceMonitorImplementation::OnAppUnloaded(const string& appInstanceId)
+        {
+            std::lock_guard<std::mutex> lock(_appTimersMutex);
+            _appTimers.erase(appInstanceId);
+        }
+
+        // Timer management methods
+        void ResourceMonitorImplementation::StartPausedTimer(const string& appInstanceId,
+            const AppLifecycleCapabilities& capabilities)
+        {
+            std::lock_guard<std::mutex> lock(_appTimersMutex);
+            StartPausedTimerLocked(appInstanceId, capabilities);
+        }
+
+        void ResourceMonitorImplementation::StartPausedTimerLocked(const string& appInstanceId,
+            const AppLifecycleCapabilities& capabilities)
+        {
+            AppTimerState& timerState = _appTimers[appInstanceId];
+            
+            // Snapshot capabilities
+            if (!timerState.hasSnapshot && capabilities.status != LifecycleConfigStatus::UNAVAILABLE) {
+                timerState.lifecycleSnapshot = capabilities;
+                timerState.hasSnapshot = true;
+            }
+            
+            // Store expected state (the state when timer started)
+            timerState.pausedExpectedState = Exchange::IAppManager::APP_STATE_PAUSED;
+            
+            // Set expiry time
+            const uint64_t timeoutMs = static_cast<uint64_t>(_config.PausedToSuspendedTimeout()) * 1000;
+            auto now = std::chrono::steady_clock::now();
+            auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+            timerState.pausedTimerExpiryMs = nowMs + timeoutMs;
+            
+            // Wake up timer worker
+            ScheduleNextTimerLocked();
+            
+            LOGINFO("Started PAUSED timer for appInstanceId=%s, timeout=%u seconds",
+                appInstanceId.c_str(), _config.PausedToSuspendedTimeout());
+        }
+
+        void ResourceMonitorImplementation::StartSuspendedTimer(const string& appInstanceId)
+        {
+            std::lock_guard<std::mutex> lock(_appTimersMutex);
+            StartSuspendedTimerLocked(appInstanceId);
+        }
+
+        void ResourceMonitorImplementation::StartSuspendedTimerLocked(const string& appInstanceId)
+        {
+            AppTimerState& timerState = _appTimers[appInstanceId];
+            
+            // Store expected state (the state when timer started)
+            timerState.suspendedExpectedState = Exchange::IAppManager::APP_STATE_SUSPENDED;
+            
+            // Set expiry time (configured GPU grace period)
+            const uint64_t timeoutMs = static_cast<uint64_t>(_config.SuspendedGpuGracePeriod()) * 1000;
+            auto now = std::chrono::steady_clock::now();
+            auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+            timerState.suspendedTimerExpiryMs = nowMs + timeoutMs;
+            
+            // Wake up timer worker
+            ScheduleNextTimerLocked();
+            
+            LOGINFO("Started SUSPENDED timer (GPU grace period) for appInstanceId=%s, timeout=%u seconds",
+                appInstanceId.c_str(), _config.SuspendedGpuGracePeriod());
+        }
+
+        void ResourceMonitorImplementation::CancelPausedTimer(const string& appInstanceId)
+        {
+            std::lock_guard<std::mutex> lock(_appTimersMutex);
+            auto it = _appTimers.find(appInstanceId);
+            if (it != _appTimers.end()) {
+                if (it->second.pausedTimerExpiryMs != 0) {
+                    it->second.pausedTimerExpiryMs = 0;
+                    ScheduleNextTimerLocked();
+                    LOGINFO("Cancelled PAUSED timer for appInstanceId=%s", appInstanceId.c_str());
+                }
+            }
+        }
+
+        void ResourceMonitorImplementation::CancelSuspendedTimer(const string& appInstanceId)
+        {
+            std::lock_guard<std::mutex> lock(_appTimersMutex);
+            auto it = _appTimers.find(appInstanceId);
+            if (it != _appTimers.end()) {
+                if (it->second.suspendedTimerExpiryMs != 0) {
+                    it->second.suspendedTimerExpiryMs = 0;
+                    ScheduleNextTimerLocked();
+                    LOGINFO("Cancelled SUSPENDED timer for appInstanceId=%s", appInstanceId.c_str());
+                }
+            }
+        }
+
+        void ResourceMonitorImplementation::CancelAllTimers(const string& appInstanceId)
+        {
+            std::lock_guard<std::mutex> lock(_appTimersMutex);
+            auto it = _appTimers.find(appInstanceId);
+            if (it != _appTimers.end()) {
+                if (it->second.pausedTimerExpiryMs != 0) {
+                    it->second.pausedTimerExpiryMs = 0;
+                }
+                if (it->second.suspendedTimerExpiryMs != 0) {
+                    it->second.suspendedTimerExpiryMs = 0;
+                }
+                ScheduleNextTimerLocked();
+                LOGINFO("Cancelled all timers for appInstanceId=%s", appInstanceId.c_str());
+            }
+        }
+
+        void ResourceMonitorImplementation::ScheduleNextTimerLocked()
+        {
+            if (_timerStopping) {
+                return;
+            }
+            uint64_t nextExpiryMs = 0;
+            for (const auto& entry : _appTimers) {
+                const AppTimerState& timerState = entry.second;
+                // Find next expiry
+                if (timerState.pausedTimerExpiryMs != 0 &&
+                    (nextExpiryMs == 0 || timerState.pausedTimerExpiryMs < nextExpiryMs)) {
+                    nextExpiryMs = timerState.pausedTimerExpiryMs;
+                }
+                if (timerState.suspendedTimerExpiryMs != 0 &&
+                    (nextExpiryMs == 0 || timerState.suspendedTimerExpiryMs < nextExpiryMs)) {
+                    nextExpiryMs = timerState.suspendedTimerExpiryMs;
+                }
+            }
+            if (nextExpiryMs != 0) {
+                const uint64_t nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()).count();
+                const uint64_t waitMs = nextExpiryMs > nowMs ? nextExpiryMs - nowMs : 0;
+                const uint32_t delayMs = static_cast<uint32_t>(std::min<uint64_t>(waitMs, 86400000));
+                _timerHandler.Trigger(Core::Time::Now().Add(delayMs).Ticks(), *_timer);
+            } else {
+                _timerHandler.Revoke(*_timer);
+            }
+        }
+
+        // Timer worker loop - checks for expired timers and triggers callbacks
+        void ResourceMonitorImplementation::OnLifecycleTimerExpired()
+        {
+            std::vector<std::pair<std::string, bool>> expiredTimers; // pair: appInstanceId, isPaused
+            {
+                std::lock_guard<std::mutex> lock(_appTimersMutex);
+                if (_timerStopping) {
+                    return;
+                }
+                const uint64_t nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()).count();
+                for (auto& entry : _appTimers) {
+                    const std::string& appInstanceId = entry.first;
+                    AppTimerState& timerState = entry.second;
+                    // Check PAUSED timer
+                    if (timerState.pausedTimerExpiryMs != 0 && nowMs >= timerState.pausedTimerExpiryMs) {
+                        expiredTimers.emplace_back(appInstanceId, true);
+                        timerState.pausedTimerExpiryMs = 0;
+                    }
+                    // Check SUSPENDED timer
+                    if (timerState.suspendedTimerExpiryMs != 0 && nowMs >= timerState.suspendedTimerExpiryMs) {
+                        expiredTimers.emplace_back(appInstanceId, false);
+                        timerState.suspendedTimerExpiryMs = 0;
+                    }
+                }
+            }
+            // Trigger callbacks for expired timers (outside lock)
+            for (const auto& timer : expiredTimers) {
+                if (timer.second) {
+                    OnPausedTimerExpired(timer.first);
+                } else {
+                    OnSuspendedTimerExpired(timer.first);
+                }
+            }
+            // Wait until next expiry or shutdown
+            std::lock_guard<std::mutex> lock(_appTimersMutex);
+            ScheduleNextTimerLocked();
+        }
+
+        // Timer callbacks
+        void ResourceMonitorImplementation::OnPausedTimerExpired(const string& appInstanceId)
+        {
+            LOGINFO("PAUSED timer expired for appInstanceId=%s", appInstanceId.c_str());
+            
+            // Verify the app is still in the expected state (PAUSED)
+            Exchange::IAppManager::AppLifecycleState expectedState;
+            {
+                std::lock_guard<std::mutex> lock(_appTimersMutex);
+                auto it = _appTimers.find(appInstanceId);
+                if (it == _appTimers.end()) {
+                    LOGWARN("PAUSED timer expired but appInstanceId=%s not found in timer map, skipping", appInstanceId.c_str());
+                    return;
+                }
+                expectedState = it->second.pausedExpectedState;
+            }
+            
+            const Exchange::IAppManager::AppLifecycleState currentState = GetAppState(appInstanceId);
+            if (currentState != expectedState) {
+                LOGINFO("PAUSED timer expired but appInstanceId=%s state changed from expected=%d to current=%d, skipping action",
+                    appInstanceId.c_str(), static_cast<int>(expectedState), static_cast<int>(currentState));
+                return;
+            }
+            
+            // Check if this is a non-app workload
+            if (IsNonAppWorkload(appInstanceId)) {
+                LOGINFO("Non-app workload detected for appInstanceId=%s, requesting termination", appInstanceId.c_str());
+                RequestAppTermination(appInstanceId, "non-app-workload-paused-timeout");
+                return;
+            }
+            
+            // Get lifecycle capabilities snapshot
+            AppLifecycleCapabilities capabilities;
+            bool hasSnapshot = false;
+            {
+                std::lock_guard<std::mutex> lock(_appTimersMutex);
+                auto it = _appTimers.find(appInstanceId);
+                if (it != _appTimers.end() && it->second.hasSnapshot) {
+                    capabilities = it->second.lifecycleSnapshot;
+                    hasSnapshot = true;
+                }
+            }
+            
+            // Check if SUSPENDED is supported
+            bool supportsSuspended = false;
+            if (hasSnapshot && capabilities.status == LifecycleConfigStatus::CONFIGURED) {
+                supportsSuspended = (capabilities.supportedStates & static_cast<uint8_t>(AppLifecycleState::SUSPENDED)) != 0;
+            }
+            
+            if (supportsSuspended) {
+                LOGINFO("App supports SUSPENDED, requesting SUSPENDED transition for appInstanceId=%s", appInstanceId.c_str());
+                RequestSuspendedTransition(appInstanceId);
+            } else {
+                if (!hasSnapshot) {
+                    LOGWARN("No lifecycle capability snapshot for appInstanceId=%s, treating as SUSPENDED not supported", appInstanceId.c_str());
+                } else if (capabilities.status == LifecycleConfigStatus::UNAVAILABLE) {
+                    LOGINFO("Lifecycle capabilities unavailable for appInstanceId=%s, treating as SUSPENDED not supported", appInstanceId.c_str());
+                } else {
+                    LOGINFO("App does not support SUSPENDED for appInstanceId=%s, requesting termination", appInstanceId.c_str());
+                }
+                RequestAppTermination(appInstanceId, "paused-timeout-suspended-not-supported");
+            }
+        }
+
+        // Helper to parse GPU memory from RuntimeManager GetInfo JSON
+        bool ResourceMonitorImplementation::GetGPUMemoryUsage(const string& appInstanceId, uint64_t& gpuMemoryBytes)
+        {
+            gpuMemoryBytes = 0;
+            auto runtimeManager = AcquireRuntimeManager();
+            if (!runtimeManager) {
+                LOGWARN("RuntimeManager unavailable, cannot query GPU memory for appInstanceId=%s", appInstanceId.c_str());
+                return false;
+            }
+            string infoJson;
+            const Core::hresult result = runtimeManager->GetInfo(appInstanceId, infoJson);
+            if (result != Core::ERROR_NONE) {
+                LOGWARN("Failed to get container info for appInstanceId=%s, error=%d", appInstanceId.c_str(), static_cast<int>(result));
+                return false;
+            }
+            JsonObject info;
+            if (!info.FromString(infoJson)) {
+                return false;
+            }
+            if (info.HasLabel("gpu")) {
+                if (info["gpu"].Content() != JsonValue::type::OBJECT) { return false; }
+                const JsonObject gpu = info["gpu"].Object();
+                if (!gpu.HasLabel("memory") || gpu["memory"].Content() != JsonValue::type::OBJECT) { return false; }
+                const JsonObject memory = gpu["memory"].Object();
+                if (!memory.HasLabel("usage") || memory["usage"].Content() != JsonValue::type::NUMBER) { return false; }
+                return Utils::ParseMemorySize(memory["usage"].Value(), gpuMemoryBytes);
+            }
+            // Parse JSON: {"ramUsage": "150MB","cpuUsage": "20%","gpuMemory": "32MB","uptime": "45s"}
+            // Extract gpuMemory value
+            if (!info.HasLabel("gpuMemory") || info["gpuMemory"].Content() != JsonValue::type::STRING) {
+                return false;
+            }
+            string gpuMemoryStr = info["gpuMemory"].String();
+            // Parse value like "32MB" or "32 MB"
+            gpuMemoryStr.erase(std::remove(gpuMemoryStr.begin(), gpuMemoryStr.end(), ' '), gpuMemoryStr.end());
+            return Utils::ParseMemorySize(gpuMemoryStr, gpuMemoryBytes);
+        }
+
+        void ResourceMonitorImplementation::OnSuspendedTimerExpired(const string& appInstanceId)
+        {
+            LOGINFO("SUSPENDED timer expired for appInstanceId=%s", appInstanceId.c_str());
+            
+            // Verify the app is still in the expected state (SUSPENDED)
+            Exchange::IAppManager::AppLifecycleState expectedState;
+            {
+                std::lock_guard<std::mutex> lock(_appTimersMutex);
+                auto it = _appTimers.find(appInstanceId);
+                if (it == _appTimers.end()) {
+                    LOGWARN("SUSPENDED timer expired but appInstanceId=%s not found in timer map, skipping", appInstanceId.c_str());
+                    return;
+                }
+                expectedState = it->second.suspendedExpectedState;
+            }
+            
+            const Exchange::IAppManager::AppLifecycleState currentState = GetAppState(appInstanceId);
+            if (currentState != expectedState) {
+                LOGINFO("SUSPENDED timer expired but appInstanceId=%s state changed from expected=%d to current=%d, skipping action",
+                    appInstanceId.c_str(), static_cast<int>(expectedState), static_cast<int>(currentState));
+                return;
+            }
+            
+            // GPU grace period check (RDKEMW-28031 requirement)
+            const uint64_t maxGPUAllowedBytes = 0; // AC4/AC5 require released GPU resources
+            uint64_t gpuMemoryBytes = 0;
+            if (!GetGPUMemoryUsage(appInstanceId, gpuMemoryBytes)) {
+                LOGWARN("GPU usage unavailable for appInstanceId=%s; deferring lifecycle action", appInstanceId.c_str());
+                return;
+            }
+            if (gpuMemoryBytes > maxGPUAllowedBytes) {
+                LOGWARN("GPU grace period check failed for appInstanceId=%s: GPU=%llu bytes, requesting termination",
+                    appInstanceId.c_str(), static_cast<unsigned long long>(gpuMemoryBytes));
+                RequestAppTermination(appInstanceId, "suspended-gpu-grace-period-violation");
+                return;
+            }
+            LOGINFO("GPU grace period check passed for appInstanceId=%s: GPU released", appInstanceId.c_str());
+            
+            // Check app hibernation support via RDKEMW-28030 metadata
+            bool appSupportsHibernation = false;
+            {
+                std::lock_guard<std::mutex> lock(_appTimersMutex);
+                auto it = _appTimers.find(appInstanceId);
+                if (it != _appTimers.end() && it->second.hasSnapshot) {
+                    appSupportsHibernation = (it->second.lifecycleSnapshot.supportedStates & 
+                        static_cast<uint8_t>(AppLifecycleState::HIBERNATED)) != 0;
+                }
+            }
+            
+            if (appSupportsHibernation) {
+                LOGINFO("App supports hibernation for appInstanceId=%s, requesting HIBERNATED transition", appInstanceId.c_str());
+                RequestHibernatedTransition(appInstanceId);
+            } else {
+                LOGINFO("App does not support hibernation for appInstanceId=%s, requesting termination", appInstanceId.c_str());
+                RequestAppTermination(appInstanceId, "suspended-hibernation-not-supported");
+            }
+        }
+
+        // Enforcement helpers
+        void ResourceMonitorImplementation::RequestSuspendedTransition(const string& appInstanceId)
+        {
+            // Resolve LifecycleManager for this request without caching its interface.
+            std::unique_ptr<Exchange::ILifecycleManager, ReleaseInterface<Exchange::ILifecycleManager>> lifecycleManager(
+                _rservice ? _rservice->QueryInterfaceByCallsign<Exchange::ILifecycleManager>(lifecycleManagerCallsign) : nullptr);
+            if (!lifecycleManager) {
+                LOGERR("LifecycleManager unavailable, cannot request SUSPENDED transition for appInstanceId=%s", appInstanceId.c_str());
+                return;
+            }
+
+            // Request SUSPENDED for the instance that owns the deadline.
+            const Core::hresult transitionResult = lifecycleManager->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::SUSPENDED, string());
+            if (transitionResult == Core::ERROR_NONE) {
+                LOGINFO("Requested SUSPENDED transition for appInstanceId=%s", appInstanceId.c_str());
+            } else {
+                LOGERR("Failed to request SUSPENDED transition for appInstanceId=%s, error=%d",
+                    appInstanceId.c_str(), static_cast<int>(transitionResult));
+            }
+        }
+
+        void ResourceMonitorImplementation::RequestHibernatedTransition(const string& appInstanceId)
+        {
+            // Resolve LifecycleManager for this request without caching its interface.
+            std::unique_ptr<Exchange::ILifecycleManager, ReleaseInterface<Exchange::ILifecycleManager>> lifecycleManager(
+                _rservice ? _rservice->QueryInterfaceByCallsign<Exchange::ILifecycleManager>(lifecycleManagerCallsign) : nullptr);
+            if (!lifecycleManager) {
+                LOGERR("LifecycleManager unavailable, cannot request HIBERNATED transition for appInstanceId=%s", appInstanceId.c_str());
+                return;
+            }
+
+            // Request HIBERNATED for the instance that owns the deadline.
+            const Core::hresult transitionResult = lifecycleManager->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::HIBERNATED, string());
+            if (transitionResult == Core::ERROR_NONE) {
+                LOGINFO("Requested HIBERNATED transition for appInstanceId=%s", appInstanceId.c_str());
+            } else {
+                LOGERR("Failed to request HIBERNATED transition for appInstanceId=%s, error=%d",
+                    appInstanceId.c_str(), static_cast<int>(transitionResult));
+            }
+        }
+
+        void ResourceMonitorImplementation::RequestAppTermination(const string& appInstanceId, const string& reason)
+        {
+            // Map appInstanceId to appId using GetLoadedApps
+            auto appManager = AcquireAppManager();
+            if (!appManager) {
+                LOGERR("AppManager unavailable, cannot request termination for appInstanceId=%s", appInstanceId.c_str());
+                return;
+            }
+            
+            string appId;
+            Exchange::IAppManager::ILoadedAppInfoIterator* loadedApps = nullptr;
+            const Core::hresult result = appManager->GetLoadedApps(loadedApps);
+            
+            if (result != Core::ERROR_NONE || loadedApps == nullptr) {
+                LOGERR("Failed to get loaded apps for termination, appInstanceId=%s, error=%d", appInstanceId.c_str(), static_cast<int>(result));
+                return;
+            }
+            
+            // Iterate to find the appId corresponding to appInstanceId
+            bool found = false;
+            uint32_t index = 0;
+            while (true) {
+                Exchange::IAppManager::LoadedAppInfo info;
+                const bool hasNext = loadedApps->Next(info);
+                if (!hasNext) {
+                    break;
+                }
+                
+                if (info.appInstanceId == appInstanceId) {
+                    appId = info.appId;
+                    found = true;
+                    break;
+                }
+                index++;
+            }
+            
+            loadedApps->Release();
+            
+            if (!found) {
+                LOGERR("Could not find appId for appInstanceId=%s", appInstanceId.c_str());
+                return;
+            }
+            
+            // Request termination via AppManager
+            const Core::hresult terminateResult = appManager->TerminateApp(appId);
+            if (terminateResult == Core::ERROR_NONE) {
+                LOGINFO("Requested termination for appId=%s appInstanceId=%s reason=%s", appId.c_str(), appInstanceId.c_str(), reason.c_str());
+            } else {
+                LOGERR("Failed to request termination for appId=%s appInstanceId=%s reason=%s, error=%d", 
+                    appId.c_str(), appInstanceId.c_str(), reason.c_str(), static_cast<int>(terminateResult));
+            }
+        }
+
+        bool ResourceMonitorImplementation::IsNonAppWorkload(const string& appInstanceId)
+        {
+            // Query GetLoadedApps to check LoadedAppInfo.type
+            auto appManager = AcquireAppManager();
+            if (!appManager) {
+                LOGWARN("AppManager unavailable, cannot check workload type for appInstanceId=%s", appInstanceId.c_str());
+                return false; // Safe default
+            }
+            
+            Exchange::IAppManager::ILoadedAppInfoIterator* loadedApps = nullptr;
+            const Core::hresult result = appManager->GetLoadedApps(loadedApps);
+            
+            if (result != Core::ERROR_NONE || loadedApps == nullptr) {
+                LOGWARN("Failed to get loaded apps for workload type check, appInstanceId=%s", appInstanceId.c_str());
+                return false;
+            }
+            
+            // Iterate to find the workload type
+            bool found = false;
+            string workloadType;
+            uint32_t index = 0;
+            while (true) {
+                Exchange::IAppManager::LoadedAppInfo info;
+                const bool hasNext = loadedApps->Next(info);
+                if (!hasNext) {
+                    break;
+                }
+                
+                if (info.appInstanceId == appInstanceId) {
+                    workloadType = info.type;
+                    found = true;
+                    break;
+                }
+                index++;
+            }
+            
+            loadedApps->Release();
+            
+            if (!found) {
+                LOGWARN("Could not find workload type for appInstanceId=%s", appInstanceId.c_str());
+                return false;
+            }
+            
+            // Check if type indicates a non-app workload
+            // AppManager reports system workloads as "SYSTEM_APP"; retain the "SYSTEM" alias
+            // Unknown workload types follow the application capability checks
+            const bool isNonApp = workloadType == "SYSTEM_APP" || workloadType == "SYSTEM";
+            if (isNonApp) {
+                LOGINFO("Detected non-app workload: appInstanceId=%s type=%s", appInstanceId.c_str(), workloadType.c_str());
+            }
+            
+            return isNonApp;
+        }
+
+        Exchange::IAppManager::AppLifecycleState ResourceMonitorImplementation::GetAppState(const string& appInstanceId)
+        {
+            // Query GetLoadedApps to find the current state of the app
+            auto appManager = AcquireAppManager();
+            if (!appManager) {
+                LOGWARN("AppManager unavailable, cannot get state for appInstanceId=%s", appInstanceId.c_str());
+                return Exchange::IAppManager::APP_STATE_UNKNOWN;
+            }
+            
+            Exchange::IAppManager::ILoadedAppInfoIterator* loadedApps = nullptr;
+            const Core::hresult result = appManager->GetLoadedApps(loadedApps);
+            
+            if (result != Core::ERROR_NONE || loadedApps == nullptr) {
+                LOGWARN("Failed to get loaded apps for state check, appInstanceId=%s", appInstanceId.c_str());
+                return Exchange::IAppManager::APP_STATE_UNKNOWN;
+            }
+            
+            // Iterate to find the current state
+            bool found = false;
+            Exchange::IAppManager::AppLifecycleState state = Exchange::IAppManager::APP_STATE_UNKNOWN;
+            uint32_t index = 0;
+            while (true) {
+                Exchange::IAppManager::LoadedAppInfo info;
+                const bool hasNext = loadedApps->Next(info);
+                if (!hasNext) {
+                    break;
+                }
+                
+                if (info.appInstanceId == appInstanceId) {
+                    state = info.lifecycleState;
+                    found = true;
+                    break;
+                }
+                index++;
+            }
+            
+            loadedApps->Release();
+            
+            if (!found) {
+                LOGWARN("Could not find state for appInstanceId=%s", appInstanceId.c_str());
+                return Exchange::IAppManager::APP_STATE_UNKNOWN;
+            }
+            
+            return state;
         }
     } // namespace Plugin
 } // namespace WPEFramework

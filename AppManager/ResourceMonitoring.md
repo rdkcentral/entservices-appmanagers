@@ -1,5 +1,7 @@
 # AppManager Resource Monitoring Integration
 
+> Scope: this document describes the feature-gated AppManager integration and its legacy `AppStateTransitionManager` worker. It is not the RDKEMW-28031 ResourceMonitor-owned deadline scheduler. For the current shared Thunder timer, direct LifecycleManager requests, and capability-snapshot behavior, see [ResourceMonitor lifecycle enforcement](../ResourceMonitor/README.md#lifecycle-enforcement-rdkemw-28031). The current path does not require a new public AppManager target-state API.
+
 ## Overview
 
 AppManager now coordinates with the App System Resource Monitor before launching or preloading applications and drives inactive applications through the lifecycle described by the App Resource Monitoring HLA.

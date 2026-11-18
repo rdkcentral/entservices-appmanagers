@@ -17,6 +17,7 @@ PackageManager handles the full lifecycle of application packages on RDK-based d
 - Install packages by parsing manifests via `libpackage-sky`, validating signatures, extracting contents, and calling AppStorageManager for storage
 - Maintain lock reference counts per package; prevent uninstall while locked
 - Create runtime metadata as a flat opaque JSON payload and return it with `unpackedPath` on `GetLockedInfo`; array-valued fields are real JSON arrays and unknown properties remain available to downstream managers
+- When a RALF package is locked, copy its `urn:rdk:config:application-lifecycle` metadata object, unchanged, into the payload as `applicationLifecycle`. Omit the member when the metadata does not define it or cannot be read, without changing the lock result (RDKEMW-28030)
 - Emit progress, completion, and error notifications to registered listeners
 - Optionally emit telemetry metrics when `AIMANAGERS_TELEMETRY_METRICS_SUPPORT` is enabled
 - Support RALF package format when `USE_LIBPACKAGE_RALF` is enabled
@@ -215,3 +216,4 @@ Unlock(packageId, version):
 
 ## Change History
 - [2026-06-06] - openspec-templater - Restructured to match spec template.
+- [2026-11-10] - RDKEMW-28030 - Added the `applicationLifecycle` runtime payload member.

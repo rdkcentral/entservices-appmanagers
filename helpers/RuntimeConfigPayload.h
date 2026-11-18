@@ -27,6 +27,7 @@ public:
     void SetInteger(const std::string& key, int64_t value);
     void SetUnsigned(const std::string& key, uint64_t value);
     void SetStringArray(const std::string& key, const std::vector<std::string>& values);
+    bool SetObject(const std::string& key, const std::string& serializedObject, std::string& error);
     bool AppendString(const std::string& key, const std::string& value, std::string& error);
     bool UpsertEnvironment(const std::string& value, std::string& error);
 
@@ -35,6 +36,7 @@ public:
     bool GetInteger(const std::string& key, int64_t& value, bool& present, std::string& error) const;
     bool GetUnsigned(const std::string& key, uint64_t& value, bool& present, std::string& error) const;
     bool GetStringArray(const std::string& key, std::vector<std::string>& values, bool& present, std::string& error) const;
+    bool GetObject(const std::string& key, std::string& serializedObject, bool& present, std::string& error) const;
 
 private:
     struct Impl;
