@@ -48,6 +48,10 @@ namespace ralf
     bool parseRalPkgInfo(const std::string &configFilePath, std::vector<RalfPkgInfoPair> &packages);
     bool getClassicRalfLaunchInfo(const std::string &manifestPath, std::string &appPath,
                                   std::string &runtimePath, std::string &command);
+    bool getClassicRalfLaunchInfo(const std::string &manifestPath, std::string &appPath,
+                                  std::string &runtimePath, std::string &command,
+                                  std::vector<std::string> &commandArgs, std::string &applicationSecret,
+                                  std::string &credentialsCertificate, std::string &credentialsPrivateKey);
     /**
      * Function to read JSON data from a file
      * @param filePath The path to the JSON file

@@ -267,9 +267,7 @@ namespace WPEFramework
                 std::shared_ptr<RialtoConnector> mRialtoConnector;
 #endif
                 std::string mRuntimeConfigFile;
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 bool mRalfEnabled;
-#endif
                 AIConfiguration* mAIConfiguration;
                 std::string mGstRegistrySourcePath;  ///< path to pre-built GST registry (empty if disabled/failed)
 

@@ -35,6 +35,7 @@
 #include <string>
 #include <cstdio>
 #include <cstdlib>
+#include <glob.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <json/json.h>
@@ -46,6 +47,9 @@
 #include "ralf/RalfSupport.h"
 #include "ralf/OCISpecConstants.h"
 #include "ApplicationConfiguration.h"
+#include "DobbySpecGenerator.h"
+#include "RuntimeConfiguration.h"
+#include "AIConfiguration.h"
 #include <interfaces/IRuntimeManager.h>
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
@@ -498,7 +502,7 @@ uint32_t Test_Ralf_GetClassicRalfLaunchInfo()
     L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json",
                        "{\"packageType\":\"runtime\",\"entryPoint\":\"bin/browser\"}") &&
                        WriteFile_OCIGen(appRoot + "/config.json",
-                                         "{\"packageType\":\"application\",\"entryPoint\":\".\"}"),
+                                         "{\"packageType\":\"application\",\"entryPoint\":\".\",\"entryArgs\":[\"--profile\",\"tv\"],\"runtimeSecrets\":{\"applicationSecret\":\"app-secret\",\"credentialsManager\":{\"certificate\":\"cert\",\"privateKey\":\"key\"}}}"),
                        "runtime and RALF app configs are available");
 
     Json::Value manifest(Json::objectValue);
@@ -517,11 +521,21 @@ uint32_t Test_Ralf_GetClassicRalfLaunchInfo()
     std::string appPath;
     std::string runtimePath;
     std::string command;
-    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),
+    std::vector<std::string> commandArgs;
+    std::string applicationSecret;
+    std::string credentialsCertificate;
+    std::string credentialsPrivateKey;
+    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command,
+                       commandArgs, applicationSecret, credentialsCertificate, credentialsPrivateKey),
                        "runtime and RALF app select the classic launch path");
     L0Test::ExpectTrue(tr, appPath == appRoot && runtimePath == runtimeRoot &&
                        command == "bin/browser",
                        "classic spec receives app mount, runtime mount and executable");
+    L0Test::ExpectTrue(tr, commandArgs.size() == 2 && "--profile" == commandArgs[0] && "tv" == commandArgs[1],
+                       "classic launch preserves application entryArgs");
+    L0Test::ExpectTrue(tr, applicationSecret == "app-secret" && credentialsCertificate == "cert" &&
+                       credentialsPrivateKey == "key",
+                       "classic launch preserves validated package secrets");
 
     L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json",
                        "{\"packageType\":\"runtime\",\"entryPoint\":\"\"}"),
@@ -568,6 +582,52 @@ uint32_t Test_Ralf_GetClassicRalfLaunchInfo()
     return tr.failures;
 }
 #endif
+
+uint32_t Test_DobbySpecGenerator_GenerateClassicRalfArgsAndSecrets()
+{
+    L0Test::TestResult tr;
+    WPEFramework::Plugin::AIConfiguration aiConfiguration;
+    WPEFramework::Plugin::DobbySpecGenerator generator(aiConfiguration);
+    WPEFramework::Plugin::ApplicationConfiguration appConfig;
+    appConfig.mAppId = "com.example.classic";
+    appConfig.mAppInstanceId = "classic-001";
+    appConfig.mUserId = 1000;
+    appConfig.mGroupId = 1000;
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.command = "bin/app";
+    runtimeConfig.commandArgs = {"--profile", "tv"};
+    runtimeConfig.systemMemoryLimit = 128 * 1024 * 1024;
+    runtimeConfig.applicationSecret = "test-secret";
+    runtimeConfig.credentialsCertificate = "test-certificate";
+    runtimeConfig.credentialsPrivateKey = "test-private-key";
+
+    std::string serializedSpec;
+    L0Test::ExpectTrue(tr, generator.generate(appConfig, runtimeConfig, serializedSpec),
+                       "Generate classic Dobby spec with RALF arguments and secrets");
+    Json::Value spec;
+    Json::Reader reader;
+    const bool parsed = reader.parse(serializedSpec, spec);
+    L0Test::ExpectTrue(tr, parsed, "Parse generated classic Dobby spec");
+    if (parsed)
+    {
+        const Json::Value &args = spec["args"];
+        L0Test::ExpectTrue(tr, args.isArray() && 3 == args.size() &&
+                           "/package/bin/app" == args[0].asString() &&
+                           "--profile" == args[1].asString() && "tv" == args[2].asString(),
+                           "Preserve classic RALF entryArgs after executable");
+        bool foundSecret = false;
+        for (const Json::Value &env : spec["env"])
+        {
+            foundSecret = foundSecret || "APPLICATION_SECRET=test-secret" == env.asString();
+        }
+        L0Test::ExpectTrue(tr, foundSecret, "Preserve classic RALF application secret");
+        L0Test::ExpectTrue(tr,
+                           "test-certificate" == spec["rdkPlugins"]["credentialsmanager"]["data"]["certificate"].asString() &&
+                           "test-private-key" == spec["rdkPlugins"]["credentialsmanager"]["data"]["privateKey"].asString(),
+                           "Preserve classic RALF credentials-manager data");
+    }
+    return tr.failures;
+}
 
 uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue()
 {
@@ -733,6 +793,17 @@ uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()
                        "credentials are routed to the credentials-manager plugin");
 
     const std::string outputPath = "/tmp/ralf_l0test_runtime_environment.json";
+#ifdef RDK_APPMANAGERS_DEBUG
+    glob_t staleDebugSpecs = {};
+    if (0 == ::glob("/tmp/generatedRalfSpec.*", GLOB_NOSORT, nullptr, &staleDebugSpecs))
+    {
+        for (size_t index = 0; index < staleDebugSpecs.gl_pathc; ++index)
+        {
+            ::unlink(staleDebugSpecs.gl_pathv[index]);
+        }
+    }
+    ::globfree(&staleDebugSpecs);
+#endif
     struct stat outputStat {};
     const bool saved = gen.saveOCIConfigToFile(ociConfigRootNode, 0, 0);
     L0Test::ExpectTrue(tr, saved, "OCI config with package secrets is written successfully");
@@ -741,9 +812,14 @@ uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()
                        "OCI config containing package secrets is restricted to its owner");
     ::unlink(outputPath.c_str());
 #ifdef RDK_APPMANAGERS_DEBUG
-    std::ifstream debugSpecFile("/tmp/generatedRalfSpec");
+    glob_t debugSpecFiles = {};
+    const int globStatus = ::glob("/tmp/generatedRalfSpec.*", GLOB_NOSORT, nullptr, &debugSpecFiles);
+    const std::string debugSpecPath = (0 == globStatus && debugSpecFiles.gl_pathc > 0)
+        ? debugSpecFiles.gl_pathv[0] : "";
+    std::ifstream debugSpecFile(debugSpecPath);
     const std::string debugSpec((std::istreambuf_iterator<char>(debugSpecFile)),
                                 std::istreambuf_iterator<char>());
+    struct stat debugSpecStat {};
     L0Test::ExpectTrue(tr, !debugSpec.empty(),
                        "debug OCI config dump is available when secrets are present");
     L0Test::ExpectTrue(tr, debugSpec.find("test-secret") == std::string::npos &&
@@ -752,7 +828,14 @@ uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()
                        "debug OCI config dump redacts application secrets and credentials");
     L0Test::ExpectTrue(tr, debugSpec.find("<redacted>") != std::string::npos,
                        "debug OCI config dump indicates redacted secret fields");
-    ::unlink("/tmp/generatedRalfSpec");
+    L0Test::ExpectTrue(tr, !debugSpecPath.empty() && 0 == ::stat(debugSpecPath.c_str(), &debugSpecStat) &&
+                           (debugSpecStat.st_mode & 0777) == 0600,
+                       "debug OCI config dump is private to its owner");
+    if (!debugSpecPath.empty())
+    {
+        ::unlink(debugSpecPath.c_str());
+    }
+    ::globfree(&debugSpecFiles);
 #endif
 
     Json::Value incompleteConfig(Json::objectValue);

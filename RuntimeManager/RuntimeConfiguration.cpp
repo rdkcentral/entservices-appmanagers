@@ -53,6 +53,10 @@ RuntimeConfiguration::RuntimeConfiguration()
     , fireboltVersion()
     , enableDebugger(false)
     , unpackedPath()
+    , commandArgs()
+    , applicationSecret()
+    , credentialsCertificate()
+    , credentialsPrivateKey()
 {
 }
 

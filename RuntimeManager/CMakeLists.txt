@@ -29,7 +29,7 @@ set(PLUGIN_RUNTIME_MANAGER_BASEOCISPEC "../resources/oci-base-spec.json" CACHE S
 
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 option (RALF_PACKAGE_SUPPORT "Enable Ralf Package Support in Runtime Manager" ON)
-option(ENTOS_RALF_SUPPORT "Build a legacy-style vendor GPU layer for EntOS RALF" ON)
+option(ENTOS_RALF_SUPPORT "Build a legacy-style vendor GPU layer for EntOS RALF" OFF)
 option(RUNTIMEMANAGER_ENABLE_DIALCONFIG "Enable RuntimeManager DIAL configuration" ON)
 option(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG  "ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG" OFF)
 option(DEV_MOUNT_SUPPORT "Enable development mount support in Runtime Manager" OFF)

@@ -318,6 +318,24 @@ namespace ralf
     bool getClassicRalfLaunchInfo(const std::string &manifestPath, std::string &appPath,
                                   std::string &runtimePath, std::string &command)
     {
+        std::vector<std::string> commandArgs;
+        std::string applicationSecret;
+        std::string credentialsCertificate;
+        std::string credentialsPrivateKey;
+        return getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command,
+                                        commandArgs, applicationSecret,
+                                        credentialsCertificate, credentialsPrivateKey);
+    }
+
+    bool getClassicRalfLaunchInfo(const std::string &manifestPath, std::string &appPath,
+                                  std::string &runtimePath, std::string &command,
+                                  std::vector<std::string> &commandArgs, std::string &applicationSecret,
+                                  std::string &credentialsCertificate, std::string &credentialsPrivateKey)
+    {
+        commandArgs.clear();
+        applicationSecret.clear();
+        credentialsCertificate.clear();
+        credentialsPrivateKey.clear();
         std::vector<RalfPkgInfoPair> packages;
         Json::Value appConfig;
         if (!parseRalPkgInfo(manifestPath, packages) || packages.empty() || 2 < packages.size() ||
@@ -327,6 +345,76 @@ namespace ralf
             !appConfig[ENTRY_POINT].isString() || appConfig[ENTRY_POINT].asString().empty())
         {
             return false;
+        }
+
+        std::vector<std::string> parsedCommandArgs;
+        if (appConfig.isMember(ENTRY_ARGS))
+        {
+            const Json::Value &args = appConfig[ENTRY_ARGS];
+            if (!args.isArray())
+            {
+                LOGERR("Classic RALF entryArgs must be an array");
+                return false;
+            }
+            for (const Json::Value &arg : args)
+            {
+                if (!arg.isString())
+                {
+                    LOGERR("Classic RALF entryArgs must contain only strings");
+                    return false;
+                }
+                parsedCommandArgs.emplace_back(arg.asString());
+            }
+        }
+
+        std::string parsedApplicationSecret;
+        std::string parsedCredentialsCertificate;
+        std::string parsedCredentialsPrivateKey;
+        for (size_t index = 0; index < packages.size(); ++index)
+        {
+            Json::Value packageConfig;
+            if (index + 1 == packages.size())
+            {
+                packageConfig = appConfig;
+            }
+            else if (!JsonFromFile(packages[index].first, packageConfig))
+            {
+                return false;
+            }
+            if (!packageConfig.isMember("runtimeSecrets"))
+            {
+                continue;
+            }
+
+            const Json::Value &secrets = packageConfig["runtimeSecrets"];
+            if (!secrets.isObject())
+            {
+                LOGERR("Classic RALF runtimeSecrets must be an object");
+                return false;
+            }
+            if (secrets.isMember("applicationSecret"))
+            {
+                const Json::Value &secret = secrets["applicationSecret"];
+                if (!secret.isString() || secret.asString().empty())
+                {
+                    LOGERR("Classic RALF applicationSecret must be a non-empty string");
+                    return false;
+                }
+                parsedApplicationSecret = secret.asString();
+            }
+            if (secrets.isMember("credentialsManager"))
+            {
+                const Json::Value &credentials = secrets["credentialsManager"];
+                if (!credentials.isObject() || !credentials["certificate"].isString() ||
+                    credentials["certificate"].asString().empty() ||
+                    !credentials["privateKey"].isString() || credentials["privateKey"].asString().empty())
+                {
+                    LOGERR("Classic RALF credentialsManager requires a certificate and private key");
+                    return false;
+                }
+                parsedCredentialsCertificate = credentials["certificate"].asString();
+                parsedCredentialsPrivateKey = credentials["privateKey"].asString();
+            }
         }
 
         std::string runtimeMountPath;
@@ -369,6 +457,10 @@ namespace ralf
         appPath = packages.back().second;
         runtimePath = runtimeMountPath;
         command = executable;
+        commandArgs = std::move(parsedCommandArgs);
+        applicationSecret = std::move(parsedApplicationSecret);
+        credentialsCertificate = std::move(parsedCredentialsCertificate);
+        credentialsPrivateKey = std::move(parsedCredentialsPrivateKey);
         return true;
     }
 

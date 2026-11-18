@@ -63,23 +63,19 @@ namespace Plugin
         , mPreloads()
         , mEnvVariables()
         , mExtraMounts()
-    #ifdef ENTOS_RALF_SUPPORT
         , mRalfGpuConfig(Json::objectValue)
         , mRalfGpuConfigValid(true)
-    #endif
         , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
         , mRialtoOverride(-1)
         , mHibernationEnabled(false)
         , mHibernateCompression("lz4")
         , mHibernateFlashStoragePath("/media/apps/memcr")
     {
-#ifdef ENTOS_RALF_SUPPORT
         Json::Value vendorGpuSupport(Json::objectValue);
         vendorGpuSupport["devNodes"] = Json::Value(Json::arrayValue);
         vendorGpuSupport["groupIds"] = Json::Value(Json::arrayValue);
         vendorGpuSupport["files"] = Json::Value(Json::arrayValue);
         mRalfGpuConfig["vendorGpuSupport"] = vendorGpuSupport;
-#endif
     }
 
 
@@ -90,12 +86,10 @@ namespace Plugin
     void AIConfiguration::initialize(const std::string& runtimeConfigFile)
     {
         mExtraMounts.clear();
-#ifdef ENTOS_RALF_SUPPORT
         mRalfGpuConfigValid = true;
         mRalfGpuConfig["vendorGpuSupport"]["devNodes"] = Json::Value(Json::arrayValue);
         mRalfGpuConfig["vendorGpuSupport"]["groupIds"] = Json::Value(Json::arrayValue);
         mRalfGpuConfig["vendorGpuSupport"]["files"] = Json::Value(Json::arrayValue);
-#endif
         readFromConfigFile();
 #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
         readFromYamlConfigFile(runtimeConfigFile);

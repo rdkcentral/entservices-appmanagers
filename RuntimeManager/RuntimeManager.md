@@ -109,9 +109,10 @@ and `/package`. This matches legacy's traditional host-rootfs launch: the
 two-layer RALF overlay lacks the ELF loader needed by `SkyBrowserLauncher`.
 If a base-free runtime has no executable, the traditional launch runs the
 app's entry point and omits the `/runtime` bind mount.
-For this widget path, `Run()` uses the app package's `data.img` as the private
-ext4 image when present, otherwise skips the `/home/private` loop mount. It
-never treats the RALF package directory itself as an image. The classic spec
+For classic launch, `Run()` uses `data.img` at the supplied unpacked path as the
+private ext4 image when present, otherwise skips the `/home/private` loop mount.
+AppStorageManager storage remains a separate mount. The RALF package directory
+itself is never treated as an image. The classic spec
 also enables the networking and AppServices plugins so the browser can discover
 its local AS endpoints from inside the container.
 Base-free RALF launches use the classic widget Rialto capability/override policy;
@@ -119,8 +120,9 @@ layered OCI RALF launches still require Rialto. Without Rialto, the classic
 generator enables VPU and the pre-scanned GStreamer registry.
 RALF package identity and unlock handling remain unchanged. OCI packages with
 a missing base init fail generation before Dobby starts. When
-`RDK_APPMANAGERS_DEBUG` is enabled, the generated RALF OCI config is also
-written to `/tmp/generatedRalfSpec` for inspection after bundle cleanup.
+`RDK_APPMANAGERS_DEBUG` is enabled, the redacted RALF OCI config is written to
+a uniquely created mode-0600 file under `/tmp` for inspection after bundle
+cleanup.
 
 For launch-path diagnostics, debug logs trace `ralfPkgPath` from PackageManager's
 lock result through AppManager, LifecycleManager, and RuntimeManagerHandler to

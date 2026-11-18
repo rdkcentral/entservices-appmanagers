@@ -123,7 +123,7 @@ namespace ralf
          */
 
         bool addAppStorageToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath);
-        /// Loop-mounts a widget's data.img at /home/private via the Dobby storage plugin (AI1 parity).
+        /// Loop-mounts data.img at /home/private when present; AppStorageManager storage is mounted separately.
         void addPrivateDataToOCIConfig(Json::Value &ociConfigRootNode, const std::string &dataImagePath);
 
         /**

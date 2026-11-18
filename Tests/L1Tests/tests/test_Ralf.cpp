@@ -55,6 +55,18 @@ using ::testing::Return;
 
 // Forward-declare real syscalls used in mock forwarding
 extern "C" int __real_open(const char* pathname, int flags, int mode = 0);
+extern "C" int __real_chmod(const char* pathname, mode_t mode);
+
+extern "C" int __wrap_chmod(const char* pathname, mode_t mode)
+{
+    const std::string path(pathname);
+    const std::string bundleRoot = ralf::RALF_APP_ROOTFS_DIR;
+    if (0 == path.compare(0, bundleRoot.size(), bundleRoot))
+    {
+        return 0;
+    }
+    return __real_chmod(pathname, mode);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: write a text file
@@ -891,7 +903,7 @@ TEST_F(RalfGenerateOCIRootfsTest, GenerateOCIRootfs_MountFails)
         }));
 
     std::string ociRootfsPath;
-    bool result = ralf::generateOCIRootfs("test_app_mount_fail_l1", "/mnt/layer1", 0, 0, ociRootfsPath);
+    bool result = ralf::generateOCIRootfs("test_app_mount_fail_l1", "/mnt/layer1", ociRootfsPath);
     EXPECT_FALSE(result);
 
     RemoveMock();
@@ -908,7 +920,7 @@ TEST_F(RalfGenerateOCIRootfsTest, GenerateOCIRootfs_MountSucceeds)
     ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _)).WillByDefault(Return(0));
 
     std::string ociRootfsPath;
-    bool result = ralf::generateOCIRootfs("test_app_mount_ok_l1", "/mnt/layer1", 0, 0, ociRootfsPath);
+    bool result = ralf::generateOCIRootfs("test_app_mount_ok_l1", "/mnt/layer1", ociRootfsPath);
     EXPECT_TRUE(result);
     EXPECT_FALSE(ociRootfsPath.empty());
     EXPECT_NE(std::string::npos, ociRootfsPath.find("test_app_mount_ok_l1"));
@@ -1193,22 +1205,17 @@ TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_FailsWhenGraphicsConfig
  * Exercises the third if-guard in generateRalfOCIConfig:
  *   if (!applyGraphicsConfigToOCIConfig(...)) return false;
  *
- * Both production file paths are redirected to self-contained stub files so
- * the test does not depend on the host filesystem:
- *   - stubBaseSpec   : minimal valid JSON ({}) so the first guard passes.
- *   - fakeGraphics   : valid JSON with an empty devNodes array, which causes
- *                      addDeviceNodeEntriesToOCIConfig to return false, which
- *                      in turn causes applyGraphicsConfigToOCIConfig to return
- *                      false, triggering the third guard.
+ * The base spec is redirected to a self-contained stub. The in-memory graphics
+ * node uses a malformed devNodes value to exercise the graphics-config failure.
  */
 TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_FailsWhenApplyGraphicsConfigFails)
 {
     TEST_LOG("Testing generateRalfOCIConfig when applyGraphicsConfigToOCIConfig fails (third if-guard)");
 
     const std::string stubBaseSpec = mTmpDir + "/stub-oci-base-spec.json";
-    const std::string fakeGraphicsConfig = mTmpDir + "/fake-gpu-config.json";
     writeTextFile(stubBaseSpec, "{}");
-    writeTextFile(fakeGraphicsConfig, "{\"vendorGpuSupport\":{\"devNodes\":[]}}");
+    Json::Value malformedGraphicsConfig(Json::objectValue);
+    malformedGraphicsConfig["vendorGpuSupport"]["devNodes"] = "not-an-array";
 
     NiceMock<WrapsImplMock> mockWraps;
     Wraps::setImpl(&mockWraps);
@@ -1217,18 +1224,49 @@ TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_FailsWhenApplyGraphicsC
         .WillByDefault(Invoke([&](const char* path, int flags, mode_t mode) -> int {
             if (std::string(path) == ralf::RALF_OCI_BASE_SPEC_FILE)
                 return __real_open(stubBaseSpec.c_str(), flags, mode);
-            if (std::string(path) == ralf::RALF_GRAPHICS_LAYER_CONFIG)
-                return __real_open(fakeGraphicsConfig.c_str(), flags, mode);
             return __real_open(path, flags, mode);
         }));
 
     std::vector<ralf::RalfPkgInfoPair> pkgs;
     ralf::RalfOCIConfigGenerator gen(mConfigOutputFile, pkgs);
-    EXPECT_FALSE(gen.generateRalfOCIConfig(makeConfig(), makeRuntimeConfiguration()));
+    EXPECT_FALSE(gen.generateRalfOCIConfig(makeConfig(), makeRuntimeConfiguration(), malformedGraphicsConfig));
 
     Wraps::setImpl(nullptr);
     ::remove(stubBaseSpec.c_str());
-    ::remove(fakeGraphicsConfig.c_str());
+}
+
+TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_SucceedsWithEmptyOptionalGpuDevices)
+{
+    const std::string stubBaseSpec = mTmpDir + "/stub-oci-base-spec.json";
+    const std::string basePackageConfig = mTmpDir + "/base-package.json";
+    const std::string appPackageConfig = mTmpDir + "/app-package.json";
+    writeTextFile(stubBaseSpec, "{}");
+    writeTextFile(basePackageConfig, "{\"packageType\":\"base\",\"entryPoint\":\"/sbin/init\"}");
+    writeTextFile(appPackageConfig,
+                  "{\"packageType\":\"application\",\"entryPoint\":\"/bin/app\",\"version\":\"1\",\"versionName\":\"1.0\"}");
+
+    NiceMock<WrapsImplMock> mockWraps;
+    Wraps::setImpl(&mockWraps);
+    ON_CALL(mockWraps, open(_, _, _))
+        .WillByDefault(Invoke([&](const char* path, int flags, mode_t mode) -> int {
+            if (std::string(path) == ralf::RALF_OCI_BASE_SPEC_FILE)
+                return __real_open(stubBaseSpec.c_str(), flags, mode);
+            return __real_open(path, flags, mode);
+        }));
+
+    Json::Value graphicsConfig(Json::objectValue);
+    graphicsConfig["vendorGpuSupport"]["devNodes"] = Json::Value(Json::arrayValue);
+    std::vector<ralf::RalfPkgInfoPair> pkgs = {
+        {basePackageConfig, "/tmp/base-package"},
+        {appPackageConfig, "/tmp/app-package"}
+    };
+    ralf::RalfOCIConfigGenerator gen(mConfigOutputFile, pkgs);
+    EXPECT_TRUE(gen.generateRalfOCIConfig(makeConfig(), makeRuntimeConfiguration(), graphicsConfig));
+
+    Wraps::setImpl(nullptr);
+    ::remove(stubBaseSpec.c_str());
+    ::remove(basePackageConfig.c_str());
+    ::remove(appPackageConfig.c_str());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1283,6 +1321,10 @@ public:
     bool addDeviceNodeEntriesToOCIConfig(Json::Value& node, const Json::Value& devNodes)
     {
         return mGen.addDeviceNodeEntriesToOCIConfig(node, devNodes);
+    }
+    bool applyGraphicsConfigToOCIConfig(Json::Value& node, const Json::Value& graphicsConfig)
+    {
+        return mGen.applyGraphicsConfigToOCIConfig(node, graphicsConfig);
     }
     bool applyConfigurationToOCIConfig(Json::Value& node, Json::Value& manifestNode)
     {
@@ -1878,15 +1920,44 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddAppPackageVersion_MissingVersionNam
 // ──────────────────────────────
 
 /* Test Case: AddDeviceNodeEntries_EmptyList
- * Verifies that addDeviceNodeEntriesToOCIConfig returns false for an empty devNodes
- * array (no entries, size == 0 guard).
+ * Verifies that an empty optional devNodes array succeeds without adding devices.
  */
 TEST_F(RalfOCIConfigGeneratorPrivateTest, AddDeviceNodeEntries_EmptyList)
 {
     TEST_LOG("Testing addDeviceNodeEntriesToOCIConfig with empty devNodes");
     Json::Value root;
     Json::Value devNodes(Json::arrayValue);
+    EXPECT_TRUE(mAcc.addDeviceNodeEntriesToOCIConfig(root, devNodes));
+}
+
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddDeviceNodeEntries_NonArrayFails)
+{
+    Json::Value root;
+    Json::Value devNodes("/dev/dri/card0");
     EXPECT_FALSE(mAcc.addDeviceNodeEntriesToOCIConfig(root, devNodes));
+}
+
+TEST_F(RalfOCIConfigGeneratorPrivateTest, ApplyGraphicsConfig_AddsSocketMount)
+{
+    Json::Value graphicsConfig(Json::objectValue);
+    Json::Value socket(Json::objectValue);
+    socket[ralf::TYPE] = "socket";
+    socket[ralf::SOURCE] = "/run/vendor-gpu.sock";
+    socket[ralf::DESTINATION] = "/run/vendor-gpu.sock";
+    graphicsConfig[ralf::VENDOR_GPU_SUPPORT][ralf::FILES].append(socket);
+
+    Json::Value root;
+    ASSERT_TRUE(mAcc.applyGraphicsConfigToOCIConfig(root, graphicsConfig));
+    bool found = false;
+    for (const Json::Value& mount : root[ralf::MOUNTS])
+    {
+        if (mount[ralf::SOURCE].asString() == "/run/vendor-gpu.sock" &&
+            mount[ralf::DESTINATION].asString() == "/run/vendor-gpu.sock")
+        {
+            found = true;
+        }
+    }
+    EXPECT_TRUE(found);
 }
 
 /* Test Case: AddDeviceNodeEntries_NonExistentDevice

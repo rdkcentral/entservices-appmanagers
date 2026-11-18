@@ -240,6 +240,7 @@ extern uint32_t Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_Permis
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess();
 extern uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets();
+extern uint32_t Test_DobbySpecGenerator_GenerateClassicRalfArgsAndSecrets();
 
 // ── Gateway/ContainerUtils tests ─────────────────────────────────────────────
 extern uint32_t Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero();
@@ -648,6 +649,7 @@ int main()
         { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse },
         { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess },
         { "RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets", Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets },
+        { "DobbySpecGenerator_GenerateClassicRalfArgsAndSecrets", Test_DobbySpecGenerator_GenerateClassicRalfArgsAndSecrets },
 
         // ── Gateway/ContainerUtils tests ─────────────────────────────────────
         { "ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero",        Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero },

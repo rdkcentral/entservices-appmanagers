@@ -25,6 +25,7 @@
 #include "NetworkConfigurationHelper.h"
 #include <cerrno>
 #include <cstring>
+#include <cstdlib>
 #include <fcntl.h>
 #include <fstream>
 #include <glob.h>
@@ -225,7 +226,7 @@ namespace ralf
 
     void RalfOCIConfigGenerator::addPrivateDataToOCIConfig(Json::Value &ociConfigRootNode, const std::string &dataImagePath)
     {
-        // Only a ZIP widget layered on a RALF runtime has a data.img; RALF apps use AppStorageManager storage.
+        // Mount a legacy private data image when one is present; AppStorageManager storage is mounted separately.
         struct stat imageInfo;
         if (dataImagePath.empty() || 0 != stat(dataImagePath.c_str(), &imageInfo) || !S_ISREG(imageInfo.st_mode))
         {
@@ -398,14 +399,36 @@ namespace ralf
         }
         Json::StreamWriterBuilder debugWriter;
         const std::string debugConfigJson = Json::writeString(debugWriter, debugConfig);
-        std::ofstream generatedSpecFile("/tmp/generatedRalfSpec", std::ios::trunc);
-        if (generatedSpecFile)
+        std::string debugSpecPath = "/tmp/generatedRalfSpec.XXXXXX";
+        const int debugFd = ::mkstemp(&debugSpecPath[0]);
+        if (0 <= debugFd)
         {
-            generatedSpecFile << debugConfigJson;
+            size_t written = 0;
+            while (written < debugConfigJson.size())
+            {
+                const ssize_t count = ::write(debugFd, debugConfigJson.data() + written,
+                                              debugConfigJson.size() - written);
+                if (count < 0 && EINTR == errno)
+                    continue;
+                if (count <= 0)
+                    break;
+                written += static_cast<size_t>(count);
+            }
+            const bool writeSucceeded = written == debugConfigJson.size();
+            const bool closeSucceeded = 0 == ::close(debugFd);
+            if (!writeSucceeded || !closeSucceeded)
+            {
+                LOGWARN("Failed to write generated RALF OCI spec to %s", debugSpecPath.c_str());
+                ::unlink(debugSpecPath.c_str());
+            }
+            else
+            {
+                LOGINFO("Wrote redacted RALF OCI spec to %s", debugSpecPath.c_str());
+            }
         }
         else
         {
-            LOGWARN("Failed to dump generated RALF OCI spec to /tmp/generatedRalfSpec");
+            LOGWARN("Failed to securely create generated RALF OCI spec dump: %s", strerror(errno));
         }
 #endif
         return true;
@@ -466,7 +489,8 @@ namespace ralf
                 {
                     const Json::Value &fileEntry = files[i];
 #ifdef ENTOS_RALF_SUPPORT
-                    if (fileEntry.isMember(TYPE) && fileEntry[TYPE].isString() && "bind" == fileEntry[TYPE].asString() &&
+                    if (fileEntry.isMember(TYPE) && fileEntry[TYPE].isString() &&
+                        ("bind" == fileEntry[TYPE].asString() || "socket" == fileEntry[TYPE].asString()) &&
                         fileEntry.isMember(SOURCE) && fileEntry[SOURCE].isString() &&
                         fileEntry.isMember(DESTINATION) && fileEntry[DESTINATION].isString())
                     {
@@ -509,7 +533,12 @@ namespace ralf
 
     bool RalfOCIConfigGenerator::addDeviceNodeEntriesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsDevNode)
     {
-        bool status = graphicsDevNode.size() > 0 ? true : false; // If no entries, return true.
+        if (!graphicsDevNode.isArray())
+        {
+            LOGERR("vendorGpuSupport/devNodes must be an array");
+            return false;
+        }
+        bool status = true;
         std::vector<std::string> deviceNodePaths;
         for (Json::Value::ArrayIndex i = 0; i < graphicsDevNode.size(); ++i)
         {
@@ -599,13 +628,19 @@ namespace ralf
             {
                 for (const auto &arg : entryArgs)
                 {
+                    if (!arg.isString())
+                    {
+                        LOGERR("entryArgs must contain only strings");
+                        return false;
+                    }
                     ociConfigRootNode[PROCESS][ARGS].append(arg);
                 }
                 LOGDBG("Applied entryArgs to OCI config\n");
             }
             else
             {
-                LOGWARN("entryArgs is not an array in Ralf package config\n");
+                LOGERR("entryArgs is not an array in Ralf package config");
+                return false;
             }
         }
         else
@@ -644,10 +679,20 @@ namespace ralf
             return false;
         }
         const Json::Value &appArgs = app[ENTRY_ARGS];
+        if (app.isMember(ENTRY_ARGS) && !appArgs.isArray())
+        {
+            LOGERR("RALF application entryArgs must be an array");
+            return false;
+        }
         if (appArgs.isArray())
         {
             for (const auto &arg : appArgs)
             {
+                if (!arg.isString())
+                {
+                    LOGERR("RALF application entryArgs must contain only strings");
+                    return false;
+                }
                 args.append(arg);
             }
         }

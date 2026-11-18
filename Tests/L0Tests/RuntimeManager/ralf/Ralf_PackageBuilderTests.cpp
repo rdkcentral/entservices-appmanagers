@@ -115,6 +115,7 @@ uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets()
     const std::string copiedPath = layerPath + "/usr/lib/copied.so";
     const std::string symlinkPath = layerPath + "/usr/lib/libEGL.so.1";
     const std::string bindTargetPath = layerPath + "/usr/lib/bind.so";
+    const std::string socketTargetPath = layerPath + "/usr/lib/socket.so";
     const std::string missingBindTargetPath = layerPath + "/usr/lib/missing-bind.so";
 
     L0Test::ExpectTrue(tr, WriteFile_PB(sourcePath, "gpu-library"),
@@ -141,6 +142,12 @@ uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets()
     bind["destination"] = "/usr/lib/bind.so";
     files.append(bind);
 
+    Json::Value socket(Json::objectValue);
+    socket["type"] = "socket";
+    socket["source"] = sourcePath;
+    socket["destination"] = "/usr/lib/socket.so";
+    files.append(socket);
+
     Json::Value missingBind(Json::objectValue);
     missingBind["type"] = "bind";
     missingBind["source"] = testRoot + "/missing-source.so";
@@ -155,6 +162,7 @@ uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets()
     struct stat copiedStat;
     struct stat symlinkStat;
     struct stat bindTargetStat;
+    struct stat socketTargetStat;
     L0Test::ExpectTrue(tr, 0 == stat(copiedPath.c_str(), &copiedStat) && S_ISREG(copiedStat.st_mode),
                        "Copy file entry into vendor layer");
     std::ifstream copiedFileStream(copiedPath.c_str(), std::ios::binary);
@@ -166,8 +174,28 @@ uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets()
                        "Create symlink entry in vendor layer");
     L0Test::ExpectTrue(tr, 0 == stat(bindTargetPath.c_str(), &bindTargetStat) && S_ISREG(bindTargetStat.st_mode),
                        "Create bind mount target in vendor layer");
+    L0Test::ExpectTrue(tr, 0 == stat(socketTargetPath.c_str(), &socketTargetStat) && S_ISREG(socketTargetStat.st_mode),
+                       "Create socket mount target in vendor layer");
     L0Test::ExpectTrue(tr, 0 == stat(missingBindTargetPath.c_str(), &bindTargetStat) && S_ISREG(bindTargetStat.st_mode),
                        "Create bind target even when its host source is unavailable");
+
+    Json::Value escapeConfig(Json::objectValue);
+    Json::Value escapeFiles(Json::arrayValue);
+    Json::Value outsideLink(Json::objectValue);
+    outsideLink["type"] = "symlink";
+    outsideLink["target"] = testRoot + "/outside";
+    outsideLink["linkPath"] = "/redirect";
+    escapeFiles.append(outsideLink);
+    Json::Value escapedFile(Json::objectValue);
+    escapedFile["type"] = "file";
+    escapedFile["source"] = sourcePath;
+    escapedFile["destination"] = "/redirect/escaped";
+    escapeFiles.append(escapedFile);
+    escapeConfig["vendorGpuSupport"]["files"] = escapeFiles;
+    L0Test::ExpectTrue(tr, !layer.create(escapeConfig),
+                       "Reject file destination traversing a configured symlink");
+    L0Test::ExpectTrue(tr, 0 != access((testRoot + "/outside/escaped").c_str(), F_OK),
+                       "Do not create a file outside the vendor layer");
 
     ralf::removeDirectoryRecursively(testRoot);
     return tr.failures;

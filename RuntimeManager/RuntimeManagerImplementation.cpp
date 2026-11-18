@@ -45,9 +45,7 @@ namespace WPEFramework
 
         RuntimeManagerImplementation::RuntimeManagerImplementation()
             : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal(""), mRuntimeConfigFile("")
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
             , mRalfEnabled(true)
-#endif
             , mAIConfiguration(nullptr)
         {
             LOGINFO("Create RuntimeManagerImplementation Instance");
@@ -717,7 +715,9 @@ namespace WPEFramework
             if (ralfInstance)
             {
                 classicRalfLaunch = ralf::getClassicRalfLaunchInfo(runtimeConfigObject.ralfPkgPath,
-                    launchConfig.appPath, launchConfig.runtimePath, launchConfig.command);
+                    launchConfig.appPath, launchConfig.runtimePath, launchConfig.command,
+                    launchConfig.commandArgs, launchConfig.applicationSecret,
+                    launchConfig.credentialsCertificate, launchConfig.credentialsPrivateKey);
                 if (classicRalfLaunch)
                 {
                     const std::string privateImagePath = launchConfig.unpackedPath + "/data.img";
@@ -729,7 +729,7 @@ namespace WPEFramework
                     }
                     else
                     {
-                        LOGWARN("RALF widget private image not found at '%s'; omitting /home/private loop mount",
+                        LOGWARN("RALF private data image not found at '%s'; omitting /home/private loop mount",
                                 privateImagePath.c_str());
                     }
                     LOGINFO("Base-free RALF launch: launching %s from %s using classic Dobby spec",
@@ -949,7 +949,7 @@ namespace WPEFramework
                 else
                 {
                     /* Generated dobbySpec */
-                    LOGINFO("Generated dobbySpec: %s", dobbySpec.c_str());
+                    LOGINFO("Generated Dobby spec for appId=%s", appId.c_str());
 
                     LOGINFO("Environment Variables: XDG_RUNTIME_DIR=%s, WAYLAND_DISPLAY=%s",
                             xdgRuntimeDir.c_str(), waylandDisplay.c_str());
