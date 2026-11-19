@@ -309,14 +309,13 @@ public:
     }
 
     WPEFramework::Core::hresult Install(const string& packageId,
-                                         const string& version,
                                          IKeyValueIterator* const& additionalMetadata,
                                          const string& fileLocator,
                                          FailReason& failReason) override
     {
         installCallCount++;
         if (installHandler) {
-            return installHandler(packageId, version, additionalMetadata, fileLocator, failReason);
+            return installHandler(packageId, additionalMetadata, fileLocator, failReason);
         }
         return WPEFramework::Core::ERROR_NONE;
     }
@@ -328,14 +327,12 @@ public:
     }
 
     WPEFramework::Core::hresult Config(const string& /*packageId*/,
-                                        const string& /*version*/,
-                                        string& /*configMetadata*/) override
+                                        string&  /*configMetadata*/) override
     {
         return WPEFramework::Core::ERROR_NONE;
     }
 
     WPEFramework::Core::hresult PackageState(const string& /*packageId*/,
-                                              const string& /*version*/,
                                               InstallState& /*state*/) override
     {
         return WPEFramework::Core::ERROR_NONE;
@@ -364,7 +361,7 @@ public:
     std::function<WPEFramework::Core::hresult(IPackageIterator*&)>
         listPackagesHandler;
 
-    std::function<WPEFramework::Core::hresult(const string&, const string&,
+    std::function<WPEFramework::Core::hresult(const string&,
                                                IKeyValueIterator* const&,
                                                const string&, FailReason&)>
         installHandler;

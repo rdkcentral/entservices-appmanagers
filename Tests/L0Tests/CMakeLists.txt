@@ -14,6 +14,7 @@ option(PLUGIN_RDK_WINDOW_MANAGER "Build RDKWindowManager L0 test target"  ON)
 option(PLUGIN_DOWNLOAD_MANAGER   "Build DownloadManager L0 test target"   ON)
 option(PLUGIN_APP_STORAGE_MANAGER "Build AppStorageManager L0 test target" ON)
 option(PLUGIN_PACKAGE_MANAGER    "Build PackageManager L0 test target"    ON)
+option(USE_LIBPACKAGE_RALF "Enable RALF runtime dependency locking in PackageManager L0 tests" OFF)
 option(PLUGIN_PREINSTALL_MANAGER "Build PreinstallManager L0 test target" ON)
 option(PLUGIN_APP_MANAGER        "Build AppManager L0 test target"        ON)
 option(PLUGIN_VICTIM_SELECTOR    "Build VictimSelector L0 test target"    ON)
@@ -608,6 +609,9 @@ if(PLUGIN_PACKAGE_MANAGER)
         MODULE_NAME=PackageManager_L0Test
         ENABLE_AIMANAGERS_TELEMETRY_METRICS=1
     )
+    if(USE_LIBPACKAGE_RALF)
+        target_compile_definitions(packagemanager_l0test PRIVATE USE_LIBPACKAGE_RALF)
+    endif()
 
     # Force include L0TestConfig.h in all source files
     target_compile_options(packagemanager_l0test PRIVATE

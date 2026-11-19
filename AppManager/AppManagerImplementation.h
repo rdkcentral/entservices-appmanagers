@@ -261,6 +261,14 @@ namespace Plugin {
         LifecycleInterfaceConnector* mLifecycleInterfaceConnector;
         Exchange::IStore2* mPersistentStoreRemoteStoreObject;
         Exchange::IPackageHandler* mPackageManagerHandlerObject;
+        struct UnloadCleanupState
+        {
+            bool instanceLockReleased = false;
+            bool unloadedNotified = false;
+        };
+        std::mutex mDeferredReplacementUnlocksLock;
+        std::map<std::string, uint32_t> mDeferredReplacementUnlocks;
+        std::map<std::string, UnloadCleanupState> mUnloadCleanupStates;
         Exchange::IPackageInstaller* mPackageManagerInstallerObject;
         Exchange::IAppStorageManager* mStorageManagerRemoteObject;
     #ifdef APP_MANAGER_RESOURCE_MONITOR

@@ -129,6 +129,8 @@ extern uint32_t Test_AM_DispatchLifecycleAllFieldsNoAppInstanceId();
 extern uint32_t Test_AM_CheckInstallUninstallBlockMatchingNotBlocked();
 extern uint32_t Test_AM_PackageUnlockFails();
 extern uint32_t Test_AM_PackageUnlockAppNotInMap();
+extern uint32_t Test_AM_ReplacementRollbackDefersUntilUnload();
+extern uint32_t Test_AM_ReplacementRollbackAfterUnloadAndUnlockFailure();
 extern uint32_t Test_AM_TerminateAppSuccessPath();
 extern uint32_t Test_AM_LICTerminateUnloadFails();
 extern uint32_t Test_AM_KillAppSuccessPath();
@@ -334,6 +336,8 @@ int main()
         { "AM_CheckInstallUninstallBlockMatchingNotBlocked", Test_AM_CheckInstallUninstallBlockMatchingNotBlocked },
         { "AM_PackageUnlockFails", Test_AM_PackageUnlockFails },
         { "AM_PackageUnlockAppNotInMap", Test_AM_PackageUnlockAppNotInMap },
+        { "AM_ReplacementRollbackDefersUntilUnload", Test_AM_ReplacementRollbackDefersUntilUnload },
+        { "AM_ReplacementRollbackAfterUnloadAndUnlockFailure", Test_AM_ReplacementRollbackAfterUnloadAndUnlockFailure },
         { "AM_TerminateAppSuccessPath", Test_AM_TerminateAppSuccessPath },
         { "AM_LICTerminateUnloadFails", Test_AM_LICTerminateUnloadFails },
         { "AM_KillAppSuccessPath", Test_AM_KillAppSuccessPath },
