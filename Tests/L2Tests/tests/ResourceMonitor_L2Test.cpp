@@ -26,14 +26,12 @@ protected:
 
     ResourceMonitorL2Test()
     {
-        EXPECT_EQ(Core::ERROR_NONE,
-                  ActivateService(RESOURCEMONITOR_CALLSIGN));
+        EXPECT_EQ(Core::ERROR_NONE, ActivateService(RESOURCEMONITOR_CALLSIGN));
     }
 
     ~ResourceMonitorL2Test() override
     {
-        EXPECT_EQ(Core::ERROR_NONE,
-                  DeactivateService(RESOURCEMONITOR_CALLSIGN));
+        EXPECT_EQ(Core::ERROR_NONE, DeactivateService(RESOURCEMONITOR_CALLSIGN));
     }
 };
 

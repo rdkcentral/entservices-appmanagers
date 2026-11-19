@@ -116,12 +116,18 @@ namespace WPEFramework {
 
         void ResourceMonitor::Deinitialize(PluginHost::IShell* service) {
             ASSERT(mService == service);
-
             SYSLOG(Logging::Shutdown, (string(_T("ResourceMonitor::Deinitialize"))));
+			if (nullptr != mService) {
+                 mService->Unregister(&mResourceMonitorNotification);
+            }
             if (nullptr != mResourceMonitor) {
                 mResourceMonitor->Unregister(&mResourceMonitorNotification);
                 Exchange::JResourceMonitor::Unregister(*this);
                 RPC::IRemoteConnection* connection = mService->RemoteConnection(_connectionId);
+                if (nullptr != mConfigure) {
+                    mConfigure->Release();
+                    mConfigure = nullptr;
+                }
                 mResourceMonitor->Release();
                 mResourceMonitor = nullptr;
                 if (connection != nullptr)
@@ -141,13 +147,8 @@ namespace WPEFramework {
                 }
             }
             _connectionId = 0;
-            mService->Unregister(&mResourceMonitorNotification);
             mService->Release();
             mService = nullptr;
-			if (nullptr != mConfigure) {
-                mConfigure->Release();
-                mConfigure = nullptr;
-            }
             SYSLOG(Logging::Shutdown, (string(_T("ResourceMonitor de-initialised"))));
         }
 
