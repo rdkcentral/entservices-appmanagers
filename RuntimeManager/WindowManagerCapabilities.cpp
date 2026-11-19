@@ -36,9 +36,16 @@ std::string buildWindowManagerCapabilities(const std::string& runtimeCapabilitie
 
         // Mirrors IPackage::Capability checks from GuiAppManagerV2::doLaunchApp:
 
-        if (capName == "home-app")              // IPackage::Capability::HomeApp / CompositorApp
+        if (capName == "home-app")              // IPackage::Capability::HomeApp
         {
             if (!result.empty()) result += ',';
+            result += "privilegedclient";
+        }
+        else if ("compositor-app" == capName)
+        {
+            if (!result.empty()) result += ',';
+            // SkyApps requires the same app-interface access as the home app.
+            // A different token prevents Monarch's native tile requests from reaching it.
             result += "privilegedclient";
         }
         else if (capName == "issue-notifications")  // IPackage::Capability::DisplayOverlays

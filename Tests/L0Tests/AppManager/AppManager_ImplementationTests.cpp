@@ -1499,9 +1499,14 @@ uint32_t Test_AM_CreateOrUpdatePackageInfoValidData()
     pkg.version     = "2.0.0";
     pkg.unpackedPath = "/opt/test/app";
     pkg.appMetadata  = "{}";
+    pkg.configMetadata = R"({"appType":"SYSTEM"})";
     bool result = fixture.impl->createOrUpdatePackageInfoByAppId("com.test.validapp", pkg);
     L0Test::ExpectTrue(fixture.tr, result,
         "createOrUpdatePackageInfoByAppId returns true for valid version and path");
+    L0Test::ExpectEqU32(fixture.tr,
+        static_cast<uint32_t>(WPEFramework::Plugin::AppInfoManager::getInstance().getPackageInfoType("com.test.validapp")),
+        static_cast<uint32_t>(WPEFramework::Plugin::AppManagerTypes::APPLICATION_TYPE_SYSTEM),
+        "libpackage SYSTEM appType is retained in the cached package info");
     return fixture.tr.failures;
 }
 
@@ -2888,12 +2893,16 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
         L0Test::ExpectEqStr(tr, enrichedConfig["capabilities"].String(), std::string("dial-app,wan-lan"),
             "Capabilities retain their supported string representation");
         const JsonArray environment = enrichedConfig["envVariables"].Array();
-        L0Test::ExpectEqU32(tr, environment.Length(), 2u,
-            "Launch preserves the package environment and encoded launch parameters");
-        if (environment.Length() == 2u) {
+        L0Test::ExpectEqU32(tr, environment.Length(), 4u,
+            "Launch preserves package env, encoded launch parameters, and launchArgs env entries");
+        if (environment.Length() == 4u) {
             L0Test::ExpectEqStr(tr, environment[0].String(), std::string("BASE=1"),
                 "Existing package environment is preserved");
-            L0Test::ExpectTrue(tr, environment[1].String().find("APPLICATION_LAUNCH_PARAMETERS=") == 0,
+            L0Test::ExpectEqStr(tr, environment[1].String(), std::string("EXTRA_ONE=1"),
+                "First launchArgs env entry is appended");
+            L0Test::ExpectEqStr(tr, environment[2].String(), std::string("EXTRA_TWO=two"),
+                "Second launchArgs env entry is appended");
+            L0Test::ExpectTrue(tr, environment[3].String().find("APPLICATION_LAUNCH_PARAMETERS=") == 0,
                 "Encoded launch parameters are appended");
         }
 

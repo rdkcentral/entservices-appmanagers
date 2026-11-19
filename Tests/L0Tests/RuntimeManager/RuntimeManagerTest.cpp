@@ -1,7 +1,9 @@
 #include <cstdint>
 #include <iostream>
 
+#include "WindowManagerCapabilities.h"
 #include "common/L0Bootstrap.hpp"
+#include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
 // ── RuntimeManager_LifecycleTests.cpp ────────────────────────────────────────
@@ -80,6 +82,11 @@ extern uint32_t Test_AIConfig_ResourceManagerClientDisabledByDefault();
 extern uint32_t Test_AIConfig_SvpDisabledByDefault();
 extern uint32_t Test_AIConfig_IPv6DisabledByDefault();
 extern uint32_t Test_AIConfig_PrintAIConfigurationDoesNotCrash();
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+extern uint32_t Test_AIConfig_VendorMounts();
+extern uint32_t Test_AIConfig_InvalidVendorMounts();
+extern uint32_t Test_DobbySpecGenerator_VendorMounts();
+#endif
 extern uint32_t Test_DobbyEventListener_ConstructionAndDestruction();
 extern uint32_t Test_DobbyEventListener_InitializeWithNullOCIPlugin();
 extern uint32_t Test_DobbyEventListener_DeinitializeWithoutInitialize();
@@ -184,6 +191,9 @@ extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConf
 extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission();
 extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints();
 extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeEnabled();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeDisabled();
 
 // ── ralf/RalfPackageBuilder tests ─────────────────────────────────────────────
 extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
@@ -297,6 +307,33 @@ extern uint32_t Test_DobbySpecGenerator_GstRegistryMountAbsentWhenRialtoActive()
 extern uint32_t Test_DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec();
 #endif
 
+namespace WPEFramework {
+namespace Plugin {
+
+uint32_t Test_WindowManagerCapabilities_CompositorAccess()
+{
+    L0Test::TestResult result;
+    L0Test::ExpectEqStr(result, buildWindowManagerCapabilities("home-app"),
+                        "privilegedclient", "home app retains SkyApps access");
+    L0Test::ExpectEqStr(result, buildWindowManagerCapabilities("compositor-app"),
+                        "privilegedclient", "compositor app receives SkyApps access");
+    L0Test::ExpectEqStr(result,
+                        buildWindowManagerCapabilities("refresh-rate-60hz,compositor-app,suspend-mode"),
+                        "60hz,privilegedclient,suspendable", "Monarch keeps display hints and SkyApps access");
+    L0Test::ExpectEqStr(result, buildWindowManagerCapabilities("storage,thunder,firebolt"),
+                        "", "ordinary apps do not receive compositor privileges");
+    L0Test::ExpectEqStr(result, buildWindowManagerCapabilities("not-compositor-app,compositor-app-extra"),
+                        "", "only exact compositor capability names grant access");
+    L0Test::ExpectEqStr(result,
+                        buildWindowManagerCapabilities("issue-notifications,suspend-mode,refresh-rate-60hz,mediarite-underlay,game-controller"),
+                        "overlayenabled,suspendable,60hz,mediarite,gamecontrollersupport",
+                        "unrelated display capabilities remain unchanged");
+    return result.failures;
+}
+
+} // namespace Plugin
+} // namespace WPEFramework
+
 int main()
 {
     L0Test::L0BootstrapGuard bootstrap;
@@ -383,10 +420,16 @@ int main()
         { "AIConfig_SvpDisabledByDefault",                                           Test_AIConfig_SvpDisabledByDefault },
         { "AIConfig_IPv6DisabledByDefault",                                          Test_AIConfig_IPv6DisabledByDefault },
         { "AIConfig_PrintAIConfigurationDoesNotCrash",                               Test_AIConfig_PrintAIConfigurationDoesNotCrash },
+    #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+        { "AIConfig_VendorMounts",                                                  Test_AIConfig_VendorMounts },
+        { "AIConfig_InvalidVendorMounts",                                           Test_AIConfig_InvalidVendorMounts },
+        { "DobbySpecGenerator_VendorMounts",                                         Test_DobbySpecGenerator_VendorMounts },
+    #endif
         { "DobbyEventListener_ConstructionAndDestruction",                           Test_DobbyEventListener_ConstructionAndDestruction },
         { "DobbyEventListener_InitializeWithNullOCIPlugin",                          Test_DobbyEventListener_InitializeWithNullOCIPlugin },
         { "DobbyEventListener_DeinitializeWithoutInitialize",                        Test_DobbyEventListener_DeinitializeWithoutInitialize },
         { "DobbyEventListener_DoubleDeinitialize",                                   Test_DobbyEventListener_DoubleDeinitialize },
+        { "WindowManagerCapabilities_CompositorAccess",                             WPEFramework::Plugin::Test_WindowManagerCapabilities_CompositorAccess },
         { "WindowManagerConnector_ConstructionAndDestruction",                       Test_WindowManagerConnector_ConstructionAndDestruction },
         { "WindowManagerConnector_IsPluginInitializedReturnsFalseInitially",         Test_WindowManagerConnector_IsPluginInitializedReturnsFalseInitially },
         { "WindowManagerConnector_InitializeWithNullServiceReturnsFalse",            Test_WindowManagerConnector_InitializeWithNullServiceReturnsFalse },
@@ -538,6 +581,9 @@ int main()
         { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission },
         { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints },
         { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeEnabled", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeEnabled },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeDisabled", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_HandlesDialConfig_WhenExistingRuleAndMasqueradeDisabled },
 
         // ── ralf/RalfPackageBuilder tests ────────────────────────────────────
         { "RalfPackageBuilder_ConstructionAndDestruction",                           Test_RalfPackageBuilder_ConstructionAndDestruction },

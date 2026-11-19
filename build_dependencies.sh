@@ -3,7 +3,7 @@ set -x
 set -e
 ##############################
 GITHUB_WORKSPACE="${PWD}"
-INTERFACES_REF="${INTERFACES_REF:-3b1d4e6deb0ba5ef82edf6a819fddaf6bfa9edff}"
+INTERFACES_REF="${INTERFACES_REF:-c5c10ddbb34215ddceae16653bfdd53bd86b76ae}"
 ls -la ${GITHUB_WORKSPACE}
 cd ${GITHUB_WORKSPACE}
 
@@ -74,7 +74,7 @@ git -C entservices-apis checkout "${INTERFACES_REF}"
 
 git clone -b develop https://github.com/rdkcentral/eshelpers.git
 
-git clone -b v1.2.0 https://github.com/rdkcentral/ralf-utils.git
+git clone -b v1.3.0 https://github.com/rdkcentral/ralf-utils.git
 
 git clone -b develop https://github.com/rdkcentral/libPackage.git
 

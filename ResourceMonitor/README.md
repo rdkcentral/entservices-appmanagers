@@ -9,20 +9,20 @@
 curl -X POST http://127.0.0.1:9998/jsonrpc -H "Content-Type: application/json" -d '{
     "jsonrpc":"2.0",
     "id":1,
-    "method":"org.rdk.ResourceMonitor.GetMemInfo"
+    "method":"org.rdk.ResourceMonitor.getMemInfo"
 }'
  
 curl -X POST http://127.0.0.1:9998/jsonrpc -H "Content-Type: application/json" -d '{
     "jsonrpc":"2.0",
     "id":2,
-    "method":"org.rdk.ResourceMonitor.GetSwapUsed"
+    "method":"org.rdk.ResourceMonitor.getSwapUsed"
 }'
  
 3. GetPsiMetrics
 curl -X POST http://127.0.0.1:9998/jsonrpc -H "Content-Type: application/json" -d '{
     "jsonrpc":"2.0",
     "id":3,
-    "method":"org.rdk.ResourceMonitor.GetPsiMetrics",
+    "method":"org.rdk.ResourceMonitor.getPsiMetrics",
     "params":{
         "metric":"full_avg60"
     }
@@ -31,7 +31,7 @@ curl -X POST http://127.0.0.1:9998/jsonrpc -H "Content-Type: application/json" -
 curl -X POST http://127.0.0.1:9998/jsonrpc -H "Content-Type: application/json" -d '{
     "jsonrpc":"2.0",
     "id":4,
-    "method":"org.rdk.ResourceMonitor.GetPsiMetrics",
+    "method":"org.rdk.ResourceMonitor.getPsiMetrics",
     "params":{
         "metric":"some_avg10"
     }
@@ -40,14 +40,14 @@ curl -X POST http://127.0.0.1:9998/jsonrpc -H "Content-Type: application/json" -
 curl -X POST http://127.0.0.1:9998/jsonrpc -H "Content-Type: application/json" -d '{
     "jsonrpc":"2.0",
     "id":5,
-    "method":"org.rdk.ResourceMonitor.GetFlashSpace"
+    "method":"org.rdk.ResourceMonitor.getFlashSpace"
 }'
 
 4. GetStats:
 curl -X POST http://127.0.0.1:9998/jsonrpc -H "Content-Type: application/json" -d '{
     "jsonrpc":"2.0",
     "id":5,
-    "method":"org.rdk.ResourceMonitor.GetStats"
+    "method":"org.rdk.ResourceMonitor.getStats"
 }'
 
 ```

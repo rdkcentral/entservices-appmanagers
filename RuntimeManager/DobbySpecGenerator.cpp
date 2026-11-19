@@ -584,11 +584,25 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
 
     //TODO SUPPORT Netflix specific mounts
     //TODO SUPPORT SVP file mounts
-    //TODO SUPPORT Platform specific mounts
     //TODO SUPPORT Airplay specific mounts
     //TODO SUPPORT TSB Storage
     //TODO SUPPORT USB Mass storage
     //TODO SUPPORT PerfettoSocketPath not mounted
+
+    for (const auto& vendorMount : mAIConfiguration->getVendorMounts())
+    {
+        if (0 == access(vendorMount.getPath().c_str(), F_OK))
+        {
+            LOGINFO("Applying vendor mount source=%s destination=%s for appId=%s",
+                vendorMount.getPath().c_str(), vendorMount.getPath().c_str(), config.mAppId.c_str());
+            mounts.append(createBindMount(vendorMount.getPath(), vendorMount.getPath(), vendorMount.getMountFlags()));
+        }
+        else
+        {
+            LOGWARN("Vendor mount source '%s' unavailable for appId=%s (errno=%d)",
+                    vendorMount.getPath().c_str(), config.mAppId.c_str(), errno);
+        }
+    }
 
     std::vector<ExtraBindMount> extraMountEntries;
     if (true == getExtraMountEntries(runtimeConfig.capabilities, extraMountEntries))
@@ -677,8 +691,8 @@ bool DobbySpecGenerator::shouldEnableGpu(const ApplicationConfiguration& config)
 // Non-overwriting deep merge: adds keys from 'defaults' that are absent in
 // 'base'. Existing keys in 'base' (including those set by additionalconfig)
 // are never replaced. Sub-objects are recursed into.
-// Exception: 'env' and 'mounts' arrays are always appended — items from
-// 'defaults' are added to the end of the existing arrays.
+// Environment defaults are added only for missing variable names.
+// Mount and plugin arrays are appended without replacing existing entries.
 void DobbySpecGenerator::fillMissingJson(Json::Value& base, const Json::Value& defaults)
 {
     if (!defaults.isObject() || !base.isObject())
@@ -698,7 +712,34 @@ void DobbySpecGenerator::fillMissingJson(Json::Value& base, const Json::Value& d
         {
             // Append items from defaults array to existing base array.
             for (const auto& item : defaults[key])
+            {
+                // Preserve explicit runtime values: a preload's Suspend launch method
+                // must not be followed by the sysconfig default Local value.
+                if (key == "env" && item.isString())
+                {
+                    const std::string value = item.asString();
+                    const auto separator = value.find('=');
+                    if (std::string::npos != separator)
+                    {
+                        // Match NAME= exactly, distinguishing NAME from NAME_EXTRA and preserving empty values.
+                        const std::string prefix = value.substr(0, separator + 1);
+                        bool alreadyDefined = false;
+                        for (const auto& existing : base[key])
+                        {
+                            if (existing.isString() && 0 == existing.asString().compare(0, prefix.size(), prefix))
+                            {
+                                alreadyDefined = true;
+                                break;
+                            }
+                        }
+                        if (alreadyDefined)
+                        {
+                            continue;
+                        }
+                    }
+                }
                 base[key].append(item);
+            }
         }
         else if (base[key].isObject() && defaults[key].isObject())
         {

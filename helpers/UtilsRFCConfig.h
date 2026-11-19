@@ -24,14 +24,14 @@
 #include <limits>
 #include <rfcapi.h>
 
-
 namespace Utils {
 
 inline bool ApplyRFCInt(const char* rfcName, uint32_t& target)
 {
     RFC_ParamData_t param{};
     WDMP_STATUS status = getRFCParameter(nullptr, rfcName, &param);
-    if (status != WDMP_SUCCESS || param.value[0] == '\0') {
+    if ((status != WDMP_SUCCESS) && (status != WDMP_ERR_DEFAULT_VALUE))
+    {
         return false;
     }
     try {
@@ -55,7 +55,8 @@ inline bool ApplyRFCInt64(const char* rfcName, uint64_t& target)
 {
     RFC_ParamData_t param{};
     WDMP_STATUS status = getRFCParameter(nullptr, rfcName, &param);
-    if (status != WDMP_SUCCESS || param.value[0] == '\0') {
+    if ((status != WDMP_SUCCESS) && (status != WDMP_ERR_DEFAULT_VALUE))
+    {
         return false;
     }
     try {
@@ -76,7 +77,8 @@ inline bool ApplyRFCIntDouble(const char* rfcName, double& target)
 {
     RFC_ParamData_t param{};
     WDMP_STATUS status = getRFCParameter(nullptr, rfcName, &param);
-    if (status != WDMP_SUCCESS || param.value[0] == '\0') {
+    if ((status != WDMP_SUCCESS) && (status != WDMP_ERR_DEFAULT_VALUE))
+    {
         return false;
     }
     try {
@@ -97,7 +99,8 @@ inline bool ApplyRFCBool(const char* rfcName, bool& target)
 {
     RFC_ParamData_t param{};
     WDMP_STATUS status = getRFCParameter(nullptr, rfcName, &param);
-    if (status != WDMP_SUCCESS || param.value[0] == '\0') {
+    if ((status != WDMP_SUCCESS) && (status != WDMP_ERR_DEFAULT_VALUE))
+    {
         return false;
     }
     std::string value(param.value);

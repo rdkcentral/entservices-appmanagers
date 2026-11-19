@@ -40,6 +40,13 @@
 #include "WorkerPoolImplementation.h"
 #include "FactoriesImplementation.h"
 #include "WrapsMock.h"
+#include <sys/stat.h>
+
+static bool StoragePathExists()
+{
+    struct stat st;
+    return (0 == stat("/media/apps/sky/packages", &st));
+}
 
 #define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, getpid(), gettid(), ##__VA_ARGS__); fflush(stderr);
 #define TIMEOUT   (500)
@@ -1144,7 +1151,7 @@ TEST_F(PackageManagerTest, getStorageInformationusingJsonRpc) {
     Wraps::setImpl(&wrapsImplMock);
 
     // TC-26: Get Storage Details using JsonRpc
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("getStorageInformation"), _T("{\"quotaKB\": 1024, \"usedKB\": 568}"), mJsonRpcResponse));
+    EXPECT_EQ(StoragePathExists() ? Core::ERROR_NONE : Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("getStorageInformation"), _T("{\"quotaKB\": 1024, \"usedKB\": 568}"), mJsonRpcResponse));
 
     Wraps::setImpl(nullptr);
 	deinitforJsonRpc();

@@ -59,6 +59,7 @@ extern uint32_t Test_AM_SingletonPointerSetAndCleared();
 extern uint32_t Test_AM_LifecycleConnectorLaunchNewApp();
 extern uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp();
 extern uint32_t Test_AM_LifecycleConnectorLaunchPausedApp();
+extern uint32_t Test_AM_LifecycleConnectorLaunchHibernatedApp();
 extern uint32_t Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload();
 extern uint32_t Test_AM_LifecycleConnectorPreloadApp();
 extern uint32_t Test_AM_LifecycleConnectorTerminateApp();
@@ -263,6 +264,7 @@ int main()
         // { "AM_LifecycleConnectorLaunchNewApp", Test_AM_LifecycleConnectorLaunchNewApp },
         { "AM_LifecycleConnectorLaunchSuspendedApp", Test_AM_LifecycleConnectorLaunchSuspendedApp },
         { "AM_LifecycleConnectorLaunchPausedApp", Test_AM_LifecycleConnectorLaunchPausedApp },
+        { "AM_LifecycleConnectorLaunchHibernatedApp", Test_AM_LifecycleConnectorLaunchHibernatedApp },
         { "AM_LifecycleConnectorPreloadApp", Test_AM_LifecycleConnectorPreloadApp },
         { "AM_LifecycleConnectorTerminateApp", Test_AM_LifecycleConnectorTerminateApp },
         { "AM_LifecycleConnectorCloseApp", Test_AM_LifecycleConnectorCloseApp },
@@ -433,3 +435,4 @@ int main()
     L0Test::PrintTotals(std::cout, "AppManager_L0", totalFailures);
     return L0Test::ResultToExitCode(totalFailures);
 }
+

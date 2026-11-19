@@ -481,6 +481,73 @@ uint32_t Test_AM_LifecycleConnectorLaunchPausedApp()
     return tr.failures;
 }
 
+uint32_t Test_AM_LifecycleConnectorLaunchHibernatedApp()
+{
+    L0Test::TestResult tr;
+
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    WPEFramework::Plugin::AppInfo hibernatedApp;
+    hibernatedApp.setAppInstanceId("inst-hibernated");
+    hibernatedApp.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("NetflixApp",
+        [&](WPEFramework::Plugin::AppInfo& appInfo) { appInfo = hibernatedApp; });
+
+    lifecycle.isAppLoadedHandler = [](const std::string&, bool& loaded) {
+        loaded = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    unsigned setTargetCalls = 0;
+    unsigned spawnCalls = 0;
+    lifecycle.setTargetAppStateHandler = [&](const std::string& appInstanceId,
+                                             const WPEFramework::Exchange::ILifecycleManager::LifecycleState state,
+                                             const std::string& intent) {
+        ++setTargetCalls;
+        L0Test::ExpectEqStr(tr, appInstanceId, "inst-hibernated", "hibernated app instance is restored");
+        L0Test::ExpectEqU32(tr, state, WPEFramework::Exchange::ILifecycleManager::ACTIVE,
+            "hibernated app target state is ACTIVE");
+        L0Test::ExpectEqStr(tr, intent, "intent://resume-hibernated", "resume intent is forwarded");
+        return WPEFramework::Core::ERROR_NONE;
+    };
+    lifecycle.spawnAppHandler = [&](const std::string&, const std::string&,
+                                    WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+                                    const std::string&, const std::string&,
+                                    std::string&, std::string&, bool&) {
+        ++spawnCalls;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+            "createLifecycleManagerRemoteObject() succeeds for hibernated-app test");
+
+        std::string runtimeConfigPayload = "{}";
+        const auto status = connector.launch("NetflixApp", "intent://resume-hibernated", "new-launch-args", runtimeConfigPayload);
+        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+            "launch() restores a hibernated app via SetTargetAppState");
+    }
+
+    L0Test::ExpectEqU32(tr, setTargetCalls, 1, "SetTargetAppState is called once for hibernated app");
+    L0Test::ExpectEqU32(tr, spawnCalls, 0, "SpawnApp is not called for a loaded hibernated app");
+
+    L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
+    impl->Configure(&fullService);
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
 uint32_t Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload()
 {
     L0Test::TestResult tr;
@@ -751,3 +818,4 @@ uint32_t Test_AM_LifecycleConnectorMapRemainingStates()
 
     return tr.failures;
 }
+

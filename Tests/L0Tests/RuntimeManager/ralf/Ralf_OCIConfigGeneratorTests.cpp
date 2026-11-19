@@ -470,8 +470,9 @@ uint32_t Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOn
     // Keep configuration object present so function does not return early.
     manifestRootNode[ralf::CONFIGURATION] = Json::Value(Json::objectValue);
 
+    const WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
     const bool status = gen.applyConfigurationToOCIConfig(
-        ociConfigRootNode, manifestRootNode);
+        ociConfigRootNode, manifestRootNode, runtimeConfig);
 
     L0Test::ExpectTrue(tr, status,
                        "applyConfigurationToOCIConfig() succeeds for minimal application manifest");

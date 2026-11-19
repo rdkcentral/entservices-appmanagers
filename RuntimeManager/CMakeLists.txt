@@ -31,6 +31,7 @@ option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPOR
 option (RALF_PACKAGE_SUPPORT "Enable Ralf Package Support in Runtime Manager" OFF)
 option(RUNTIMEMANAGER_ENABLE_DIALCONFIG "Enable RuntimeManager DIAL configuration" ON)
 option(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG  "ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG" OFF)
+option(DEV_MOUNT_SUPPORT "Enable development mount support in Runtime Manager" OFF)
 
 add_definitions(-DRUNTIME_MANAGER_API_VERSION_NUMBER_MAJOR=2)
 add_definitions(-DRUNTIME_MANAGER_API_VERSION_NUMBER_MINOR=0)
@@ -48,8 +49,6 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
 if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
     find_package(yaml-cpp CONFIG REQUIRED)
 endif(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
-
-
 
 add_library(${MODULE_NAME} SHARED
         RuntimeManager.cpp
@@ -121,9 +120,16 @@ target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE ${NAMESPACE}Plugins::${NA
 endif(RIALTO_SUPPORT)
 
 if(RALF_PACKAGE_SUPPORT)
-
     target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE ${NAMESPACE}Plugins::${NAMESPACE}Plugins jsoncpp )
 endif(RALF_PACKAGE_SUPPORT)
+
+# Development mount support , enable only if ralf is supported
+if(DEV_MOUNT_SUPPORT AND RALF_PACKAGE_SUPPORT)
+    message(STATUS "Developer mode mount support is enabled in Runtime Manager")
+    target_compile_definitions(${MODULE_NAME} PRIVATE DEV_MOUNT_SUPPORT)
+    add_compile_definitions(ALLOW_DEV_MOUNT_SUPPORT)
+endif()
+
 
 if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
     message(STATUS "AIMANAGERS_TELEMETRY_METRICS_SUPPORT is enabled")

@@ -19,7 +19,7 @@ set(PLUGIN_NAME ResourceMonitor)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 set(PLUGIN_IMPLEMENTATION ${MODULE_NAME}Implementation)
 
-set(PLUGIN_RESOURCEMONITOR_AUTOSTART True CACHE STRING "Automatically start ResourceMonitor plugin")
+set(PLUGIN_RESOURCEMONITOR_AUTOSTART False CACHE STRING "Automatically start ResourceMonitor plugin")
 set(PLUGIN_RESOURCEMONITOR_STARTMODE "Off" CACHE STRING "Controls if the plugin should run in its own process, in process or remote")
 set(PLUGIN_RESOURCEMONITOR_STARTUPORDER "" CACHE STRING "To configure startup order of ResourceManager plugin")
 
@@ -33,7 +33,26 @@ find_package(${NAMESPACE}Definitions REQUIRED)
 find_package(${NAMESPACE}Messaging REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
-find_package(WPEFrameworkDefinitions REQUIRED)
+
+add_library(${PLUGIN_IMPLEMENTATION} SHARED
+    ResourceMonitorImplementation.cpp
+    ResourceMonitorConfig.cpp
+    Module.cpp
+)
+
+target_include_directories(${PLUGIN_IMPLEMENTATION} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
+
+set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES)
+
+target_link_libraries(${PLUGIN_IMPLEMENTATION}
+    PRIVATE
+        CompileSettingsDebug::CompileSettingsDebug
+        ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+        ${NAMESPACE}Definitions::${NAMESPACE}Definitions
+        ${NAMESPACE}Messaging::${NAMESPACE}Messaging
+        ${NAMESPACE}Core::${NAMESPACE}Core)
 
 add_library(${MODULE_NAME} SHARED
     ResourceMonitor.cpp
@@ -41,9 +60,7 @@ add_library(${MODULE_NAME} SHARED
     Module.cpp
 )
 
-include_directories(
-   ../helpers)
-
+target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set_target_properties(${MODULE_NAME} PROPERTIES
     CXX_STANDARD 11
@@ -57,24 +74,10 @@ target_link_libraries(${MODULE_NAME}
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins
         ${NAMESPACE}Definitions::${NAMESPACE}Definitions
         ${NAMESPACE}Messaging::${NAMESPACE}Messaging
-        ${NAMESPACE}Core::${NAMESPACE}Core
-        WPEFrameworkDefinitions::WPEFrameworkDefinitions)
+        ${NAMESPACE}Core::${NAMESPACE}Core)
 
-install(TARGETS ${MODULE_NAME}
+install(TARGETS ${MODULE_NAME} ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
-
-add_library(${PLUGIN_IMPLEMENTATION} SHARED
-    ResourceMonitorImplementation.cpp
-    ResourceMonitorConfig.cpp
-    Module.cpp
-)
-
-include_directories(
-   ../helpers)
-
-set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES)
 
 set(RESOURCE_MONITOR_INCLUDES $ENV{RESOURCE_MONITOR_INCLUDES})
 separate_arguments(RESOURCE_MONITOR_INCLUDES)
@@ -121,19 +124,5 @@ if (RFC_LIBRARIES)
     target_compile_definitions(${MODULE_NAME} PRIVATE WITH_RFC)
     target_compile_definitions(${PLUGIN_IMPLEMENTATION} PRIVATE WITH_RFC)
 endif ()
-
-target_include_directories(${MODULE_NAME}
-    PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
-    ${CMAKE_SYSROOT}/usr/include/WPEFramework)
-
-target_include_directories(${PLUGIN_IMPLEMENTATION}
-    PRIVATE
-    ${CMAKE_SYSROOT}/usr/include/WPEFramework)
-
-
-install(TARGETS ${PLUGIN_IMPLEMENTATION}
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
-
 
 write_config(${PLUGIN_NAME})
