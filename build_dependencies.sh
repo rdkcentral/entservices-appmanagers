@@ -3,7 +3,7 @@ set -x
 set -e
 ##############################
 GITHUB_WORKSPACE="${PWD}"
-INTERFACES_REF="${INTERFACES_REF:-c5c10ddbb34215ddceae16653bfdd53bd86b76ae}"
+INTERFACES_REF="${INTERFACES_REF:-cc00e44e4d67c34fbd4d5669fe7321b152c33336}"
 ls -la ${GITHUB_WORKSPACE}
 cd ${GITHUB_WORKSPACE}
 
