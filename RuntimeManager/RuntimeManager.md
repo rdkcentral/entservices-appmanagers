@@ -130,7 +130,8 @@ RALF package identity and unlock handling remain unchanged. OCI packages with
 a missing base init fail generation before Dobby starts. When
 `RDK_APPMANAGERS_DEBUG` is enabled, the redacted RALF OCI config is written to
 a uniquely created mode-0600 file under `/tmp` for inspection after bundle
-cleanup.
+cleanup. The redacted legacy Dobby spec overwrites `/tmp/generatedSpec.json`
+with mode 0600.
 
 For launch-path diagnostics, debug logs trace `ralfPkgPath` from PackageManager's
 lock result through AppManager, LifecycleManager, and RuntimeManagerHandler to

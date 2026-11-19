@@ -452,12 +452,19 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
 
     const std::string debugSpecJson = writer.write(debugSpec);
     LOGINFO("Generated Dobby spec: '%s'", debugSpecJson.c_str());
-    std::string debugSpecPath = "/tmp/generatedSpec.json.XXXXXX";
-    const int debugFd = ::mkstemp(&debugSpecPath[0]);
+    const std::string debugSpecPath = "/tmp/generatedSpec.json";
+    const int debugFd = ::open(debugSpecPath.c_str(),
+                               O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | O_NOFOLLOW, 0600);
     if (0 <= debugFd)
     {
+        bool writeSucceeded = (0 == ::fchmod(debugFd, 0600));
+        if (!writeSucceeded)
+        {
+            LOGWARN("Failed to set permissions on redacted Dobby spec %s: %s",
+                    debugSpecPath.c_str(), strerror(errno));
+        }
         size_t written = 0;
-        while (written < debugSpecJson.size())
+        while (writeSucceeded && written < debugSpecJson.size())
         {
             const ssize_t count = ::write(debugFd, debugSpecJson.data() + written,
                                           debugSpecJson.size() - written);
@@ -467,7 +474,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
                 break;
             written += static_cast<size_t>(count);
         }
-        const bool writeSucceeded = written == debugSpecJson.size();
+        writeSucceeded = writeSucceeded && written == debugSpecJson.size();
         const bool closeSucceeded = 0 == ::close(debugFd);
         if (!writeSucceeded || !closeSucceeded)
         {
