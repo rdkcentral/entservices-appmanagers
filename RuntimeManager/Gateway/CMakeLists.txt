@@ -62,10 +62,11 @@ set(GATEWAY_SOURCES
 # Create Gateway static library
 add_library(Gateway STATIC ${GATEWAY_SOURCES})
 
-# Set C++ standard
+# Set C++ standard; PIC is required because Gateway is linked into shared plugin libraries.
 set_target_properties(Gateway PROPERTIES
     CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES)
+    CXX_STANDARD_REQUIRED YES
+    POSITION_INDEPENDENT_CODE ON)
 
 # Link Thunder dependencies
 target_link_libraries(Gateway PUBLIC
