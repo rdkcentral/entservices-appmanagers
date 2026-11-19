@@ -452,7 +452,7 @@ namespace WPEFramework
 
     bool PreinstallManagerImplementation::readPreinstalledUpdateExclusionList(std::set<std::string> &exclusionList)
     {
-        LOGINFO("db982 Reading preinstalled update exclusion list");
+        LOGINFO("Reading preinstalled update exclusion list");
         exclusionList.clear();
         if (mConfigFileName.empty())
         {
@@ -477,14 +477,14 @@ namespace WPEFramework
             {
                 if (Core::JSON::Variant::type::STRING != settings[key].Content())
                 {
-                    LOGERR("db982 Invalid PreinstalledUpdateExclusionList value in %s", storePath);
+                    LOGERR("Invalid PreinstalledUpdateExclusionList value in %s", storePath);
                     return false;
                 }
                 std::istringstream appIds(settings[key].String());
                 std::string appId;
                 while (appIds >> appId)
                 {
-                    LOGINFO("db982 Adding appId to exclusion list: %s", appId.c_str());
+                    LOGINFO("Adding appId to exclusion list: %s", appId.c_str());
                     exclusionList.insert(appId);
                 }
                 if (exclusionList.empty())
@@ -499,14 +499,14 @@ namespace WPEFramework
         }
         else if (ENOENT != errno)
         {
-            LOGERR("db982 Failed to open package manager store: %s errno=%d", storePath, errno);
+            LOGERR("Failed to open package manager store: %s errno=%d", storePath, errno);
             return false;
         }
         else
         {
             LOGINFO("Exclusion list empty: store file %s does not exist", storePath);
         }
-        LOGINFO("db982 Successfully read preinstalled update exclusion list");
+        LOGINFO("Successfully read preinstalled update exclusion list");
         return true;
     }
 
@@ -602,7 +602,7 @@ namespace WPEFramework
             LOGINFO("Exclusion list is empty: forceInstall=%d -> %s", forceInstall,
                     forceInstall ? "all packages will be force installed" : "filtering by installed version only");
         }
-        LOGINFO("db982 Exclusion list size: %zu, isEmpty: %d, forceInstall: %d", exclusionList.size(),!exclusionList.empty(), forceInstall);
+        LOGINFO("Exclusion list size: %zu, isEmpty: %d, forceInstall: %d", exclusionList.size(),!exclusionList.empty(), forceInstall);
         if (!forceInstall || !exclusionList.empty())
         {
             LOGINFO("Checking preinstall packages: forceInstall=%d exclusionListSize=%zu", forceInstall, exclusionList.size());
