@@ -18,6 +18,8 @@
  */
 
 #include <chrono>
+#include <cerrno>
+#include <fstream>
 #include <sstream>
 
 #include "PreinstallManagerImplementation.h"
@@ -32,7 +34,10 @@ namespace WPEFramework
     PreinstallManagerImplementation *PreinstallManagerImplementation::_instance = nullptr;
 
     PreinstallManagerImplementation::PreinstallManagerImplementation()
-        : mAdminLock(), mAppPreinstallDirectory(""), mPreinstallManagerNotifications(), mCurrentservice(nullptr),
+                : mAdminLock(), mAppPreinstallDirectory(""),
+                    mConfigFileName(""),
+                    mEnabledFactoryReset(""),
+                    mPreinstallManagerNotifications(), mCurrentservice(nullptr),
           mPreinstallState(State::NOT_STARTED), mInstallThread()
     {
         LOGINFO("Create PreinstallManagerImplementation Instance");
@@ -131,6 +136,16 @@ namespace WPEFramework
                 mAppPreinstallDirectory = config.appPreinstallDirectory.Value();
             }
             LOGINFO("appPreinstallDirectory=%s", mAppPreinstallDirectory.c_str());
+            if (!config.configFileName.Value().empty())
+            {
+                mConfigFileName = config.configFileName.Value();
+            }
+            LOGINFO("configFileName=%s", mConfigFileName.c_str());
+            if (!config.enabledFactoryReset.Value().empty())
+            {
+                mEnabledFactoryReset = config.enabledFactoryReset.Value();
+            }
+            LOGINFO("enabledFactoryReset=%s", mEnabledFactoryReset.c_str());
             result = Core::ERROR_NONE;
             LOGINFO("PreinstallManagerImplementation service configured successfully");
         }
@@ -392,6 +407,7 @@ namespace WPEFramework
 
             LOGINFO("Installing package: %s, version: %s", pkg.packageId.c_str(), pkg.version.c_str());
 
+
             FailReason failReason;
             Exchange::IPackageInstaller::IKeyValueIterator* additionalMetadata = nullptr;
             Core::hresult installResult = packageInstaller->Install(pkg.packageId, pkg.version, additionalMetadata, pkg.fileLocator, failReason);
@@ -448,6 +464,66 @@ namespace WPEFramework
         mAdminLock.Unlock();
     }
 
+    bool PreinstallManagerImplementation::readPreinstalledUpdateExclusionList(std::set<std::string> &exclusionList)
+    {
+        LOGINFO("Reading preinstalled update exclusion list");
+        exclusionList.clear();
+        if (mConfigFileName.empty())
+        {
+            LOGINFO("configFileName is empty; skipping exclusion list load (exclusion list empty)");
+            return true;
+        }
+        const char *const storePath = mConfigFileName.c_str();
+        std::ifstream input(storePath);
+        if (input.is_open())
+        {
+            std::ostringstream contents;
+            contents << input.rdbuf();
+            JsonObject settings;
+            if (input.bad() || !settings.FromString(contents.str()))
+            {
+                LOGERR("Failed to read package manager store: %s", storePath);
+                return false;
+            }
+
+            const char *const key = "PreinstalledUpdateExclusionList";
+            if (settings.HasLabel(key))
+            {
+                if (Core::JSON::Variant::type::STRING != settings[key].Content())
+                {
+                    LOGERR("Invalid PreinstalledUpdateExclusionList value in %s", storePath);
+                    return false;
+                }
+                std::istringstream appIds(settings[key].String());
+                std::string appId;
+                while (appIds >> appId)
+                {
+                    LOGINFO("Adding appId to exclusion list: %s", appId.c_str());
+                    exclusionList.insert(appId);
+                }
+                if (exclusionList.empty())
+                {
+                    LOGINFO("Exclusion list empty: %s value is empty or whitespace in %s", key, storePath);
+                }
+            }
+            else
+            {
+                LOGINFO("Exclusion list empty: key %s not found in %s", key, storePath);
+            }
+        }
+        else if (ENOENT != errno)
+        {
+            LOGERR("Failed to open package manager store: %s errno=%d", storePath, errno);
+            return false;
+        }
+        else
+        {
+            LOGINFO("Exclusion list empty: store file %s does not exist", storePath);
+        }
+        LOGINFO("Successfully read preinstalled update exclusion list");
+        return true;
+    }
+
     /*
      * @brief Checks the preinstall directory for packages to be preinstalled and installs them as needed.
      * @Params[in]  : bool forceInstall
@@ -459,8 +535,9 @@ namespace WPEFramework
         Core::hresult result = Core::ERROR_GENERAL;
         bool shouldJoinPreviousThread = false;
         Exchange::IPackageInstaller* packageInstaller = nullptr;
-
         mAdminLock.Lock();
+        ++mStartPreinstallCount;
+        LOGINFO("Starting preinstall: forceInstall=%d", forceInstall);
         if (mInstallThread.joinable())
         {
             if (mPreinstallState != State::COMPLETED)
@@ -514,9 +591,35 @@ namespace WPEFramework
             return result;
         }
 
-        if (!forceInstall)  // if false, we need to check installed packages
+        std::set<std::string> exclusionList;
+        bool factoryResetMarkerPresent = false;
+        if (mEnabledFactoryReset.empty())
         {
-            LOGWARN("forceInstall is disabled");
+            LOGINFO("enabledFactoryReset is empty; skipping factory reset marker check");
+        }
+        else
+        {
+            factoryResetMarkerPresent = Core::File(mEnabledFactoryReset).Exists();
+        }
+
+        if (factoryResetMarkerPresent)
+        {
+            LOGINFO("Factory reset marker present: %s, skipping exclusion list read (exclusion list empty)", mEnabledFactoryReset.c_str());
+        }
+        else if (!readPreinstalledUpdateExclusionList(exclusionList))
+        {
+            LOGWARN("Failed to read exclusion list from %s; proceeding with preinstall without exclusions (exclusion list empty)", mConfigFileName.c_str());
+            exclusionList.clear();
+        }
+        if (exclusionList.empty())
+        {
+            LOGINFO("Exclusion list is empty: forceInstall=%d -> %s", forceInstall,
+                    forceInstall ? "all packages will be force installed" : "filtering by installed version only");
+        }
+        LOGINFO("Exclusion list size: %zu, isEmpty: %d, forceInstall: %d", exclusionList.size(),!exclusionList.empty(), forceInstall);
+        if (!forceInstall || !exclusionList.empty())
+        {
+            LOGINFO("Checking preinstall packages: forceInstall=%d exclusionListSize=%zu", forceInstall, exclusionList.size());
             Exchange::IPackageInstaller::IPackageIterator *packageList = nullptr;
 
             // fetch installed packages
@@ -536,11 +639,12 @@ namespace WPEFramework
             WPEFramework::Exchange::IPackageInstaller::Package package;
             std::unordered_map<std::string, std::string> existingApps; // packageId -> version
 
-            while (packageList->Next(package) && package.state == InstallState::INSTALLED) // only consider installed apps
+            while (packageList->Next(package))
             {
-                existingApps[package.packageId] = package.version;
-                // todo check for installState if needed
-                // multiple apps possible with same packageId but different version
+                if (InstallState::INSTALLED == package.state)
+                {
+                    existingApps[package.packageId] = package.version;
+                }
             }
 
             packageList->Release();
@@ -549,44 +653,51 @@ namespace WPEFramework
             // filter to-be-installed apps
             for (auto toBeInstalledApp = preinstallPackages.begin(); toBeInstalledApp != preinstallPackages.end(); /* skip */)
             {
-                bool remove = false;
+                const bool isAppOnExclusionList = exclusionList.find(toBeInstalledApp->packageId) != exclusionList.end();
+                const auto existingApp = existingApps.find(toBeInstalledApp->packageId);
+                const bool isInstalled = existingApp != existingApps.end();
+                const bool isNewer = isInstalled && isNewerVersion(toBeInstalledApp->version, existingApp->second);
+                const bool shouldInstall = !isInstalled || (!isAppOnExclusionList && (forceInstall || isNewer));
 
-                // check if app is already installed
-                auto it = existingApps.find(toBeInstalledApp->packageId);
-                if (it != existingApps.end())
+                if (!shouldInstall)
                 {
-                    const std::string &installedVersion = it->second;
-
-                    // check if to-be-installed version is newer
-                    if (!isNewerVersion(toBeInstalledApp->version, installedVersion))
-                    {
-                        // not newer (equal or older) → skip install
-                        LOGINFO("Not installing package: %s, version: %s (installed version: %s)",
-                                    toBeInstalledApp->packageId.c_str(),
-                                    toBeInstalledApp->version.c_str(),
-                                    installedVersion.c_str());
-                        remove = true;
-                    }
-                    else
-                    {
-                        LOGINFO("Installing newer version of package: %s, version: %s (installed version: %s)",
-                                    toBeInstalledApp->packageId.c_str(),
-                                    toBeInstalledApp->version.c_str(),
-                                    installedVersion.c_str());
-                    }
-                    // todo uninstall older version if needed
-                }
-
-                if (remove)
-                {
+                    LOGINFO("Skipping preinstall package: %s version=%s installedVersion=%s forceInstall=%d excluded=%d installed=%d newer=%d",
+                            toBeInstalledApp->packageId.c_str(), toBeInstalledApp->version.c_str(),
+                            isInstalled ? existingApp->second.c_str() : "NONE",
+                            forceInstall, isAppOnExclusionList, isInstalled, isNewer);
                     toBeInstalledApp = preinstallPackages.erase(toBeInstalledApp); // advances automatically
                 }
                 else
                 {
+                    if (!isInstalled)
+                    {
+                        LOGINFO("Preinstall action: NEW INSTALL package=%s version=%s",
+                                toBeInstalledApp->packageId.c_str(), toBeInstalledApp->version.c_str());
+                    }
+                    else
+                    {
+                        const std::string &installedVersion = existingApp->second;
+                        const char *action = "REINSTALL";
+                        if (isNewer)
+                        {
+                            action = "UPGRADE";
+                        }
+                        else if (isNewerVersion(installedVersion, toBeInstalledApp->version))
+                        {
+                            action = "DOWNGRADE";
+                        }
+                        LOGINFO("Preinstall action: %s package=%s installedVersion=%s preinstallVersion=%s forceInstall=%d",
+                                action, toBeInstalledApp->packageId.c_str(), installedVersion.c_str(),
+                                toBeInstalledApp->version.c_str(), forceInstall);
+                    }
                     ++toBeInstalledApp;
                 }
             }
 
+        }
+        else
+        {
+            LOGINFO("Preinstall action: FORCE INSTALL of all %zu packages (installed version check skipped)", preinstallPackages.size());
         }
 
         // Check if all packages were filtered out after forceInstall=false filtering
