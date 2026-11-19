@@ -447,7 +447,7 @@ namespace ralf
         if (appConfig.isMember(ENTRY_ARGS))
         {
             const Json::Value &args = appConfig[ENTRY_ARGS];
-            if (!args.isArray())
+            if (!args.isNull() && !args.isArray())
             {
                 LOGERR("Classic RALF entryArgs must be an array");
                 return false;

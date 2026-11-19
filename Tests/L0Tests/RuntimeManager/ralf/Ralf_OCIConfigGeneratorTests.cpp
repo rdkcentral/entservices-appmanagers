@@ -492,6 +492,26 @@ uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsAllowAppWithoutEntryPoint(
     return tr.failures;
 }
 
+uint32_t Test_RalfOCIConfigGenerator_NullEntryArgsIsOptional()
+{
+    L0Test::TestResult tr;
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_null_entry_args.json", packages);
+
+    Json::Value packageConfig(Json::objectValue);
+    packageConfig[ralf::ENTRY_ARGS] = Json::Value(Json::nullValue);
+    Json::Value ociConfig(Json::objectValue);
+    L0Test::ExpectTrue(tr, gen.addEntryArgsToOCIConfig(ociConfig, packageConfig),
+                       "Null entryArgs is treated as an empty optional argument list");
+
+    Json::Value invalidConfig(Json::objectValue);
+    invalidConfig[ralf::ENTRY_ARGS] = "not-an-array";
+    L0Test::ExpectTrue(tr, !gen.addEntryArgsToOCIConfig(ociConfig, invalidConfig),
+                       "Non-null non-array entryArgs remains invalid");
+
+    return tr.failures;
+}
+
 #ifdef ENTOS_RALF_SUPPORT
 uint32_t Test_Ralf_GetClassicRalfLaunchInfo()
 {
@@ -563,10 +583,21 @@ uint32_t Test_Ralf_GetClassicRalfLaunchInfo()
                        "non-runtime ZIP layer is not accepted as a runtime");
 
     L0Test::ExpectTrue(tr, WriteFile_OCIGen(appRoot + "/config.json",
-                       "{\"packageType\":\"application\",\"entryPoint\":\"bin/app\"}"),
-                       "app-only RALF config is available");
+                       "{\"packageType\":\"application\",\"entryPoint\":\"bin/app\",\"entryArgs\":null}"),
+                       "app-only RALF config with null entryArgs is available");
     manifest["packages"].clear();
     manifest["packages"].append(app);
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(manifestPath, Json::writeString(writer, manifest)),
+                       "app-only manifest is available for null entryArgs");
+    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command,
+                       commandArgs, applicationSecret, credentialsCertificate, credentialsPrivateKey),
+                       "null entryArgs does not divert a valid app entryPoint from classic launch");
+    L0Test::ExpectTrue(tr, command == "bin/app" && commandArgs.empty(),
+                       "classic launch uses the app entryPoint with no additional arguments");
+
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(appRoot + "/config.json",
+                       "{\"packageType\":\"application\",\"entryPoint\":\"bin/app\"}"),
+                       "app-only RALF config is available");
     L0Test::ExpectTrue(tr, WriteFile_OCIGen(manifestPath, Json::writeString(writer, manifest)),
                        "app-only manifest is available");
     L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),

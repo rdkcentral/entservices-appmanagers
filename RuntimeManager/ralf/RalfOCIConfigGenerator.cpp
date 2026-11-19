@@ -623,7 +623,11 @@ namespace ralf
         {
             // args is a array of strings. So append each string to args array
             const Json::Value &entryArgs = ralfPackageConfigNode[ENTRY_ARGS];
-            if (entryArgs.isArray())
+            if (entryArgs.isNull())
+            {
+                LOGDBG("No RALF entryArgs supplied\n");
+            }
+            else if (entryArgs.isArray())
             {
                 for (const auto &arg : entryArgs)
                 {
@@ -678,7 +682,7 @@ namespace ralf
             return false;
         }
         const Json::Value &appArgs = app[ENTRY_ARGS];
-        if (app.isMember(ENTRY_ARGS) && !appArgs.isArray())
+        if (app.isMember(ENTRY_ARGS) && !appArgs.isNull() && !appArgs.isArray())
         {
             LOGERR("RALF application entryArgs must be an array");
             return false;

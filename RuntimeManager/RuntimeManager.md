@@ -123,6 +123,9 @@ its local AS endpoints from inside the container.
 Base-free RALF launches use the classic widget Rialto capability/override policy;
 layered OCI RALF launches still require Rialto. Without Rialto, the classic
 generator enables VPU and the pre-scanned GStreamer registry.
+An absent or JSON-null `entryArgs` is treated as no additional arguments in
+classic launch selection and OCI config generation; non-null values must be
+arrays of strings.
 RALF package identity and unlock handling remain unchanged. OCI packages with
 a missing base init fail generation before Dobby starts. When
 `RDK_APPMANAGERS_DEBUG` is enabled, the redacted RALF OCI config is written to
