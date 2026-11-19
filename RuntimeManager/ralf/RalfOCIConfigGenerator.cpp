@@ -398,12 +398,19 @@ namespace ralf
         }
         Json::StreamWriterBuilder debugWriter;
         const std::string debugConfigJson = Json::writeString(debugWriter, debugConfig);
-        std::string debugSpecPath = "/tmp/generatedRalfSpec.XXXXXX";
-        const int debugFd = ::mkstemp(&debugSpecPath[0]);
+        const std::string debugSpecPath = "/tmp/generatedRalfSpec.json";
+        const int debugFd = ::open(debugSpecPath.c_str(),
+                                   O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | O_NOFOLLOW, 0600);
         if (0 <= debugFd)
         {
+            bool writeSucceeded = (0 == ::fchmod(debugFd, 0600));
+            if (!writeSucceeded)
+            {
+                LOGWARN("Failed to set permissions on redacted RALF spec %s: %s",
+                        debugSpecPath.c_str(), strerror(errno));
+            }
             size_t written = 0;
-            while (written < debugConfigJson.size())
+            while (writeSucceeded && written < debugConfigJson.size())
             {
                 const ssize_t count = ::write(debugFd, debugConfigJson.data() + written,
                                               debugConfigJson.size() - written);
@@ -413,7 +420,7 @@ namespace ralf
                     break;
                 written += static_cast<size_t>(count);
             }
-            const bool writeSucceeded = written == debugConfigJson.size();
+            writeSucceeded = writeSucceeded && written == debugConfigJson.size();
             const bool closeSucceeded = 0 == ::close(debugFd);
             if (!writeSucceeded || !closeSucceeded)
             {

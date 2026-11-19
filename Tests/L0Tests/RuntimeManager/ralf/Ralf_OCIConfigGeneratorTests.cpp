@@ -881,15 +881,7 @@ uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()
 
     const std::string outputPath = "/tmp/ralf_l0test_runtime_environment.json";
 #ifdef RDK_APPMANAGERS_DEBUG
-    glob_t staleDebugSpecs = {};
-    if (0 == ::glob("/tmp/generatedRalfSpec.*", GLOB_NOSORT, nullptr, &staleDebugSpecs))
-    {
-        for (size_t index = 0; index < staleDebugSpecs.gl_pathc; ++index)
-        {
-            ::unlink(staleDebugSpecs.gl_pathv[index]);
-        }
-    }
-    ::globfree(&staleDebugSpecs);
+    ::unlink("/tmp/generatedRalfSpec.json");
 #endif
     struct stat outputStat {};
     const bool saved = gen.saveOCIConfigToFile(ociConfigRootNode, 0, 0);
@@ -899,10 +891,7 @@ uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()
                        "OCI config containing package secrets is restricted to its owner");
     ::unlink(outputPath.c_str());
 #ifdef RDK_APPMANAGERS_DEBUG
-    glob_t debugSpecFiles = {};
-    const int globStatus = ::glob("/tmp/generatedRalfSpec.*", GLOB_NOSORT, nullptr, &debugSpecFiles);
-    const std::string debugSpecPath = (0 == globStatus && debugSpecFiles.gl_pathc > 0)
-        ? debugSpecFiles.gl_pathv[0] : "";
+    const std::string debugSpecPath = "/tmp/generatedRalfSpec.json";
     std::ifstream debugSpecFile(debugSpecPath);
     const std::string debugSpec((std::istreambuf_iterator<char>(debugSpecFile)),
                                 std::istreambuf_iterator<char>());
@@ -922,7 +911,6 @@ uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()
     {
         ::unlink(debugSpecPath.c_str());
     }
-    ::globfree(&debugSpecFiles);
 #endif
 
     Json::Value incompleteConfig(Json::objectValue);
