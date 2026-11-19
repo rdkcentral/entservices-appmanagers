@@ -660,10 +660,16 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 {
                     mAdminLock.Lock();
                     std::unique_lock<std::mutex> replacementLock(mDeferredReplacementUnlocksLock);
-                    Core::hresult unlockStatus = packageUnLock(appId);
+                    auto& cleanup = mUnloadCleanupStates[appId];
+                    Core::hresult unlockStatus = Core::ERROR_NONE;
+                    if (!cleanup.instanceLockReleased)
+                    {
+                        unlockStatus = packageUnLock(appId);
+                        cleanup.instanceLockReleased = (Core::ERROR_NONE == unlockStatus);
 
-                    LOGINFO("Package unlock triggered for old instance appId=%s appInstanceId=%s status=%d",
-                    appId.c_str(), appInstanceId.c_str(), unlockStatus);
+                        LOGINFO("Package unlock triggered for old instance appId=%s appInstanceId=%s status=%d",
+                            appId.c_str(), appInstanceId.c_str(), unlockStatus);
+                    }
 
                     if (Core::ERROR_NONE == unlockStatus)
                     {
@@ -695,17 +701,26 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                         LOGERR("Skipping deferred replacement unlocks for appId=%s because the old lock was not released", appId.c_str());
                     }
 
-                   for (auto& notification : mAppManagerNotification)
+                   if (!cleanup.unloadedNotified)
                    {
-                       notification->OnAppUnloaded(appId, appInstanceId);
+                       cleanup.unloadedNotified = true;
+                       for (auto& notification : mAppManagerNotification)
+                       {
+                           notification->OnAppUnloaded(appId, appInstanceId);
+                       }
                    }
-                   removeAppInfoByAppId(appId);
+                   if (Core::ERROR_NONE == unlockStatus)
+                   {
+                       removeAppInfoByAppId(appId);
+                       mUnloadCleanupStates.erase(appId);
+                   }
                    replacementLock.unlock();
                    mAdminLock.Unlock();
 
                    if (Core::ERROR_NONE != unlockStatus)
                    {
-                      LOGERR("Cannot process pending relaunch for appId=%s because package lock cleanup failed", appId.c_str());
+                      LOGERR("Package lock cleanup failed for appId=%s; retaining instance and pending relaunch for the next unload notification",
+                          appId.c_str());
                    }
                    else if (nullptr != mLifecycleInterfaceConnector)
                    {
@@ -1419,6 +1434,18 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
 
     mAdminLock.Lock();
+
+    {
+        std::lock_guard<std::mutex> replacementLock(mDeferredReplacementUnlocksLock);
+        if (mUnloadCleanupStates.find(appId) != mUnloadCleanupStates.end())
+        {
+            LOGERR("Cannot lock package for appId=%s while unload cleanup is pending", appId.c_str());
+            appManagerTelemetryReporting.reportTelemetryErrorData(
+                appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+            mAdminLock.Unlock();
+            return Core::ERROR_GENERAL;
+        }
+    }
 
     if (nullptr != mLifecycleInterfaceConnector)
     {

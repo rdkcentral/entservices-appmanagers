@@ -2091,32 +2091,81 @@ uint32_t Test_AM_ReplacementRollbackDefersUntilUnload()
 
 uint32_t Test_AM_ReplacementRollbackAfterUnloadAndUnlockFailure()
 {
-    AppManagerTestFixture fixture(true, true);
-    auto* handler = static_cast<L0Test::MockPackageHandler*>(fixture.impl->mPackageManagerHandlerObject);
-    const std::string appId = "app.replacement.failure";
-    WPEFramework::Plugin::AppInfoManager::getInstance().setPackageInfoVersion(appId, "1.0.0");
+    uint32_t failures = 0;
+    for (const uint32_t failedUnlock : {2U, 3U})
+    {
+        AppManagerTestFixture fixture(true, true);
+        auto* handler = static_cast<L0Test::MockPackageHandler*>(fixture.impl->mPackageManagerHandlerObject);
+        auto* connector = fixture.impl->mLifecycleInterfaceConnector;
+        const std::string appId = "app.replacement.failure";
+        WPEFramework::Plugin::AppInfoManager::getInstance().setPackageInfoVersion(appId, "1.0.0");
 
-    L0Test::ExpectEqU32(fixture.tr, fixture.impl->releaseDeferredReplacementLock(appId, "2.0.0"),
-        WPEFramework::Core::ERROR_NONE, "Relaunch failure releases the replacement immediately after old-version cleanup");
-    L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 1U,
-        "Replacement unlock is immediate when the old instance has been removed");
+        L0Test::ExpectEqU32(fixture.tr, fixture.impl->releaseDeferredReplacementLock(appId, "2.0.0"),
+            WPEFramework::Core::ERROR_NONE, "Relaunch failure releases the replacement immediately after old-version cleanup");
+        L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 1U,
+            "Replacement unlock is immediate when the old instance has been removed");
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId(appId, "old-instance");
-    fixture.impl->releaseDeferredReplacementLock(appId, "2.0.0");
-    handler->unlockHandler = [handler](const std::string&) {
-        return handler->unlockCount.load() == 2U
-            ? WPEFramework::Core::ERROR_NONE : WPEFramework::Core::ERROR_GENERAL;
-    };
-    WPEFramework::Core::JSON::VariantContainer params;
-    params["appId"] = appId;
-    params["appInstanceId"] = std::string("old-instance");
-    fixture.impl->Dispatch(WPEFramework::Plugin::AppManagerImplementation::APP_EVENT_UNLOADED, params);
+        WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId(appId, "old-instance");
+        fixture.impl->releaseDeferredReplacementLock(appId, "2.0.0");
+        WPEFramework::Plugin::LifecycleInterfaceConnector::PendingRelaunchRequest relaunch;
+        relaunch.appId = appId;
+        relaunch.requestedVersion = "2.0.0";
+        relaunch.packageInfo.version = "2.0.0";
+        relaunch.runtimeConfigPayload = "{}";
+        connector->mPendingRelaunches["old-instance"] = relaunch;
+        handler->unlockHandler = [handler, failedUnlock](const std::string&) {
+            return handler->unlockCount.load() == failedUnlock
+                ? WPEFramework::Core::ERROR_GENERAL : WPEFramework::Core::ERROR_NONE;
+        };
+        auto* notification = new RefNotification();
+        fixture.impl->Register(notification);
+        WPEFramework::Core::JSON::VariantContainer params;
+        params["appId"] = appId;
+        params["appInstanceId"] = std::string("old-instance");
+        fixture.impl->Dispatch(WPEFramework::Plugin::AppManagerImplementation::APP_EVENT_UNLOADED, params);
 
-    L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 3U,
-        "Unload releases the old lock before attempting the deferred unlock");
-    L0Test::ExpectEqU32(fixture.tr, fixture.impl->mDeferredReplacementUnlocks.at(appId), 1U,
-        "Failed deferred unlock remains tracked");
-    return fixture.tr.failures;
+        L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), failedUnlock,
+            "Cleanup stops at the failed old-instance or deferred unlock");
+        L0Test::ExpectTrue(fixture.tr,
+            WPEFramework::Plugin::AppInfoManager::getInstance().getAppInstanceId(appId) == "old-instance",
+            "Failed cleanup retains the old instance so another unload can retry");
+        const auto deferred = fixture.impl->mDeferredReplacementUnlocks.find(appId);
+        L0Test::ExpectTrue(fixture.tr,
+            deferred != fixture.impl->mDeferredReplacementUnlocks.end() && deferred->second == 1U,
+            "Failed cleanup retains the deferred replacement release");
+        L0Test::ExpectTrue(fixture.tr, connector->mPendingRelaunches.count("old-instance") == 1U,
+            "Failed cleanup retains the pending relaunch");
+        L0Test::ExpectEqU32(fixture.tr, notification->unloaded, 1U,
+            "Unload is notified even when package cleanup fails");
+
+        WPEFramework::Plugin::AppManagerTypes::PackageInfo packageData;
+        packageData.version = "2.0.0";
+        bool acquired = true;
+        const uint32_t lockCount = handler->lockCount.load();
+        L0Test::ExpectEqU32(fixture.tr,
+            fixture.impl->packageLock(appId, packageData, WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH, &acquired),
+            WPEFramework::Core::ERROR_GENERAL, "New package locks cannot overwrite the retained cleanup state");
+        L0Test::ExpectTrue(fixture.tr, !acquired && handler->lockCount.load() == lockCount,
+            "Pending cleanup prevents another package reference from being acquired");
+
+        fixture.impl->Dispatch(WPEFramework::Plugin::AppManagerImplementation::APP_EVENT_UNLOADED, params);
+        L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 4U,
+            "Retry releases only the remaining references, without repeating a successful old-instance unlock");
+        L0Test::ExpectTrue(fixture.tr,
+            fixture.impl->mDeferredReplacementUnlocks.empty() && fixture.impl->mUnloadCleanupStates.empty(),
+            "Successful retry clears deferred releases and cleanup progress");
+        L0Test::ExpectTrue(fixture.tr, connector->mPendingRelaunches.empty(),
+            "Successful cleanup resumes the pending relaunch");
+        L0Test::ExpectTrue(fixture.tr,
+            WPEFramework::Plugin::AppInfoManager::getInstance().getAppInstanceId(appId) == "instance-1",
+            "The replacement is launched after cleanup succeeds");
+        L0Test::ExpectEqU32(fixture.tr, notification->unloaded, 1U,
+            "Cleanup retry does not duplicate the unloaded notification");
+        fixture.impl->Unregister(notification);
+        notification->Release();
+        failures += fixture.tr.failures;
+    }
+    return failures;
 }
 
 // Covers the LOGERR "AppId not found in map to unlock" branch inside
