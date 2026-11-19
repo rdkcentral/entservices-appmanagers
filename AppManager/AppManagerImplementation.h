@@ -261,6 +261,8 @@ namespace Plugin {
         LifecycleInterfaceConnector* mLifecycleInterfaceConnector;
         Exchange::IStore2* mPersistentStoreRemoteStoreObject;
         Exchange::IPackageHandler* mPackageManagerHandlerObject;
+        std::mutex mDeferredReplacementUnlocksLock;
+        std::map<std::string, uint32_t> mDeferredReplacementUnlocks;
         Exchange::IPackageInstaller* mPackageManagerInstallerObject;
         Exchange::IAppStorageManager* mStorageManagerRemoteObject;
     #ifdef APP_MANAGER_RESOURCE_MONITOR

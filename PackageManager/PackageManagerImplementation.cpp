@@ -1100,32 +1100,59 @@ namespace Plugin {
         CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        // Without a version, release the stale (upgraded-away) version first, else the only locked one.
-        auto locked = FindLockedState(packageId);
-        if (locked == mState.end()) {
-            LOGERR("No lock for package: %s", packageId.c_str());
-            const auto known = mState.lower_bound({packageId, string()});
-            return known != mState.end() && known->first.first == packageId
-                ? Core::ERROR_GENERAL : Core::ERROR_INVALID_PARAMETER;
-        }
-        const string version = locked->first.second;
 #ifdef USE_LIBPACKAGE_RALF
-        string rtPackageId;
-        string rtVersion;
-        rtPackageId = locked->second.runtimeApp.first;
-        rtVersion = locked->second.runtimeApp.second;
+        StateKey runtime;
+        const auto pending = mPendingRuntimeUnlocks.find(packageId);
+        bool releaseRuntime = pending != mPendingRuntimeUnlocks.end();
+        if (pending != mPendingRuntimeUnlocks.end()) {
+            runtime = pending->second;
+            LOGINFO("Retrying runtime unlock for package %s: %s:%s",
+                packageId.c_str(), runtime.first.c_str(), runtime.second.c_str());
+        }
+        // A dependency-only retry must not consume another application's lock reference.
+        if (pending == mPendingRuntimeUnlocks.end())
 #endif
-        result = UnlockPackage(packageId, version);
-        if (result == Core::ERROR_NONE) {
-            processBlockedPackage(packageId, version);
+        {
+            // Without a version, release the stale (upgraded-away) version first, else the only locked one.
+            auto locked = FindLockedState(packageId);
+            if (locked == mState.end()) {
+                LOGERR("No lock for package: %s", packageId.c_str());
+                const auto known = mState.lower_bound({packageId, string()});
+                return known != mState.end() && known->first.first == packageId
+                    ? Core::ERROR_GENERAL : Core::ERROR_INVALID_PARAMETER;
+            }
+            const string version = locked->first.second;
+#ifdef USE_LIBPACKAGE_RALF
+            const uint32_t lockCount = locked->second.mLockCount;
+            runtime = locked->second.runtimeApp;
+#endif
+            result = UnlockPackage(packageId, version);
+            bool applicationReleased = result == Core::ERROR_NONE;
+#ifdef USE_LIBPACKAGE_RALF
+            applicationReleased = locked->second.mLockCount < lockCount;
+            releaseRuntime = applicationReleased;
+#endif
+            if (applicationReleased) {
+                processBlockedPackage(packageId, version);
+            }
         }
 #ifdef USE_LIBPACKAGE_RALF
-        if (!rtPackageId.empty()) {
-            LOGDBG("Unlocking runtime %s:%s", rtPackageId.c_str(), rtVersion.c_str() );
-            Core::hresult runtimeResult = UnlockPackage(rtPackageId, rtVersion);
-            if (runtimeResult == Core::ERROR_NONE) {
-                processBlockedPackage(rtPackageId, rtVersion);
-            } else if (result == Core::ERROR_NONE) {
+        if (releaseRuntime && !runtime.first.empty()) {
+            LOGDBG("Unlocking runtime %s:%s", runtime.first.c_str(), runtime.second.c_str());
+            const auto runtimeState = mState.find(runtime);
+            const uint32_t lockCount = runtimeState != mState.end() ? runtimeState->second.mLockCount : 0;
+            const Core::hresult runtimeResult = UnlockPackage(runtime.first, runtime.second);
+            // Metadata cleanup may fail after the backend has already released the reference.
+            if ((runtimeResult == Core::ERROR_NONE) ||
+                (runtimeState != mState.end() && runtimeState->second.mLockCount < lockCount)) {
+                processBlockedPackage(runtime.first, runtime.second);
+                mPendingRuntimeUnlocks.erase(packageId);
+            } else {
+                mPendingRuntimeUnlocks[packageId] = runtime;
+                LOGERR("Runtime unlock pending for package %s: %s:%s status=%d",
+                    packageId.c_str(), runtime.first.c_str(), runtime.second.c_str(), runtimeResult);
+            }
+            if (result == Core::ERROR_NONE) {
                 result = runtimeResult;
             }
         }

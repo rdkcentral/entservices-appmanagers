@@ -34,6 +34,11 @@ extern uint32_t Test_PM_Impl_GetConfigForInstalledPackage();
 extern uint32_t Test_PM_Impl_UnlockReleasesUpgradedAwayVersionFirst();
 extern uint32_t Test_PM_Impl_UnlockFailurePreservesReferenceCount();
 extern uint32_t Test_PM_Impl_UnlockUsesDevelopReferenceCounts();
+#ifdef USE_LIBPACKAGE_RALF
+extern uint32_t Test_PM_Impl_RetryRuntimeUnlockProcessesBlockedUninstall();
+extern uint32_t Test_PM_Impl_RuntimeUnlockRetryPreservesNewHolder();
+extern uint32_t Test_PM_Impl_ApplicationUnlockFailurePreservesRuntime();
+#endif
 extern uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo();
 extern uint32_t Test_PM_Impl_DownloadAndStorageInfoPaths();
 extern uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths();
@@ -71,6 +76,11 @@ int main()
         { "PM_Impl_UnlockReleasesUpgradedAwayVersionFirst", Test_PM_Impl_UnlockReleasesUpgradedAwayVersionFirst },
         { "PM_Impl_UnlockFailurePreservesReferenceCount", Test_PM_Impl_UnlockFailurePreservesReferenceCount },
         { "PM_Impl_UnlockUsesDevelopReferenceCounts", Test_PM_Impl_UnlockUsesDevelopReferenceCounts },
+#ifdef USE_LIBPACKAGE_RALF
+        { "PM_Impl_RetryRuntimeUnlockProcessesBlockedUninstall", Test_PM_Impl_RetryRuntimeUnlockProcessesBlockedUninstall },
+        { "PM_Impl_RuntimeUnlockRetryPreservesNewHolder", Test_PM_Impl_RuntimeUnlockRetryPreservesNewHolder },
+        { "PM_Impl_ApplicationUnlockFailurePreservesRuntime", Test_PM_Impl_ApplicationUnlockFailurePreservesRuntime },
+#endif
         { "PM_Impl_DownloaderRegisterUnregister", Test_PM_Impl_DownloaderRegisterUnregister },
         { "PM_Impl_InstallerRegisterUnregister", Test_PM_Impl_InstallerRegisterUnregister },
         { "PM_Impl_UnregisterUnknownNotification", Test_PM_Impl_UnregisterUnknownNotification },

@@ -659,20 +659,55 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 if (storedAppInstanceId == appInstanceId)
                 {
                     mAdminLock.Lock();
+                    std::unique_lock<std::mutex> replacementLock(mDeferredReplacementUnlocksLock);
                     Core::hresult unlockStatus = packageUnLock(appId);
 
                     LOGINFO("Package unlock triggered for old instance appId=%s appInstanceId=%s status=%d",
                     appId.c_str(), appInstanceId.c_str(), unlockStatus);
 
+                    if (Core::ERROR_NONE == unlockStatus)
+                    {
+                        auto deferred = mDeferredReplacementUnlocks.find(appId);
+                        if (deferred != mDeferredReplacementUnlocks.end())
+                        {
+                            while (deferred->second > 0)
+                            {
+                                unlockStatus = (nullptr != mPackageManagerHandlerObject)
+                                    ? mPackageManagerHandlerObject->Unlock(appId) : Core::ERROR_GENERAL;
+                                if (Core::ERROR_NONE != unlockStatus)
+                                {
+                                    LOGERR("Failed to release deferred replacement lock for appId=%s remaining=%u status=%d",
+                                        appId.c_str(), deferred->second, unlockStatus);
+                                    AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(
+                                        appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+                                    break;
+                                }
+                                --deferred->second;
+                            }
+                            if (deferred->second == 0)
+                            {
+                                mDeferredReplacementUnlocks.erase(deferred);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        LOGERR("Skipping deferred replacement unlocks for appId=%s because the old lock was not released", appId.c_str());
+                    }
+
                    for (auto& notification : mAppManagerNotification)
                    {
                        notification->OnAppUnloaded(appId, appInstanceId);
                    }
+                   removeAppInfoByAppId(appId);
+                   replacementLock.unlock();
                    mAdminLock.Unlock();
 
-                   removeAppInfoByAppId(appId);
-
-                   if (nullptr != mLifecycleInterfaceConnector)
+                   if (Core::ERROR_NONE != unlockStatus)
+                   {
+                      LOGERR("Cannot process pending relaunch for appId=%s because package lock cleanup failed", appId.c_str());
+                   }
+                   else if (nullptr != mLifecycleInterfaceConnector)
                    {
                       mLifecycleInterfaceConnector->handlePendingRelaunch(appInstanceId);
                    }
@@ -1511,7 +1546,7 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
             if ((nullptr != mPackageManagerHandlerObject) && (false == packageData.version.empty()))
             {
                 Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
-                status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
+                status = mPackageManagerHandlerObject->Lock(appId, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
                 if (nullptr != appMetadata)
                 {
                     appMetadata->Release();
@@ -1519,6 +1554,26 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                 }
                 if (Core::ERROR_NONE == status)
                 {
+                    Utils::RuntimeConfigPayload lockedConfig;
+                    std::string lockedVersion;
+                    std::string payloadError;
+                    bool versionPresent = false;
+                    if (lockedConfig.Parse(packageData.configMetadata, payloadError) &&
+                        lockedConfig.GetString("packageVersion", lockedVersion, versionPresent, payloadError) &&
+                        versionPresent && !lockedVersion.empty())
+                    {
+                        if (lockedVersion != packageData.version)
+                        {
+                            LOGWARN("Installed version of appId %s changed before replacement lock (queued '%s', locked '%s')",
+                                appId.c_str(), packageData.version.c_str(), lockedVersion.c_str());
+                        }
+                        packageData.version = lockedVersion;
+                    }
+                    else
+                    {
+                        LOGWARN("Replacement lock result for appId %s carries no packageVersion, keeping '%s'",
+                            appId.c_str(), packageData.version.c_str());
+                    }
                     LOGINFO("Locked requested package version for loaded appId %s; AppInfo update deferred until replacement launch", appId.c_str());
                 }
                 else
@@ -1581,6 +1636,7 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
 
 Core::hresult AppManagerImplementation::releaseDeferredReplacementLock(const string& appId, const string& requestedVersion)
 {
+    std::lock_guard<std::mutex> lock(mDeferredReplacementUnlocksLock);
     if (true == requestedVersion.empty())
     {
         return Core::ERROR_NONE;
@@ -1593,7 +1649,19 @@ Core::hresult AppManagerImplementation::releaseDeferredReplacementLock(const str
         return Core::ERROR_GENERAL;
     }
 
-    const Core::hresult status = mPackageManagerHandlerObject->Unlock(appId, requestedVersion);
+    AppInfo appInfo;
+    const bool hasInstance = AppInfoManager::getInstance().get(appId, appInfo) && !appInfo.getAppInstanceId().empty();
+    const string runningVersion = appInfo.getPackageInfo().version;
+    if (hasInstance && !runningVersion.empty() && runningVersion != requestedVersion)
+    {
+        // Unlock(appId) selects the old version first, so rollback must wait for its unload cleanup.
+        ++mDeferredReplacementUnlocks[appId];
+        LOGINFO("Deferring replacement unlock for appId=%s version=%s until running version=%s unloads",
+            appId.c_str(), requestedVersion.c_str(), runningVersion.c_str());
+        return Core::ERROR_NONE;
+    }
+
+    const Core::hresult status = mPackageManagerHandlerObject->Unlock(appId);
     if (Core::ERROR_NONE != status)
     {
         LOGERR("Failed to release deferred replacement lock for appId=%s version=%s status=%d", appId.c_str(), requestedVersion.c_str(), status);

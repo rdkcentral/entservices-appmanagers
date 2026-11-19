@@ -2039,6 +2039,86 @@ uint32_t Test_AM_PackageUnlockFails()
     return tr.failures;
 }
 
+uint32_t Test_AM_ReplacementRollbackDefersUntilUnload()
+{
+    AppManagerTestFixture fixture(true, true);
+    auto* handler = static_cast<L0Test::MockPackageHandler*>(fixture.impl->mPackageManagerHandlerObject);
+    const std::string appId = "app.replacement.rollback";
+    WPEFramework::Plugin::AppInfoManager::getInstance().setPackageInfoVersion(appId, "1.0.0");
+    WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId(appId, "old-instance");
+
+    auto* connector = fixture.impl->mLifecycleInterfaceConnector;
+    auto* lifecycle = static_cast<L0Test::MockLifecycleManager*>(connector->mLifecycleManagerRemoteObject);
+    lifecycle->killAppHandler = [&fixture](const std::string& instanceId, std::string& errorReason, bool& success) {
+        L0Test::ExpectTrue(fixture.tr, instanceId == "old-instance", "Replacement attempts to kill the old instance");
+        errorReason = "mock replacement kill failure";
+        success = false;
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+    WPEFramework::Plugin::LifecycleInterfaceConnector::PendingRelaunchRequest relaunch;
+    relaunch.appId = appId;
+    relaunch.requestedVersion = "2.0.0";
+    connector->mPendingRelaunches["old-instance"] = relaunch;
+    std::string runtimeConfig = "{}";
+    L0Test::ExpectEqU32(fixture.tr,
+        connector->restartSuspendedWithRequestedVersion(appId, "", "", runtimeConfig, "old-instance", "2.0.0"),
+        WPEFramework::Core::ERROR_GENERAL, "Replacement reports the KillApp failure");
+    L0Test::ExpectTrue(fixture.tr, connector->mPendingRelaunches.empty(),
+        "KillApp failure cancels the pending relaunch");
+    L0Test::ExpectTrue(fixture.tr,
+        WPEFramework::Plugin::AppInfoManager::getInstance().getAppInstanceId(appId) == "old-instance",
+        "The old instance remains tracked after KillApp failure");
+    const auto deferred = fixture.impl->mDeferredReplacementUnlocks.find(appId);
+    L0Test::ExpectTrue(fixture.tr,
+        deferred != fixture.impl->mDeferredReplacementUnlocks.end() && deferred->second == 1U,
+        "KillApp failure queues the replacement release instead of unlocking the old version");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->releaseDeferredReplacementLock(appId, "2.0.0"),
+        WPEFramework::Core::ERROR_NONE, "Duplicate replacement rollback is deferred");
+    L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 0U,
+        "Rollback does not unlock the running instance");
+
+    WPEFramework::Core::JSON::VariantContainer params;
+    params["appId"] = appId;
+    params["appInstanceId"] = std::string("old-instance");
+    fixture.impl->Dispatch(WPEFramework::Plugin::AppManagerImplementation::APP_EVENT_UNLOADED, params);
+
+    L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 3U,
+        "Unload releases the old lock followed by both deferred replacement locks");
+    L0Test::ExpectTrue(fixture.tr, fixture.impl->mDeferredReplacementUnlocks.empty(),
+        "Successful cleanup clears deferred unlocks");
+    return fixture.tr.failures;
+}
+
+uint32_t Test_AM_ReplacementRollbackAfterUnloadAndUnlockFailure()
+{
+    AppManagerTestFixture fixture(true, true);
+    auto* handler = static_cast<L0Test::MockPackageHandler*>(fixture.impl->mPackageManagerHandlerObject);
+    const std::string appId = "app.replacement.failure";
+    WPEFramework::Plugin::AppInfoManager::getInstance().setPackageInfoVersion(appId, "1.0.0");
+
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->releaseDeferredReplacementLock(appId, "2.0.0"),
+        WPEFramework::Core::ERROR_NONE, "Relaunch failure releases the replacement immediately after old-version cleanup");
+    L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 1U,
+        "Replacement unlock is immediate when the old instance has been removed");
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId(appId, "old-instance");
+    fixture.impl->releaseDeferredReplacementLock(appId, "2.0.0");
+    handler->unlockHandler = [handler](const std::string&) {
+        return handler->unlockCount.load() == 2U
+            ? WPEFramework::Core::ERROR_NONE : WPEFramework::Core::ERROR_GENERAL;
+    };
+    WPEFramework::Core::JSON::VariantContainer params;
+    params["appId"] = appId;
+    params["appInstanceId"] = std::string("old-instance");
+    fixture.impl->Dispatch(WPEFramework::Plugin::AppManagerImplementation::APP_EVENT_UNLOADED, params);
+
+    L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 3U,
+        "Unload releases the old lock before attempting the deferred unlock");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->mDeferredReplacementUnlocks.at(appId), 1U,
+        "Failed deferred unlock remains tracked");
+    return fixture.tr.failures;
+}
+
 // Covers the LOGERR "AppId not found in map to unlock" branch inside
 // packageUnLock() when the app is NOT in AppInfoManager.  In that case both
 // !pkgVersion.empty() and exists(appId) are false, so the unlock block is skipped

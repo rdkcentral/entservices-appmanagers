@@ -283,6 +283,136 @@ uint32_t Test_PM_Impl_UnlockUsesDevelopReferenceCounts()
     return tr.failures;
 }
 
+#ifdef USE_LIBPACKAGE_RALF
+uint32_t Test_PM_Impl_RetryRuntimeUnlockProcessesBlockedUninstall()
+{
+    L0Test::TestResult tr;
+    packagemanager::IPackageImplDummy::UnlockCalls().clear();
+    ImplFixture fx(R"({"downloadDir":"/tmp/","testRuntime":"test-runtime","testUnlock":"unlock-fail-once"})");
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() seeds the application and its runtime");
+    uint32_t lockId = 0;
+    std::string path;
+    std::string config;
+    std::string gateway;
+    WPEFramework::Exchange::IPackageHandler::ILockIterator* dependencies = nullptr;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+            lockId, path, config, dependencies), ERROR_NONE, "Lock() acquires the application and runtime");
+    if (dependencies != nullptr) {
+        dependencies->Release();
+    }
+
+    std::string errorReason;
+    L0Test::ExpectEqU32(tr, fx.impl->Uninstall("TestRuntime", errorReason), ERROR_GENERAL,
+        "Runtime uninstall is blocked while the application holds its dependency lock");
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_GENERAL,
+        "The application unlock succeeds but the runtime unlock fails once");
+    bool locked = true;
+    L0Test::ExpectEqU32(tr, fx.impl->GetLockedInfo("YouTube", path, config, gateway, locked), ERROR_NONE,
+        "The application's lock remains queryable after partial cleanup");
+    L0Test::ExpectTrue(tr, !locked, "The application's reference was already released");
+    L0Test::ExpectEqU32(tr, fx.impl->GetLockedInfo("TestRuntime", path, config, gateway, locked), ERROR_NONE,
+        "The failed runtime lock remains queryable");
+    L0Test::ExpectTrue(tr, locked, "The failed runtime release retains its reference");
+
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE,
+        "Retry releases the pending runtime without requiring an application lock");
+    WPEFramework::Exchange::IPackageInstaller::InstallState state =
+        WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED;
+    L0Test::ExpectEqU32(tr, fx.impl->PackageState("TestRuntime", state), ERROR_NONE,
+        "Runtime state remains queryable after cleanup");
+    L0Test::ExpectTrue(tr, state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
+        "Successful retry processes the runtime's deferred uninstall");
+    const auto& calls = packagemanager::IPackageImplDummy::UnlockCalls();
+    const auto appRelease = calls.find({"YouTube", "100.1.24"});
+    const auto runtimeRelease = calls.find({"TestRuntime", "200.0.0"});
+    L0Test::ExpectTrue(tr, appRelease != calls.end() && appRelease->second == 1,
+        "Retry never releases the application's backend lock twice");
+    L0Test::ExpectTrue(tr, runtimeRelease != calls.end() && runtimeRelease->second == 2,
+        "The failed runtime release is retried once");
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_GENERAL,
+        "A completed dependency release is not retried again");
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_RuntimeUnlockRetryPreservesNewHolder()
+{
+    L0Test::TestResult tr;
+    packagemanager::IPackageImplDummy::UnlockCalls().clear();
+    ImplFixture fx(R"({"downloadDir":"/tmp/","testRuntime":"test-runtime","testUnlock":"unlock-fail-once"})");
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() seeds the application and its runtime");
+    uint32_t lockId = 0;
+    std::string path;
+    std::string config;
+    std::string gateway;
+    WPEFramework::Exchange::IPackageHandler::ILockIterator* dependencies = nullptr;
+    for (uint32_t acquisition = 0; acquisition < 2; ++acquisition) {
+        L0Test::ExpectEqU32(tr,
+            fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+                lockId, path, config, dependencies), ERROR_NONE, "Acquire an application and runtime reference");
+        if (dependencies != nullptr) {
+            dependencies->Release();
+            dependencies = nullptr;
+        }
+        if (acquisition == 0) {
+            L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_GENERAL,
+                "The first holder's runtime unlock fails");
+        }
+    }
+
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE,
+        "Retry releases only the first holder's pending runtime reference");
+    bool locked = false;
+    L0Test::ExpectEqU32(tr, fx.impl->GetLockedInfo("YouTube", path, config, gateway, locked), ERROR_NONE,
+        "The new application's lock remains queryable");
+    L0Test::ExpectTrue(tr, locked, "Dependency retry preserves the new application's lock");
+    L0Test::ExpectEqU32(tr, fx.impl->GetLockedInfo("TestRuntime", path, config, gateway, locked), ERROR_NONE,
+        "The new holder's runtime lock remains queryable");
+    L0Test::ExpectTrue(tr, locked, "The new holder retains its runtime dependency");
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE,
+        "The new holder can subsequently release its own application and runtime locks");
+    const auto& calls = packagemanager::IPackageImplDummy::UnlockCalls();
+    const auto appRelease = calls.find({"YouTube", "100.1.24"});
+    const auto runtimeRelease = calls.find({"TestRuntime", "200.0.0"});
+    L0Test::ExpectTrue(tr, appRelease != calls.end() && appRelease->second == 2,
+        "Each application acquisition is released once");
+    L0Test::ExpectTrue(tr, runtimeRelease != calls.end() && runtimeRelease->second == 2,
+        "Runtime backend release is retried without releasing the new holder early");
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_ApplicationUnlockFailurePreservesRuntime()
+{
+    L0Test::TestResult tr;
+    packagemanager::IPackageImplDummy::UnlockCalls().clear();
+    ImplFixture fx(R"({"downloadDir":"/tmp/","testRuntime":"test-runtime","testUnlock":"application-unlock-fail-once"})");
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() seeds the application and its runtime");
+    uint32_t lockId = 0;
+    std::string path;
+    std::string config;
+    std::string gateway;
+    WPEFramework::Exchange::IPackageHandler::ILockIterator* dependencies = nullptr;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Lock("YouTube", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+            lockId, path, config, dependencies), ERROR_NONE, "Lock() acquires the application and runtime");
+    if (dependencies != nullptr) {
+        dependencies->Release();
+    }
+
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_GENERAL, "The application's backend unlock fails once");
+    const auto& calls = packagemanager::IPackageImplDummy::UnlockCalls();
+    L0Test::ExpectTrue(tr, calls.find({"TestRuntime", "200.0.0"}) == calls.end(),
+        "Application unlock failure must not release its runtime dependency");
+    bool locked = false;
+    L0Test::ExpectEqU32(tr, fx.impl->GetLockedInfo("TestRuntime", path, config, gateway, locked), ERROR_NONE,
+        "The runtime's lock remains queryable");
+    L0Test::ExpectTrue(tr, locked, "The failed application still retains its runtime lock");
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock("YouTube"), ERROR_NONE,
+        "Retry releases the application and its runtime together");
+    return tr.failures;
+}
+#endif
+
 uint32_t Test_PM_Impl_DownloaderRegisterUnregister()
 {
     L0Test::TestResult tr;
@@ -380,7 +510,7 @@ uint32_t Test_PM_Impl_SystemApplicationClassification()
 
     WPEFramework::Exchange::IPackageInstaller::FailReason failReason =
         WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
-    L0Test::ExpectEqU32(tr, fx.impl->Install("SystemApp", "1.0", nullptr, "/tmp/system-app.pkg", failReason),
+    L0Test::ExpectEqU32(tr, fx.impl->Install("SystemApp", nullptr, "/tmp/system-app.pkg", failReason),
         ERROR_NONE, "System app installs");
     WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
     L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "ListPackages() succeeds");
@@ -406,7 +536,7 @@ uint32_t Test_PM_Impl_SystemApplicationClassification()
     }
 
     std::string runtimeConfig;
-    L0Test::ExpectEqU32(tr, fx.impl->Config("SystemApp", "1.0", runtimeConfig), ERROR_NONE,
+    L0Test::ExpectEqU32(tr, fx.impl->Config("SystemApp", runtimeConfig), ERROR_NONE,
         "Config() succeeds for a system app");
     WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
     std::string error;

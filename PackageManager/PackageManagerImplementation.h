@@ -333,6 +333,9 @@ class PackageManagerImplementation
         DownloadQueue  mDownloadQueue;
         std::recursive_mutex mtxState;
         StateMap  mState;
+#ifdef USE_LIBPACKAGE_RALF
+        std::map<string, StateKey> mPendingRuntimeUnlocks;
+#endif
         std::map<string, InstallState> mLastInstallState; // last operation state per packageId, guarded by mtxState
         bool cacheInitialized = false;
         bool enablePackageSpecifierRuntimes = false;

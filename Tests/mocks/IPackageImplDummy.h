@@ -97,6 +97,7 @@ namespace packagemanager
         // the backend rejecting an upgrade while the prior artifact stays intact.
         mutable bool mUpgradeRejectAppInstalledOnce = false;
         bool mFailUnlockOnce = false;
+        bool mFailApplicationUnlockOnce = false;
 
         static std::map<ConfigMetadataKey, uint32_t>& UnlockCalls() {
             static std::map<ConfigMetadataKey, uint32_t> calls;
@@ -105,6 +106,7 @@ namespace packagemanager
 
         virtual Result Initialize(const std::string &configStr, ConfigMetadataArray &aConfigMetadata) { 
             mFailUnlockOnce = configStr.find("unlock-fail-once") != std::string::npos;
+            mFailApplicationUnlockOnce = configStr.find("application-unlock-fail-once") != std::string::npos;
             ConfigMetaData configMetadata {};
             configMetadata.dial = true; 
             configMetadata.wanLanAccess = true;
@@ -118,13 +120,18 @@ namespace packagemanager
             configMetadata.appType = packagemanager::ApplicationType::INTERACTIVE;
             configMetadata.fkpsFiles = {"file1","file2","file3"};
             configMetadata.capabilities = "dial-app,wan-lan,thunder,fkps";
-            configMetadata.runtimeType = "";
+            configMetadata.runtimeType = configStr.find("test-runtime") != std::string::npos ? "html" : "";
             configMetadata.mimeType = "application/vnd.rdk-app.dac.native";
                 configMetadata.md5Hash = "dummy-md5-youtube-100124";
             
             ConfigMetadataKey key {"YouTube", "100.1.24"};
 
             aConfigMetadata.insert({key, configMetadata});
+            if (!configMetadata.runtimeType.empty()) {
+                ConfigMetaData runtimeMetadata {};
+                runtimeMetadata.mimeType = "runtime/html";
+                aConfigMetadata.insert({{"TestRuntime", "200.0.0"}, runtimeMetadata});
+            }
             
             return SUCCESS; 
         }
@@ -183,7 +190,7 @@ namespace packagemanager
         }
         virtual Result Unlock(const std::string &packageId, const std::string &version) {
             ++UnlockCalls()[{packageId, version}];
-            if (mFailUnlockOnce && version == "200.0.0") {
+            if (mFailUnlockOnce && (mFailApplicationUnlockOnce ? packageId == "YouTube" : version == "200.0.0")) {
                 mFailUnlockOnce = false;
                 return FAILED;
             }

@@ -117,13 +117,15 @@ Unlock(packageId):
 ## Versioning & Compatibility
 - **API Version**: 2.0.0
 - **Plugin Execution Mode**: Configurable via `PLUGIN_PACKAGEMANAGER_MODE`
-- `packageId` is the sole package identifier; only one (current) version is tracked per package, so installing a new version replaces the prior one rather than coexisting with it
+- Versionless API operations identify packages by `packageId`, with one current installed version per package. Internally, `mState` retains historical `(packageId, version)` records, including `UNINSTALLED` entries returned by `ListPackages`. Installing a new version replaces the current installed version but does not discard historical records or outstanding locks on older versions.
 - `USE_LIBPACKAGE_RALF`: optional flag for RALF package format support
+- With `USE_LIBPACKAGE_RALF`, a successful application unlock followed by a failed runtime unlock retains the runtime's package ID and version for retry. The next `Unlock(packageId)` retries only that dependency release before selecting another application lock, and processes the runtime's blocked uninstall when release succeeds.
 
 ## Conformance Testing & Validation
 - **Unit Tests**: `Tests/L1Tests`
 - **Integration Tests**: `Tests/L2Tests`
 - **Test Dependencies**: Mock AppStorageManager, Mock HTTP server
+- Configure L0 tests with `-DUSE_LIBPACKAGE_RALF=ON` to include runtime-unlock retry and deferred-uninstall regression tests in `packagemanager_l0test`.
 
 ## Dependencies
 
