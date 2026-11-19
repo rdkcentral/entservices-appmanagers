@@ -27,6 +27,7 @@
 #endif
 #include <errno.h>
 #include <fstream>
+#include <sys/stat.h>
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
 #include "ralf/RalfPackageBuilder.h"
@@ -43,7 +44,9 @@ namespace WPEFramework
         RuntimeManagerImplementation *RuntimeManagerImplementation::_instance = nullptr;
 
         RuntimeManagerImplementation::RuntimeManagerImplementation()
-            : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal(""), mRuntimeConfigFile(""), mAIConfiguration(nullptr)
+            : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal(""), mRuntimeConfigFile("")
+            , mRalfEnabled(true)
+            , mAIConfiguration(nullptr)
         {
             LOGINFO("Create RuntimeManagerImplementation Instance");
             if (nullptr == RuntimeManagerImplementation::_instance)
@@ -240,6 +243,12 @@ namespace WPEFramework
                         usesRialto = rIt->second.usesRialto;
                 }
 #endif
+                bool ralfMode = false;
+                {
+                    auto rIt = mRuntimeAppInfo.find(appInstanceId);
+                    if (rIt != mRuntimeAppInfo.end())
+                        ralfMode = rIt->second.ralfMode;
+                }
                 {
                     mRuntimeAppInfo.erase(appInstanceId);
                 }
@@ -253,12 +262,7 @@ namespace WPEFramework
                         ++index;
                     }
                 }
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                {
-                    ralf::RalfPackageBuilder ralfBuilder;
-                    ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
-                }
-#endif // RALF_PACKAGE_SUPPORT_ENABLED
+                cleanupRalfInstance(appInstanceId, ralfMode);
 
 #ifdef ENABLE_RIALTO
                 if (usesRialto)
@@ -282,14 +286,13 @@ namespace WPEFramework
                 }
                 /* Remove the runtime app info entry to prevent map from growing indefinitely */
                 {
+                    bool ralfMode = false;
+                    auto rIt = mRuntimeAppInfo.find(appInstanceId);
+                    if (rIt != mRuntimeAppInfo.end())
+                        ralfMode = rIt->second.ralfMode;
                     mRuntimeAppInfo.erase(appInstanceId);
+                    cleanupRalfInstance(appInstanceId, ralfMode);
                 }
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                {
-                    ralf::RalfPackageBuilder ralfBuilder;
-                    ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
-                }
-#endif // RALF_PACKAGE_SUPPORT_ENABLED
                 break;
 
             default:
@@ -346,6 +349,10 @@ namespace WPEFramework
                     mRuntimeConfigFile = config.runtimeConfigFile.Value();
                 }
                 LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                mRalfEnabled = config.ralfEnabled.Value();
+                LOGINFO("RALF launch support %s by runtime configuration", mRalfEnabled ? "enabled" : "disabled");
+#endif
                 mAIConfiguration = new AIConfiguration();
                 mAIConfiguration->initialize(mRuntimeConfigFile);
                 if (config.hibernation.enable.IsSet() || config.hibernation.defaultCompression.IsSet())
@@ -528,22 +535,61 @@ namespace WPEFramework
             return status;
         }
 
-        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration &config, const RuntimeConfiguration &runtimeConfigObject, std::string &dobbySpec)
+        bool RuntimeManagerImplementation::isRalfPackage(const RuntimeConfiguration &runtimeConfigObject)
         {
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
-            LOGINFO("Generating Ralf Package Config : %s", runtimeConfigObject.ralfPkgPath.c_str());
-            ralf::RalfPackageBuilder ralfBuilder;
-            return ralfBuilder.generateRalfDobbySpec(config, runtimeConfigObject, dobbySpec);
+            /* A non-empty ralfPkgPath is the sole end-to-end discriminator for a RALF/Bolt
+               package; libPackage leaves it empty for EntOS widgets. */
+            return !runtimeConfigObject.ralfPkgPath.empty();
 #else
-        if (nullptr == mAIConfiguration)
-        {
-            LOGERR("AIConfiguration not initialized");
+            (void)runtimeConfigObject;
             return false;
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
-        DobbySpecGenerator generator(*mAIConfiguration);
-        if (!mGstRegistrySourcePath.empty())
-            generator.setGstreamerRegistryPath(mGstRegistrySourcePath);
-        return generator.generate(config, runtimeConfigObject, dobbySpec);
+
+        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration &config, const RuntimeConfiguration &runtimeConfigObject, std::string &dobbySpec, bool classicRalfLaunch)
+        {
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            if (isRalfPackage(runtimeConfigObject) && !classicRalfLaunch)
+            {
+                LOGINFO("Generating Ralf Package Config : %s", runtimeConfigObject.ralfPkgPath.c_str());
+                ralf::RalfPackageBuilder ralfBuilder;
+#ifdef ENTOS_RALF_SUPPORT
+                Json::Value gpuConfig;
+                if ((nullptr == mAIConfiguration) || !mAIConfiguration->getRalfGpuConfig(gpuConfig))
+                {
+                    LOGERR("Failed to read RALF GPU config from runtime YAML");
+                    return false;
+                }
+                return ralfBuilder.generateRalfDobbySpec(config, runtimeConfigObject, dobbySpec, gpuConfig);
+#else
+                return ralfBuilder.generateRalfDobbySpec(config, runtimeConfigObject, dobbySpec);
+#endif
+            }
+            LOGINFO("ralfPkgPath is empty, using legacy Dobby spec generation");
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
+            if (nullptr == mAIConfiguration)
+            {
+                LOGERR("AIConfiguration not initialized");
+                return false;
+            }
+            DobbySpecGenerator generator(*mAIConfiguration);
+            if (!mGstRegistrySourcePath.empty())
+                generator.setGstreamerRegistryPath(mGstRegistrySourcePath);
+            return generator.generate(config, runtimeConfigObject, dobbySpec);
+        }
+
+        void RuntimeManagerImplementation::cleanupRalfInstance(const string &appInstanceId, bool ralfMode)
+        {
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            if (ralfMode)
+            {
+                ralf::RalfPackageBuilder ralfBuilder;
+                ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
+            }
+#else
+            (void)appInstanceId;
+            (void)ralfMode;
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
 
@@ -606,6 +652,21 @@ namespace WPEFramework
                 notifyParameterCheckFailure(appInstanceId, "ERROR_INVALID_PARAM");
                 return Core::ERROR_INVALID_PARAMETER;
             }
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            if (!runtimeConfigObject.ralfPkgPath.empty() && !mRalfEnabled)
+            {
+                LOGERR("RALF launch disabled by RuntimeManager configuration for appId=%s", appId.c_str());
+                notifyParameterCheckFailure(appInstanceId, "ERROR_RALF_DISABLED");
+                return Core::ERROR_UNAVAILABLE;
+            }
+#else
+            if (!runtimeConfigObject.ralfPkgPath.empty())
+            {
+                LOGERR("RALF launch requested without RALF support for appId=%s", appId.c_str());
+                notifyParameterCheckFailure(appInstanceId, "ERROR_RALF_DISABLED");
+                return Core::ERROR_UNAVAILABLE;
+            }
+#endif
 
             Core::hresult status = Core::ERROR_GENERAL;
             RuntimeAppInfo runtimeAppInfo;
@@ -645,13 +706,26 @@ namespace WPEFramework
 		gid = runtimeConfigObject.groupId;
             }
 
+            const bool ralfInstance = isRalfPackage(runtimeConfigObject);
+            LOGDBG("[ralf-debug] Run selected %s container flow for appId='%s'", ralfInstance ? "RALF" : "legacy",
+                appId.c_str());
+            RuntimeConfiguration launchConfig = runtimeConfigObject;
+            bool classicRalfLaunch = false;
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
-            // In Ralf package, all apps will run with the same ralf user and group
-            if (!ralf::getRalfUserInfo(uid, gid))
+            if (ralfInstance)
             {
-                LOGERR("Failed to get Ralf user info. This can lead to failure in launching the app. uid: %d, gid: %d", uid, gid);
+                classicRalfLaunch = ralf::getClassicRalfLaunchInfo(runtimeConfigObject.ralfPkgPath,
+                    launchConfig.appPath, launchConfig.runtimePath, launchConfig.command,
+                    launchConfig.commandArgs, launchConfig.applicationSecret,
+                    launchConfig.credentialsCertificate, launchConfig.credentialsPrivateKey);
+                if (classicRalfLaunch)
+                {
+                    LOGINFO("Base-free RALF launch: launching %s from %s using classic Dobby spec",
+                            launchConfig.command.c_str(), launchConfig.runtimePath.c_str());
+                }
             }
 #endif
+
             std::ifstream inFile("/tmp/specchange");
             if (inFile.good())
             {
@@ -698,24 +772,14 @@ namespace WPEFramework
 
             if (!appIdForStorage.empty())
             {
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                // RALF uses one userid groupid for all apps.
-                appStorageInfo.userId = uid;
-                appStorageInfo.groupId = gid;
-#else
-                appStorageInfo.userId = 0;
-                appStorageInfo.groupId = 0;
-#endif //RALF_PACKAGE_SUPPORT_ENABLED
+                /* RALF-layered containers run as the app's own uid ; widgets request storage as root. */
+                appStorageInfo.userId = ralfInstance ? uid : 0;
+                appStorageInfo.groupId = ralfInstance ? gid : 0;
                 if (Core::ERROR_NONE == getAppStorageInfo(appIdForStorage, appStorageInfo))
                 {
                     config.mAppStorageInfo.path = std::move(appStorageInfo.path);
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
                     config.mAppStorageInfo.userId = uid;
                     config.mAppStorageInfo.groupId = gid;
-#else
-                    config.mAppStorageInfo.userId = uid;
-                    config.mAppStorageInfo.groupId = gid;
-#endif // RALF_PACKAGE_SUPPORT_ENABLED
                     config.mAppStorageInfo.size = std::move(appStorageInfo.size);
                     config.mAppStorageInfo.used = std::move(appStorageInfo.used);
                 }
@@ -751,22 +815,19 @@ namespace WPEFramework
             }
 
             // To indicate containers used by Widget
-            bool legacyContainer = true;
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-            legacyContainer = false;
-#endif
+            const bool legacyContainer = !ralfInstance || classicRalfLaunch;
 #ifdef ENABLE_RIALTO
             bool rialtoSetupFailed = false;
             // A headless daemon can use Rialto without first creating an app display.
             if (isDaemonApp || (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty()))
             {
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-            const bool requiresRialto = true;
-#else
-            const bool appRequiresRialto = DobbySpecGenerator::hasCapability(parsedCaps, "rialto");
-            const int rialtoOverride = (nullptr != mAIConfiguration) ? mAIConfiguration->getRialtoOverride() : -1;
-            const bool requiresRialto = (rialtoOverride >= 0) ? (rialtoOverride > 0) : appRequiresRialto;
-#endif
+            bool requiresRialto = ralfInstance && !classicRalfLaunch;
+            if (!requiresRialto)
+            {
+                const bool appRequiresRialto = DobbySpecGenerator::hasCapability(parsedCaps, "rialto");
+                const int rialtoOverride = (nullptr != mAIConfiguration) ? mAIConfiguration->getRialtoOverride() : -1;
+                requiresRialto = (rialtoOverride >= 0) ? (rialtoOverride > 0) : appRequiresRialto;
+            }
             if (mRialtoConnector && requiresRialto)
             {
                 LOGINFO("[RIALTO] Entering Rialto session setup for appId='%s' appInstanceId='%s'",
@@ -785,12 +846,12 @@ namespace WPEFramework
                 else
                 {
                 std::string rialtoSocket = "rialto-" + appId;
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                // Adding a prefix to the rialto socket to avoid any conflict with existing sockets as
-                // RALF package will create a socket with the name same as appInstanceId.
-                rialtoSocket = "rlto-" + appInstanceId;
-                LOGINFO("[RIALTO] RALF enabled: rialtoSocket updated to '%s'", rialtoSocket.c_str());
-#endif // RALF_PACKAGE_SUPPORT_ENABLED
+                if (ralfInstance)
+                {
+                    // RALF creates a socket named after appInstanceId; prefix to avoid a clash.
+                    rialtoSocket = "rlto-" + appInstanceId;
+                    LOGINFO("[RIALTO] RALF enabled: rialtoSocket updated to '%s'", rialtoSocket.c_str());
+                }
                 if (mRialtoConnector->createAppSession(appInstanceId, rialtoDisplaySocket, rialtoSocket))
                 {
                     LOGINFO("[RIALTO] createAppSession succeeded, waiting for ACTIVE state (timeout=%d ms)",
@@ -846,7 +907,7 @@ namespace WPEFramework
             }
 #endif // ENABLE_RIALTO
             /* Generate dobbySpec for the selected container mode (legacy or non-legacy) */
-            else if (false == generate(config, runtimeConfigObject, dobbySpec))
+            else if (false == generate(config, launchConfig, dobbySpec, classicRalfLaunch))
             {
                 LOGERR("Failed to generate dobbySpec");
                 status = Core::ERROR_GENERAL;
@@ -876,7 +937,7 @@ namespace WPEFramework
                 else
                 {
                     /* Generated dobbySpec */
-                    LOGINFO("Generated dobbySpec: %s", dobbySpec.c_str());
+                    LOGINFO("Generated Dobby spec for appId=%s", appId.c_str());
 
                     LOGINFO("Environment Variables: XDG_RUNTIME_DIR=%s, WAYLAND_DISPLAY=%s",
                             xdgRuntimeDir.c_str(), waylandDisplay.c_str());
@@ -917,6 +978,7 @@ namespace WPEFramework
                             }
                         }
 #endif
+                        runtimeAppInfo.ralfMode = ralfInstance;
 #ifdef ENABLE_RIALTO
                         // usesRialto is true only when a Rialto session was actually
                         // established (socket path assigned). If createAppSession failed,
@@ -949,12 +1011,7 @@ namespace WPEFramework
                             {
                                 status = Core::ERROR_GENERAL;
                             }
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                            {
-                                ralf::RalfPackageBuilder ralfBuilder;
-                                ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
-                            }
-#endif // RALF_PACKAGE_SUPPORT_ENABLED
+                            cleanupRalfInstance(appInstanceId, ralfInstance);
                             Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
                             mRuntimeAppInfo.erase(appInstanceId);
                         }

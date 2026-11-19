@@ -76,10 +76,16 @@ namespace WPEFramework
                             , runtimeAppPortal()
                             , runtimeConfigFile()
                             , hibernation()
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                            , ralfEnabled(true)
+#endif
                         {
                             Add(_T("runtimeAppPortal"), &runtimeAppPortal);
                             Add(_T("runtimeConfigFile"), &runtimeConfigFile);
                             Add(_T("hibernate"), &hibernation);
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                            Add(_T("ralfEnabled"), &ralfEnabled);
+#endif
                         }
                         ~Configuration() = default;
 
@@ -92,6 +98,9 @@ namespace WPEFramework
                         Core::JSON::String runtimeAppPortal;
                         Core::JSON::String runtimeConfigFile;
                         Hibernation hibernation;
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                        Core::JSON::Boolean ralfEnabled;
+#endif
                 };
 
             public:
@@ -129,6 +138,9 @@ namespace WPEFramework
 #ifdef ENABLE_RIALTO
                     bool usesRialto = false;
 #endif
+                    /* Launched from a RALF/Bolt OCI bundle rather than a legacy Dobby spec.
+                       Needed because terminate/failure handlers only receive appInstanceId. */
+                    bool ralfMode = false;
                 } RuntimeAppInfo;
 
                 class EXTERNAL Job : public Core::IDispatch
@@ -210,7 +222,9 @@ namespace WPEFramework
                 // IConfiguration methods
                 uint32_t Configure(PluginHost::IShell* service) override;
 
-                bool generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::string& dobbySpec);
+                bool generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::string& dobbySpec, bool classicRalfLaunch = false);
+                static bool isRalfPackage(const RuntimeConfiguration& runtimeConfig);
+                static void cleanupRalfInstance(const string& appInstanceId, bool ralfMode);
 
                 // IEventHandler methods
                 virtual void onOCIContainerStartedEvent(std::string name, JsonObject& data) override;
@@ -253,6 +267,7 @@ namespace WPEFramework
                 std::shared_ptr<RialtoConnector> mRialtoConnector;
 #endif
                 std::string mRuntimeConfigFile;
+                bool mRalfEnabled;
                 AIConfiguration* mAIConfiguration;
                 std::string mGstRegistrySourcePath;  ///< path to pre-built GST registry (empty if disabled/failed)
 

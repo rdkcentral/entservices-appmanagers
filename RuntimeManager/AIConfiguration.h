@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <json/json.h>
 #include <vector>
 #include <string>
 #include <list>
@@ -74,6 +75,9 @@ namespace Plugin
             std::list<std::string> getPreloads() const;
             std::list<std::string> getEnvs() const;
             const std::vector<VendorMount>& getVendorMounts() const;
+#ifdef ENTOS_RALF_SUPPORT
+            bool getRalfGpuConfig(Json::Value& config) const;
+#endif
 
             int getRialtoOverride() const;
             bool getHibernationEnabled() const;
@@ -111,6 +115,8 @@ namespace Plugin
             std::list<std::string> mPreloads;
             std::list<std::string> mEnvVariables;
             std::vector<VendorMount> mExtraMounts;
+            Json::Value mRalfGpuConfig;
+            bool mRalfGpuConfigValid;
             std::list<std::string> mSvpFiles;
             std::list<std::string> mDefaultAllowedLogLevels;
             int mRialtoOverride;

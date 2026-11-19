@@ -18,6 +18,7 @@
  **/
 
 #pragma once
+#include <json/json.h>
 #include <string>
 #include <vector>
 #include "RalfConstants.h"
@@ -32,12 +33,11 @@ namespace ralf
     private:
         /** This function generates an OCI root filesystem package based on the given application instance ID and Ralf package path.
          * @param appInstanceId The application instance ID for which the OCI root filesystem package is to be generated.
-         * @param uid The user ID to set as owner of the created directories
-         * @param gid The group ID to set as owner of the created directories
          * @param ociRootfsPath Output parameter that will hold the path to the generated OCI root filesystem package.
          * @return true if the OCI root filesystem package was generated successfully, false otherwise.
          */
-        bool generateOCIRootfsPackage(const std::string &appInstanceId, const int uid, const int gid, std::string &ociRootfsPath);
+        bool generateOCIRootfsPackage(const std::string &appInstanceId, const Json::Value &graphicsConfigNode,
+                          std::string &ociRootfsPath);
 
         /**
          * The vector of Ralf package details as pairs of mount point and metadata path.
@@ -61,7 +61,10 @@ namespace ralf
          * @param dobbySpec Output parameter that will hold the path to the RALF rootfs
          * @return true if the dobby specification was generated successfully, false otherwise.
          */
-        bool generateRalfDobbySpec(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, std::string &dobbySpec);
+        bool generateRalfDobbySpec(const WPEFramework::Plugin::ApplicationConfiguration &config,
+                       const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject,
+                       std::string &dobbySpec,
+                       const Json::Value &graphicsConfigNode = Json::Value(Json::objectValue));
 
         bool unmountOverlayfsIfExists(const std::string &appInstanceId);
         
