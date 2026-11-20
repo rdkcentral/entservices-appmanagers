@@ -45,6 +45,8 @@ extern uint32_t Test_Impl_ConfigureWithValidService();
 extern uint32_t Test_Impl_ConfigureWithNullService();
 extern uint32_t Test_Impl_CreateStorageWithValidInput();
 extern uint32_t Test_Impl_CreateStorageWithEmptyAppId();
+extern uint32_t Test_Impl_CreateStorageRejectsUnsafeAppIds();
+extern uint32_t Test_Impl_CreateStorageRejectsExistingSymlink();
 extern uint32_t Test_Impl_GetStorageWithValidAppId();
 extern uint32_t Test_Impl_GetStorageWithEmptyAppId();
 extern uint32_t Test_Impl_GetStorageWithNonExistentAppId();
@@ -79,6 +81,8 @@ int main()
         {"Test_Impl_ConfigureWithNullService", Test_Impl_ConfigureWithNullService},
         {"Test_Impl_CreateStorageWithValidInput", Test_Impl_CreateStorageWithValidInput},
         {"Test_Impl_CreateStorageWithEmptyAppId", Test_Impl_CreateStorageWithEmptyAppId},
+        {"Test_Impl_CreateStorageRejectsUnsafeAppIds", Test_Impl_CreateStorageRejectsUnsafeAppIds},
+        {"Test_Impl_CreateStorageRejectsExistingSymlink", Test_Impl_CreateStorageRejectsExistingSymlink},
         {"Test_Impl_GetStorageWithValidAppId", Test_Impl_GetStorageWithValidAppId},
         {"Test_Impl_GetStorageWithEmptyAppId", Test_Impl_GetStorageWithEmptyAppId},
         {"Test_Impl_GetStorageWithNonExistentAppId", Test_Impl_GetStorageWithNonExistentAppId},

@@ -132,7 +132,10 @@ AppManagerImplementation::~AppManagerImplementation()
 #endif
     if (mAppManagerWorkerThread.joinable())
     {
-        mAppManagerWorkerThread.join();
+        if (mAppManagerWorkerThread.get_id() == std::this_thread::get_id())
+            mAppManagerWorkerThread.detach();
+        else
+            mAppManagerWorkerThread.join();
         LOGINFO("App Manager Worker Thread joined successfully");
     }
 
@@ -166,6 +169,7 @@ AppManagerImplementation::~AppManagerImplementation()
     // process-wide singleton that outlives this instance).
     AppInfoManager::getInstance().clear();
     SYSLOG(Logging::Shutdown, (_T("AppManagerImplementation: AppInfoManager cleared")));
+    _instance = nullptr;
 }
 
 /**
