@@ -36,6 +36,7 @@ class DownloadManagerHttpClient {
         ~DownloadManagerHttpClient();
 
         Status downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit = 0);
+        static bool isSupportedUrl(const std::string& url);
 
         void pause() {
             std::lock_guard<std::mutex> lock(mHttpClientMutex);

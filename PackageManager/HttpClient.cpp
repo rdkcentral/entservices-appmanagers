@@ -17,6 +17,8 @@
 * limitations under the License.
 **/
 
+#include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <math.h>
 
@@ -41,8 +43,22 @@ HttpClient::~HttpClient() {
     //curl_global_cleanup();
 }
 
+bool HttpClient::isSupportedUrl(const std::string& url)
+{
+    const size_t separator = url.find("://");
+    if (separator == std::string::npos)
+        return false;
+
+    std::string scheme = url.substr(0, separator);
+    std::transform(scheme.begin(), scheme.end(), scheme.begin(), [](unsigned char character) { return std::tolower(character); });
+    return scheme == "http" || scheme == "https";
+}
+
 HttpClient::Status
 HttpClient::downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit) {
+    if (!isSupportedUrl(url))
+        return Status::HttpError;
+
     Status status = Status::Success;
     CURLcode cc = CURLE_OK;
     FILE *fp;
@@ -50,6 +66,11 @@ HttpClient::downloadFile(const std::string & url, const std::string & fileName, 
     httpCode = 0;
 
     if (curl) {
+        /* Security: restrict protocols to HTTPS (and HTTP as fallback) to prevent
+         * SSRF via file://, gopher://, dict:// etc.  Also restrict redirect protocols
+         * and disable following redirects to non-HTTP(S) targets. */
+        (void) curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+        (void) curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
         (void) curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         setRateLimit(rateLimit);
 

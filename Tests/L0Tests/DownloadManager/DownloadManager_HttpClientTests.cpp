@@ -94,17 +94,30 @@ uint32_t Test_HttpClient_DownloadFileInvalidUrlReturnsHttpError()
 
     const std::string invalidUrl  = "not_a_valid_url";
     const std::string tmpFile     = "/tmp/dm_l0_invalid_url.out";
+    (void) std::remove(tmpFile.c_str());
 
     const auto status = client.downloadFile(invalidUrl, tmpFile, 0u);
 
-    // curl will fail with CURLE_UNSUPPORTED_PROTOCOL or similar → HttpError
     L0Test::ExpectTrue(tr,
-        status == DownloadManagerHttpClient::Status::HttpError ||
-        status == DownloadManagerHttpClient::Status::DiskError,
-        "downloadFile() with invalid URL returns HttpError or DiskError");
+        status == DownloadManagerHttpClient::Status::HttpError,
+        "downloadFile() with invalid URL returns HttpError");
+    L0Test::ExpectTrue(tr, access(tmpFile.c_str(), F_OK) != 0,
+        "downloadFile() rejects invalid URL before creating the destination");
 
-    // Clean up any leftover file
-    (void) std::remove(tmpFile.c_str());
+    return tr.failures;
+}
+
+uint32_t Test_HttpClient_UrlSchemePolicy()
+{
+    L0Test::TestResult tr;
+
+    L0Test::ExpectTrue(tr, DownloadManagerHttpClient::isSupportedUrl("http://example.invalid/file"), "HTTP URL is supported");
+    L0Test::ExpectTrue(tr, DownloadManagerHttpClient::isSupportedUrl("HTTPS://example.invalid/file"), "URL scheme comparison is case-insensitive");
+    L0Test::ExpectTrue(tr, !DownloadManagerHttpClient::isSupportedUrl("file:///tmp/input"), "Local file URL is rejected");
+    L0Test::ExpectTrue(tr, !DownloadManagerHttpClient::isSupportedUrl("gopher://example.invalid/input"), "Unsupported network URL is rejected");
+    L0Test::ExpectTrue(tr, !DownloadManagerHttpClient::isSupportedUrl(" http://example.invalid/file"), "Leading whitespace is rejected");
+    L0Test::ExpectTrue(tr, !DownloadManagerHttpClient::isSupportedUrl("https%3a//example.invalid/file"), "Encoded scheme separator is rejected");
+    L0Test::ExpectTrue(tr, !DownloadManagerHttpClient::isSupportedUrl("example.invalid/file"), "URL without scheme is rejected");
 
     return tr.failures;
 }
