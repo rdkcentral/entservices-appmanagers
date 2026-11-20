@@ -2,6 +2,33 @@
 
 ## Scope
 
+### Ralf coverage update (2026-11-17)
+
+The `ralf_coverage` L0 target now enforces **80% line coverage per compiled Ralf
+file**, including executable header lines. A clean run of all 274 RuntimeManager
+L0 cases passed with GCC/gcov 14:
+
+| Implementation | Covered lines | Line coverage |
+| --- | ---: | ---: |
+| `NetworkConfigurationHelper.cpp` | 445 / 521 | 85.41% |
+| `RalfOCIConfigGenerator.cpp` | 405 / 443 | 91.42% |
+| `RalfPackageBuilder.cpp` | 55 / 62 | 88.71% |
+| `RalfSupport.cpp` | 281 / 315 | 89.21% |
+
+Both compiled class headers have 100% line coverage. Constant-only headers
+contain no executable lines.
+
+New cases cover complete OCI bundle generation, layer precedence, generated
+hooks/environment/device mappings, failed-config cleanup, already-unmounted
+cleanup, runtime/service configuration rules, invalid resource limits,
+graphics/output failures, loopback endpoint validation, protocol aliases, and
+idempotent network merges. Build-local fixtures and linker-wrapped
+`mount`/`umount`/`chown` make these paths testable without system changes.
+
+Run instructions: [Local Ralf L0 coverage gate](../../README.md#local-ralf-l0-coverage-gate).
+The analysis below is the historical March baseline, not the current Ralf
+coverage result.
+
 - Coverage report analyzed: `artifacts-L0-appmanagers/coverage-html/RuntimeManager/*` (generated on 2026-03-23)
 - Source analyzed: `RuntimeManager/*`, `RuntimeManager/Gateway/*`, `RuntimeManager/ralf/*`
 - Existing L0 tests reviewed:

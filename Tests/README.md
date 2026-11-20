@@ -48,6 +48,30 @@ NOTE: By default test-trigger.yml will trigger all tests(L1, L2 and etc) paralle
 	./l1build/rdkL1TestResults.json
 ```
 
+##### Local Ralf L0 coverage gate #####
+
+Requires Python 3 and a GCC-compatible `gcov` with JSON output support.
+Use the `gcov` version matching the compiler (`-DGCOV_EXECUTABLE=/path/to/gcov`
+can override detection).
+
+```sh
+cmake -S Tests/L0Tests -B build-l0 -DPREFIX=/path/to/thunder/install \
+    -DAPPMGR_ENABLE_COVERAGE=ON
+cmake --build build-l0 --target ralf_coverage -j2
+```
+
+Set `LD_LIBRARY_PATH` to the Thunder installation's `lib` directory if needed.
+The target clears only RuntimeManager L0 coverage counters, runs its tests, and
+fails if any compiled file in `RuntimeManager/ralf` has less than **80% line
+coverage**. Inline header coverage is merged across translation units; headers
+with no executable lines are not counted. Missing implementation coverage is
+an error.
+
+L0 configuration and overlay fixtures are isolated under the build directory.
+Mount, unmount, and ownership changes are simulated in the L0 executable, so
+root privileges and real overlay mounts are not required. Production paths
+remain unchanged.
+
 # testframework Repo Handling
 tf-trigger.yml file of testframework repo will get loaded into github action whenever there is a pull or push happens. This file in-turn triggers all individual repos L1, L2, L2-oop tests. testframework repo test can run only in github workflow.
 

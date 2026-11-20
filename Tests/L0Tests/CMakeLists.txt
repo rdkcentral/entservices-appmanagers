@@ -91,6 +91,7 @@ set(RUNTIME_MANAGER_L0_SOURCES
     RuntimeManager/ralf/Ralf_PackageBuilderTests.cpp
     RuntimeManager/ralf/NetworkConfigurationHelperTests.cpp
     RuntimeManager/ralf/Ralf_OCIConfigGeneratorTests.cpp
+    RuntimeManager/ralf/Ralf_IntegrationTests.cpp
     RuntimeManager/Gateway/Gateway_ContainerUtilsTests.cpp
     RuntimeManager/Gateway/Gateway_WebInspectorTests.cpp
     RuntimeManager/Gateway/Gateway_NetFilterTests.cpp
@@ -332,7 +333,27 @@ if(PLUGIN_RUNTIME_MANAGER)
         MODULE_NAME=RuntimeManager_L0Test
         PLUGIN_RUNTIME_MANAGER_IMPLEMENTATION_NAME="RuntimeManagerImplementation"
         RALF_PACKAGE_SUPPORT_ENABLED=1
+        RALF_TEST_ROOT="${CMAKE_CURRENT_BINARY_DIR}/ralf-fixtures"
     )
+    target_link_options(runtimemanager_l0test PRIVATE
+        -Wl,--wrap=mount -Wl,--wrap=umount -Wl,--wrap=chown)
+    if(APPMGR_ENABLE_COVERAGE)
+        find_package(Python3 COMPONENTS Interpreter REQUIRED)
+        find_program(GCOV_EXECUTABLE gcov)
+        if(NOT GCOV_EXECUTABLE)
+            message(FATAL_ERROR "gcov is required when APPMGR_ENABLE_COVERAGE=ON")
+        endif()
+        add_custom_target(ralf_coverage
+            COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/check_ralf_coverage.py"
+                --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
+                --source-dir "${CMAKE_CURRENT_SOURCE_DIR}/../../RuntimeManager/ralf"
+                --test-binary $<TARGET_FILE:runtimemanager_l0test>
+                --gcov "${GCOV_EXECUTABLE}"
+            DEPENDS runtimemanager_l0test
+            COMMENT "Running L0 tests and enforcing 80% line coverage per Ralf file"
+            VERBATIM
+        )
+    endif()
     if(RUNTIMEMANAGER_ENABLE_DIALCONFIG)
         target_compile_definitions(runtimemanager_l0test PRIVATE RUNTIMEMANAGER_ENABLE_DIALCONFIG)
     endif()

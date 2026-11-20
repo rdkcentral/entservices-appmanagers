@@ -23,16 +23,21 @@
 
 namespace ralf
 {
-    const std::string RALF_OCI_BASE_SPEC_FILE = "/usr/share/ralf/oci-base-spec.json";
-    const std::string RALF_GRAPHICS_LAYER_PATH = "/usr/share/gpu-layer/";
+#ifdef RALF_TEST_ROOT
+    const std::string RALF_PATH_PREFIX = RALF_TEST_ROOT;
+#else
+    const std::string RALF_PATH_PREFIX;
+#endif
+    const std::string RALF_OCI_BASE_SPEC_FILE = RALF_PATH_PREFIX + "/usr/share/ralf/oci-base-spec.json";
+    const std::string RALF_GRAPHICS_LAYER_PATH = RALF_PATH_PREFIX + "/usr/share/gpu-layer/";
     const std::string RALF_GRAPHICS_LAYER_ROOTFS = RALF_GRAPHICS_LAYER_PATH + "rootfs";
     const std::string RALF_GRAPHICS_LAYER_CONFIG = RALF_GRAPHICS_LAYER_PATH + "config.json";
     const std::string RALF_OVERLAYFS_TYPE = "overlay";
-    const std::string RALF_APP_ROOTFS_DIR = "/tmp/ralf/";
+    const std::string RALF_APP_ROOTFS_DIR = RALF_PATH_PREFIX + "/tmp/ralf/";
     const std::string RALF_USER_NAME = "ralf";
     const std::string RALF_ZONE_INFO_PATH = "/usr/share/zoneinfo";
-    const std::string RALF_HOST_LOCALTIME_PATH = "/opt/persistent/localtime";
-    const std::string RALF_HOST_TIMEZONE_DST_PATH = "/opt/persistent/timeZoneDST";
+    const std::string RALF_HOST_LOCALTIME_PATH = RALF_PATH_PREFIX + "/opt/persistent/localtime";
+    const std::string RALF_HOST_TIMEZONE_DST_PATH = RALF_PATH_PREFIX + "/opt/persistent/timeZoneDST";
     const std::string RALF_TIMEZONE_PATH = "/etc/timezone";
     const std::string RALF_LOCALTIME_PATH = "/etc/localtime";
     const std::string RALF_ETC_RESOLV_CONF = "/etc/resolv.conf";
