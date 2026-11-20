@@ -45,6 +45,7 @@ namespace Plugin {
 
         Core::hresult Record(const string& id, const string& metrics, const string& name) override;
         Core::hresult Publish(const string& id, const string& name) override;
+        Core::hresult PublishEvent(const string& telemetryMetrics, const string& markerName, bool verboseOnly) override;
 
     private:
         std::unordered_map<std::string, Json::Value> mMetricsRecord;

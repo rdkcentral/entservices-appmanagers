@@ -183,6 +183,10 @@ set(VICTIMSELECTOR_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/VictimSele
 set(VICTIMSELECTOR_LIBS ${NAMESPACE}VictimSelector ${NAMESPACE}VictimSelectorImplementation)
 add_plugin_test_ex(PLUGIN_VICTIM_SELECTOR tests/test_VictimSelector.cpp "${VICTIMSELECTOR_INC}" "${VICTIMSELECTOR_LIBS}")
 
+# PLUGIN_TELEMETRYMETRICS
+add_plugin_test_ex(PLUGIN_TELEMETRYMETRICS tests/test_TelemetryMetrics.cpp
+    "../../TelemetryMetrics" "${NAMESPACE}TelemetryMetricsImplementation")
+
 # PLUGIN_RESOURCEMONITOR
 set(RESOURCEMONITOR_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/ResourceMonitor ${CMAKE_SOURCE_DIR}../entservices-appmanagers/helpers)
 set(RESOURCEMONITOR_LIBS ${NAMESPACE}ResourceMonitor ${NAMESPACE}ResourceMonitorImplementation)

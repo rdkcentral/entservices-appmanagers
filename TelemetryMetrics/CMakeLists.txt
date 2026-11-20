@@ -38,6 +38,14 @@ find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(${NAMESPACE}Definitions REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
+if(NOT RDK_SERVICES_L1_TEST AND NOT RDK_SERVICE_L2_TEST)
+    find_path(RFC_INCLUDE_DIRS NAMES rfcapi.h)
+    find_library(RFC_LIBRARIES NAMES rfcapi)
+    if(NOT RFC_INCLUDE_DIRS OR NOT RFC_LIBRARIES)
+        message(FATAL_ERROR "TelemetryMetrics requires rfcapi.h and the rfcapi library")
+    endif()
+endif()
+
 add_library(${MODULE_NAME} SHARED
         TelemetryMetrics.cpp
         Module.cpp
@@ -47,7 +55,7 @@ set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)
 
-set_source_files_properties(TelemetryMetrics.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
+set_source_files_properties(TelemetryMetrics.cpp TelemetryMetricsImplementation.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
 
 target_link_libraries(${MODULE_NAME}
     PRIVATE
@@ -66,6 +74,11 @@ target_include_directories(${PLUGIN_IMPLEMENTATION}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/..
         ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
+
+if(NOT RDK_SERVICES_L1_TEST AND NOT RDK_SERVICE_L2_TEST)
+    target_include_directories(${PLUGIN_IMPLEMENTATION} PRIVATE ${RFC_INCLUDE_DIRS})
+    target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE ${RFC_LIBRARIES})
+endif()
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11

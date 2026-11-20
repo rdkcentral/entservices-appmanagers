@@ -20,11 +20,17 @@
 #include <telemetry_busmessage_sender.h>
 #include "TelemetryMetricsImplementation.h"
 #include "UtilsLogging.h"
+#include "UtilsRFCConfig.h"
 #include "TelemetryFilters.h"
 
 
 namespace WPEFramework {
 namespace Plugin {
+
+    namespace {
+        static constexpr const char* APP_MANAGER_OBSERVABILITY_VERBOSE =
+            "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKAppManager.ObservabilityVerboseEnabled";
+    }
 
     SERVICE_REGISTRATION(TelemetryMetricsImplementation, 1, 0);
 
@@ -42,6 +48,30 @@ namespace Plugin {
         t2_uninit();
 #endif
         LOGINFO("Delete TelemetryMetricsImplementation Instance");
+    }
+
+    Core::hresult TelemetryMetricsImplementation::PublishEvent(const string& telemetryMetrics, const string& markerName, bool verboseOnly)
+    {
+        if (verboseOnly)
+        {
+            bool verboseEnabled = false;
+            if (!Utils::ApplyRFCBool(APP_MANAGER_OBSERVABILITY_VERBOSE, verboseEnabled))
+            {
+                LOGWARN("APP_MANAGER_OBSERVABILITY_VERBOSE is unset, unreadable, or invalid; suppressing verbose-only event marker=%s", markerName.c_str());
+            }
+            if (!verboseEnabled)
+            {
+                return Core::ERROR_NONE;
+            }
+        }
+
+        const T2ERROR result = t2_event_s(const_cast<char*>(markerName.c_str()), const_cast<char*>(telemetryMetrics.c_str()));
+        if (T2ERROR_SUCCESS != result)
+        {
+            LOGERR("PublishEvent failed: T2 error=%d marker=%s", static_cast<int>(result), markerName.c_str());
+            return Core::ERROR_GENERAL;
+        }
+        return Core::ERROR_NONE;
     }
 
     std::string generateRecordId(const std::string& id, const std::string& name)

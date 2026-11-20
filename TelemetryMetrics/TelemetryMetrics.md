@@ -83,6 +83,7 @@ TelemetryMetrics/
 interface ITelemetryMetrics {
     hresult Record(const string& id, const string& metrics, const string& name);
     hresult Publish(const string& id, const string& name);
+    hresult PublishEvent(const string& telemetryMetrics, const string& markerName, bool verboseOnly);
 };
 ```
 
@@ -101,6 +102,7 @@ public:
 
     Core::hresult Record(const string& id, const string& metrics, const string& name) override;
     Core::hresult Publish(const string& id, const string& name) override;
+    Core::hresult PublishEvent(const string& telemetryMetrics, const string& markerName, bool verboseOnly) override;
 
 private:
     std::unordered_map<std::string, Json::Value> mMetricsRecord;
@@ -121,6 +123,28 @@ and `retryDurationMs` (plus the plugin-supplied `markerName`). Deployments
 must activate this plugin for ASAppManager's `Record`/`Publish` calls to succeed.
 
 ## 6. Internal Workflows & Execution Flow
+
+### Direct Event Publishing
+
+`PublishEvent(telemetryMetrics, markerName, verboseOnly)` submits the supplied
+payload directly to T2 without modifying metrics stored by `Record`.
+Only TelemetryMetrics checks `APP_MANAGER_OBSERVABILITY_VERBOSE`, using the RFC path
+`Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKAppManager.ObservabilityVerboseEnabled`.
+It reads the RFC on every verbose-only call, honoring runtime changes.
+
+| `verboseOnly` | RFC | Action |
+|---------------|-----|--------|
+| `false` | Any value or unset | Publish without reading the RFC |
+| `true` | Enabled (`true` or `1`) | Publish |
+| `true` | Disabled, unset, unreadable, or invalid | Suppress |
+
+Unreadable or invalid values log a warning. `Core::ERROR_NONE` means T2 accepted
+the event or it was intentionally suppressed, not confirmation of cloud delivery.
+T2 failure returns `Core::ERROR_GENERAL`. Production builds require `rfcapi`.
+Platform RFC registration/provisioning is external to this implementation.
+
+Build L1 tests with `PLUGIN_TELEMETRYMETRICS=ON` and `RDK_SERVICES_L1_TEST=ON`,
+then run `RdkServicesL1Test --gtest_filter='*TelemetryMetrics*'`.
 
 ### Metric Recording Flow
 

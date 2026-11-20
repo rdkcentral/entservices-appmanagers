@@ -205,6 +205,11 @@ public:
             return WPEFramework::Core::ERROR_NONE;
         }
 
+        WPEFramework::Core::hresult PublishEvent(const string&, const string&, bool) override
+        {
+            return WPEFramework::Core::ERROR_NOT_SUPPORTED;
+        }
+
         mutable std::atomic<uint32_t> _refCount;
         std::atomic<uint32_t> recordCalls;
         std::atomic<uint32_t> publishCalls;
