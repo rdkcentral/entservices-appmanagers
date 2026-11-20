@@ -26,6 +26,7 @@
 #include <interfaces/IConfiguration.h>
 #include "UtilsLogging.h"
 #include <mutex>
+#include <istream>
 #include <string>
 
 namespace WPEFramework {
@@ -74,7 +75,10 @@ public:
     Core::hresult Configure(PluginHost::IShell* service) override;
 
 private:
-    Core::hresult selectVictim(std::string& appId, bool& isHibernated);
+    Core::hresult selectVictim(std::string& appId, bool& isHibernated, std::string& telemetryPayload);
+    static bool readSystemRamUsage(std::istream& memInfo, uint64_t& usage);
+    static bool buildVictimSelectionTelemetry(const std::string& appId, const std::string& runtimeInfo,
+        uint32_t runningAppsCount, uint32_t suspendedAppsCount, std::istream& memInfo, std::string& payload);
     uint32_t getAppPriority(const std::string& appId) const;
     void onAppLifecycleStateChanged(const string& appId,
                                     const string& appInstanceId,
@@ -91,6 +95,7 @@ private:
     bool mAppManagerRegistered;
     Exchange::IVictimSelector::INotification* mNotification;
     std::string mPendingAppId;
+    std::string mPendingTelemetry;
     EvictionType mPendingEvictionType;
     bool mEvictionInProgress;
     std::mutex mLock;

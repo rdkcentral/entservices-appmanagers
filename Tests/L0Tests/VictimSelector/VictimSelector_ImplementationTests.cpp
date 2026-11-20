@@ -309,3 +309,82 @@ uint32_t Test_VS_HardEvictionEscalatesPendingSoftEviction()
     selector->Release();
     return result.failures;
 }
+
+uint32_t Test_VS_VictimSelectionPayloadUsesByteMeasurements()
+{
+    L0Test::TestResult result;
+    std::istringstream memInfo("MemTotal: 16777216 kB\nMemAvailable: 4194304 kB\n");
+    std::string payload;
+    L0Test::ExpectTrue(result, WPEFramework::Plugin::VictimSelectorImplementation::buildVictimSelectionTelemetry(
+        "victim", R"({"gpu":{"memory":{"usage":8589934592}}})", 3, 2, memInfo, payload), "Snapshot serializes");
+    WPEFramework::Core::JSON::VariantContainer telemetry;
+    L0Test::ExpectTrue(result, telemetry.FromString(payload), "Snapshot is valid JSON");
+    L0Test::ExpectEqStr(result, telemetry["appId"].String(), "victim", "Snapshot identifies the victim");
+    L0Test::ExpectEqStr(result, telemetry["reclaimReason"].String(), "RAM", "Snapshot identifies the resource");
+    L0Test::ExpectTrue(result, 12884901888LL == telemetry["systemRamUsage"].Number(), "System RAM is converted to bytes without truncation");
+    L0Test::ExpectTrue(result, 8589934592LL == telemetry["gpuMemoryUsage"].Number(), "GPU bytes are preserved");
+    L0Test::ExpectTrue(result, 3 == telemetry["runningAppsCount"].Number(), "Running count is preserved");
+    L0Test::ExpectTrue(result, 2 == telemetry["suspendedAppsCount"].Number(), "Suspended count is preserved");
+    for (const char* field : { "systemRamUsage", "gpuMemoryUsage", "runningAppsCount", "suspendedAppsCount" }) {
+        L0Test::ExpectTrue(result, JsonValue::type::NUMBER == telemetry[field].Content(), "Measurements are JSON numbers");
+    }
+    std::istringstream zeroMemInfo("MemTotal: 100 kB\nMemAvailable: 100 kB\n");
+    L0Test::ExpectTrue(result, WPEFramework::Plugin::VictimSelectorImplementation::buildVictimSelectionTelemetry(
+        "victim", R"({"gpu":{"memory":{"usage":0}}})", 0, 0, zeroMemInfo, payload), "Measured zero is valid");
+    return result.failures;
+}
+
+uint32_t Test_VS_VictimSelectionRejectsUnavailableMeasurements()
+{
+    L0Test::TestResult result;
+    const struct { const char* memInfo; const char* runtimeInfo; } cases[] = {
+        { "", R"({"gpu":{"memory":{"usage":1}}})" },
+        { "MemTotal: 100 kB\n", R"({"gpu":{"memory":{"usage":1}}})" },
+        { "MemTotal: 100 kB\nMemAvailable: 101 kB\n", R"({"gpu":{"memory":{"usage":1}}})" },
+        { "MemTotal: -1 kB\nMemAvailable: -1 kB\n", R"({"gpu":{"memory":{"usage":1}}})" },
+        { "MemTotal: 100 MB\nMemAvailable: 1 MB\n", R"({"gpu":{"memory":{"usage":1}}})" },
+        { "MemTotal: 18446744073709551615 kB\nMemAvailable: 0 kB\n", R"({"gpu":{"memory":{"usage":1}}})" },
+        { "MemTotal: 100 kB\nMemAvailable: 1 kB\n", "{}" },
+        { "MemTotal: 100 kB\nMemAvailable: 1 kB\n", "invalid" },
+        { "MemTotal: 100 kB\nMemAvailable: 1 kB\n", R"({"gpu":{"memory":{"usage":null}}})" },
+        { "MemTotal: 100 kB\nMemAvailable: 1 kB\n", R"({"gpu":{"memory":{"usage":"123"}}})" },
+        { "MemTotal: 100 kB\nMemAvailable: 1 kB\n", R"({"gpu":{"memory":{"usage":-1}}})" },
+        { "MemTotal: 100 kB\nMemAvailable: 1 kB\n", R"({"gpu":{"memory":{"usage":1.5}}})" },
+        { "MemTotal: 100 kB\nMemAvailable: 1 kB\n", R"({"gpu":{"memory":{"usage":9223372036854775808}}})" },
+    };
+    for (const auto& test : cases) {
+        std::istringstream memInfo(test.memInfo);
+        std::string payload = "stale";
+        L0Test::ExpectTrue(result, !WPEFramework::Plugin::VictimSelectorImplementation::buildVictimSelectionTelemetry(
+            "victim", test.runtimeInfo, 1, 1, memInfo, payload), "Invalid measurements do not generate telemetry");
+        L0Test::ExpectTrue(result, payload.empty(), "Stale payload is cleared");
+    }
+    return result.failures;
+}
+
+uint32_t Test_VS_VictimSelectionCountsStatesBeforePriorityFiltering()
+{
+    L0Test::TestResult result;
+    std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo> apps;
+    apps.push_back(LoadedApp("running", WPEFramework::Exchange::IAppManager::APP_STATE_RUNNING));
+    apps.push_back(LoadedApp("active", WPEFramework::Exchange::IAppManager::APP_STATE_ACTIVE));
+    apps.push_back(LoadedApp("victim", WPEFramework::Exchange::IAppManager::APP_STATE_PAUSED));
+    apps.push_back(LoadedApp("suspended", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED));
+    apps.push_back(LoadedApp("protected", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED));
+    FakeAppManager* appManager = new FakeAppManager(apps);
+    appManager->priorities["protected"] = "0";
+    WPEFramework::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
+    static_cast<FakeRuntimeManager*>(selector->mRuntimeManager)->runtimeInfo["victim.instance"] =
+        R"({"memory":{"user":{"usage":100}},"gpu":{"memory":{"usage":200}}})";
+    L0Test::ExpectEqU32(result, selector->Evict(
+        WPEFramework::Exchange::IVictimSelector::EVICTION_REASON_RAM,
+        WPEFramework::Exchange::IVictimSelector::EVICTION_TYPE_SOFT),
+        WPEFramework::Core::ERROR_NONE, "Eviction behavior is preserved");
+    WPEFramework::Core::JSON::VariantContainer telemetry;
+    L0Test::ExpectTrue(result, telemetry.FromString(selector->mPendingTelemetry), "Snapshot captured before termination");
+    L0Test::ExpectTrue(result, 1 == telemetry["runningAppsCount"].Number(), "Only RUNNING counted");
+    L0Test::ExpectTrue(result, 2 == telemetry["suspendedAppsCount"].Number(), "Protected suspended apps counted");
+    L0Test::ExpectTrue(result, 200 == telemetry["gpuMemoryUsage"].Number(), "Selected victim's GPU usage");
+    selector->Release();
+    return result.failures;
+}

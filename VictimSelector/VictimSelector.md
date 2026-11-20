@@ -191,6 +191,35 @@ If a `KillApp` escalation fails synchronously, the original `SOFT` eviction rema
 
 Completion notifications are copied with an additional reference and invoked outside the internal mutex. This prevents a client callback from causing lock re-entry or notification registration changes from deadlocking the plugin.
 
+## VictimSelection Telemetry
+
+`ENTS_INFO_RDKAMVictimSelection` reports successful resource-pressure eviction
+for troubleshooting. Capture a snapshot before termination and publish once when
+the victim reaches `APP_STATE_UNLOADED` without a lifecycle error. Failed
+requests, unrelated notifications, duplicates, and soft-to-hard escalation do
+not produce extra events.
+
+The event uses `TelemetryMetrics.PublishEvent(payload, marker, true)`.
+Only TelemetryMetrics checks `APP_MANAGER_OBSERVABILITY_VERBOSE`; the interface
+is acquired on demand and released after publishing.
+
+| Field | Type | Source |
+|-------|------|--------|
+| `appId` | string | Selected app |
+| `reclaimReason` | string | `RAM`; GPU/FLASH eviction remains unsupported |
+| `systemRamUsage` | integer | `/proc/meminfo`: `(MemTotal - MemAvailable) * 1024` bytes |
+| `gpuMemoryUsage` | integer | Selected app's `RuntimeManager.GetInfo`: `gpu.memory.usage` bytes |
+| `runningAppsCount` | integer | `APP_STATE_RUNNING` only |
+| `suspendedAppsCount` | integer | All `APP_STATE_SUSPENDED` apps, including protected apps |
+
+Counts precede termination and priority filtering. Missing/invalid measurements
+skip telemetry with a warning rather than invent values. Publishing failures
+do not change eviction results.
+
+L0 tests cover units, 64-bit measurements, invalid inputs, and state counts.
+L1 tests cover successful/failed completion, duplicates, verbose publishing,
+and telemetry failures.
+
 ## Source Changes
 
 ### API repository

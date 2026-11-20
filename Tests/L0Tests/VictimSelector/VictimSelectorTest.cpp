@@ -11,6 +11,9 @@ extern uint32_t Test_VS_SelectsHighestPriorityCandidate();
 extern uint32_t Test_VS_SelectsLargestMemoryCandidateAtSamePriority();
 extern uint32_t Test_VS_NoCandidateNotifiesCaller();
 extern uint32_t Test_VS_HardEvictionEscalatesPendingSoftEviction();
+extern uint32_t Test_VS_VictimSelectionPayloadUsesByteMeasurements();
+extern uint32_t Test_VS_VictimSelectionRejectsUnavailableMeasurements();
+extern uint32_t Test_VS_VictimSelectionCountsStatesBeforePriorityFiltering();
 
 int main()
 {
@@ -27,6 +30,9 @@ int main()
         { "SelectsLargestMemoryCandidateAtSamePriority", Test_VS_SelectsLargestMemoryCandidateAtSamePriority },
         { "NoCandidateNotifiesCaller", Test_VS_NoCandidateNotifiesCaller },
         { "HardEvictionEscalatesPendingSoftEviction", Test_VS_HardEvictionEscalatesPendingSoftEviction },
+        { "VictimSelectionPayloadUsesByteMeasurements", Test_VS_VictimSelectionPayloadUsesByteMeasurements },
+        { "VictimSelectionRejectsUnavailableMeasurements", Test_VS_VictimSelectionRejectsUnavailableMeasurements },
+        { "VictimSelectionCountsStatesBeforePriorityFiltering", Test_VS_VictimSelectionCountsStatesBeforePriorityFiltering },
     };
 
     uint32_t failures = 0;

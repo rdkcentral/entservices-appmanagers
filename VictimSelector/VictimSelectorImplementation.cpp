@@ -18,11 +18,16 @@
  */
 
 #include "VictimSelectorImplementation.h"
+#include "Telemetry/TelemetryMarkers.h"
+#include <interfaces/ITelemetryMetrics.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <cstdint>
 #include <cstdlib>
+#include <fstream>
 #include <limits>
+#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -131,11 +136,15 @@ Core::hresult VictimSelectorImplementation::Configure(PluginHost::IShell* servic
 
 void VictimSelectorImplementation::releaseAppManager() {
     std::lock_guard<std::mutex> evictGuard(mEvictLock);
+    PluginHost::IShell* service = nullptr;
     {
         std::lock_guard<std::mutex> guard(mLock);
         mPendingAppId.clear();
+        mPendingTelemetry.clear();
         mPendingEvictionType = EVICTION_TYPE_SOFT;
         mEvictionInProgress = false;
+        service = mService;
+        mService = nullptr;
     }
     if (nullptr != mAppManager) {
         if (mAppManagerRegistered) {
@@ -149,9 +158,8 @@ void VictimSelectorImplementation::releaseAppManager() {
         mRuntimeManager->Release();
         mRuntimeManager = nullptr;
     }
-    if (nullptr != mService) {
-        mService->Release();
-        mService = nullptr;
+    if (nullptr != service) {
+        service->Release();
     }
 }
 
@@ -175,8 +183,87 @@ uint32_t VictimSelectorImplementation::getAppPriority(const std::string& appId) 
     return static_cast<uint32_t>(parsed);
 }
 
-Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, bool& isHibernated) {
+bool VictimSelectorImplementation::readSystemRamUsage(std::istream& memInfo, uint64_t& usage) {
+    uint64_t total = 0;
+    uint64_t available = 0;
+    bool hasTotal = false;
+    bool hasAvailable = false;
+    std::string line;
+    while (std::getline(memInfo, line)) {
+        std::istringstream entry(line);
+        std::string key;
+        entry >> key;
+        if (("MemTotal:" != key) && ("MemAvailable:" != key)) {
+            continue;
+        }
+        uint64_t value = 0;
+        std::string unit;
+        entry >> std::ws;
+        if ('-' == entry.peek()) {
+            return false;
+        }
+        if (!(entry >> value >> unit) || ("kB" != unit)) {
+            return false;
+        }
+        if ("MemTotal:" == key) {
+            total = value;
+            hasTotal = true;
+        } else {
+            available = value;
+            hasAvailable = true;
+        }
+    }
+    if (memInfo.bad() || !hasTotal || !hasAvailable || (0 == total) ||
+        (available > total) || ((total - available) > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) / 1024)) {
+        return false;
+    }
+    usage = (total - available) * 1024;
+    return true;
+}
+
+bool VictimSelectorImplementation::buildVictimSelectionTelemetry(const std::string& appId,
+    const std::string& runtimeInfo, uint32_t runningAppsCount, uint32_t suspendedAppsCount,
+    std::istream& memInfo, std::string& payload) {
+    payload.clear();
+    uint64_t systemRamUsage = 0;
+    JsonObject stats;
+    if (!readSystemRamUsage(memInfo, systemRamUsage) || !stats.FromString(runtimeInfo) ||
+        !stats.HasLabel("gpu") || (JsonValue::type::OBJECT != stats["gpu"].Content())) {
+        return false;
+    }
+    const JsonObject gpu = stats["gpu"].Object();
+    if (!gpu.HasLabel("memory") || (JsonValue::type::OBJECT != gpu["memory"].Content())) {
+        return false;
+    }
+    const JsonObject memory = gpu["memory"].Object();
+    if (!memory.HasLabel("usage") || (JsonValue::type::NUMBER != memory["usage"].Content())) {
+        return false;
+    }
+    const std::string encodedUsage = memory["usage"].Value();
+    char* end = nullptr;
+    errno = 0;
+    const long long gpuMemoryUsage = std::strtoll(encodedUsage.c_str(), &end, 10);
+    if ((ERANGE == errno) || (encodedUsage.c_str() == end) || ('\0' != *end) || (0 > gpuMemoryUsage)) {
+        return false;
+    }
+    JsonObject telemetry;
+    telemetry["appId"] = appId;
+    telemetry["reclaimReason"] = "RAM";
+    telemetry["systemRamUsage"] = static_cast<int64_t>(systemRamUsage);
+    telemetry["gpuMemoryUsage"] = static_cast<int64_t>(gpuMemoryUsage);
+    telemetry["runningAppsCount"] = static_cast<int64_t>(runningAppsCount);
+    telemetry["suspendedAppsCount"] = static_cast<int64_t>(suspendedAppsCount);
+    if (!telemetry.ToString(payload)) {
+        payload.clear();
+        return false;
+    }
+    return true;
+}
+
+Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, bool& isHibernated,
+    std::string& telemetryPayload) {
     isHibernated = false;
+    telemetryPayload.clear();
     if ((nullptr == mAppManager) || (nullptr == mRuntimeManager)) {
         return Core::ERROR_UNAVAILABLE;
     }
@@ -198,6 +285,7 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
         uint64_t memoryUsage;
         uint32_t priority;
         uint32_t recency;
+        std::string runtimeInfo;
     };
     std::vector<Candidate> paused;
     std::vector<Candidate> suspended;
@@ -205,7 +293,14 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
     Exchange::IAppManager::LoadedAppInfo info;
     /* GetLoadedApps returns most recently active first, so a higher position means staler. */
     uint32_t recency = 0;
+    uint32_t runningAppsCount = 0;
+    uint32_t suspendedAppsCount = 0;
     while (apps->Next(info)) {
+        if (Exchange::IAppManager::APP_STATE_RUNNING == info.lifecycleState) {
+            ++runningAppsCount;
+        } else if (Exchange::IAppManager::APP_STATE_SUSPENDED == info.lifecycleState) {
+            ++suspendedAppsCount;
+        }
         const uint32_t position = recency++;
         const uint32_t priority = getAppPriority(info.appId);
         if (0 == priority) {
@@ -220,7 +315,7 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
             bucket = &hibernated;
         }
         if (nullptr != bucket) {
-            bucket->emplace_back(Candidate{std::move(info), 0, priority, position});
+            bucket->emplace_back(Candidate{std::move(info), 0, priority, position, ""});
         }
     }
     apps->Release();
@@ -239,10 +334,9 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
     }
 
     for (std::vector<Candidate>::iterator it = candidates->begin(); it != candidates->end(); ++it) {
-        std::string stats;
-        if (Core::ERROR_NONE == mRuntimeManager->GetInfo(it->app.appInstanceId, stats)) {
+        if (Core::ERROR_NONE == mRuntimeManager->GetInfo(it->app.appInstanceId, it->runtimeInfo)) {
             JsonObject statsObject;
-            if (statsObject.FromString(stats) && statsObject.HasLabel("memory")) {
+            if (statsObject.FromString(it->runtimeInfo) && statsObject.HasLabel("memory")) {
                 const JsonObject memoryObject = statsObject["memory"].Object();
                 if (memoryObject.HasLabel("user")) {
                     const JsonObject userMemoryObject = memoryObject["user"].Object();
@@ -251,6 +345,8 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
                     }
                 }
             }
+        } else {
+            it->runtimeInfo.clear();
         }
     }
 
@@ -269,6 +365,11 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
         });
     appId = victim.app.appId;
     isHibernated = (Exchange::IAppManager::APP_STATE_HIBERNATED == victim.app.lifecycleState);
+    std::ifstream memInfo("/proc/meminfo");
+    if (!buildVictimSelectionTelemetry(appId, victim.runtimeInfo, runningAppsCount,
+        suspendedAppsCount, memInfo, telemetryPayload)) {
+        LOGWARN("VictimSelection telemetry skipped: system RAM or runtime GPU usage is unavailable or invalid for appId=%s", appId.c_str());
+    }
     return Core::ERROR_NONE;
 }
 
@@ -315,7 +416,8 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
 
     std::string appId;
     bool isHibernated = false;
-    const Core::hresult selectionStatus = selectVictim(appId, isHibernated);
+    std::string telemetryPayload;
+    const Core::hresult selectionStatus = selectVictim(appId, isHibernated, telemetryPayload);
     if (Core::ERROR_NONE != selectionStatus) {
         {
             std::lock_guard<std::mutex> guard(mLock);
@@ -338,6 +440,7 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
     {
         std::lock_guard<std::mutex> guard(mLock);
         mPendingAppId = appId;
+        mPendingTelemetry = std::move(telemetryPayload);
         mPendingEvictionType = ((EVICTION_TYPE_HARD == type) || isHibernated)
             ? EVICTION_TYPE_HARD
             : EVICTION_TYPE_SOFT;
@@ -352,6 +455,7 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
             std::lock_guard<std::mutex> guard(mLock);
             if (mEvictionInProgress && (mPendingAppId == appId)) {
                 mPendingAppId.clear();
+                mPendingTelemetry.clear();
                 mPendingEvictionType = EVICTION_TYPE_SOFT;
                 mEvictionInProgress = false;
                 completeEviction = true;
@@ -369,19 +473,41 @@ void VictimSelectorImplementation::onAppLifecycleStateChanged(
     const string& appId, const string&, Exchange::IAppManager::AppLifecycleState newState,
     Exchange::IAppManager::AppLifecycleState, Exchange::IAppManager::AppErrorReason errorReason) {
     bool completeEviction = false;
+    std::string telemetryPayload;
+    PluginHost::IShell* service = nullptr;
+    const bool evicted = (Exchange::IAppManager::APP_ERROR_NONE == errorReason) &&
+        (Exchange::IAppManager::APP_STATE_UNLOADED == newState);
     {
         std::lock_guard<std::mutex> guard(mLock);
         completeEviction = (mPendingAppId == appId) &&
             ((Exchange::IAppManager::APP_STATE_UNLOADED == newState) || (Exchange::IAppManager::APP_ERROR_NONE != errorReason));
         if (completeEviction) {
+            if (evicted && !mPendingTelemetry.empty() && (nullptr != mService)) {
+                telemetryPayload = std::move(mPendingTelemetry);
+                service = mService;
+                service->AddRef();
+            }
             mPendingAppId.clear();
+            mPendingTelemetry.clear();
             mPendingEvictionType = EVICTION_TYPE_SOFT;
             mEvictionInProgress = false;
         }
     }
     if (completeEviction) {
-        const bool evicted = (Exchange::IAppManager::APP_ERROR_NONE == errorReason) &&
-            (Exchange::IAppManager::APP_STATE_UNLOADED == newState);
+        if (nullptr != service) {
+            Exchange::ITelemetryMetrics* telemetry =
+                service->QueryInterfaceByCallsign<Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics");
+            service->Release();
+            if (nullptr == telemetry) {
+                LOGWARN("VictimSelection telemetry skipped: TelemetryMetrics is unavailable");
+            } else {
+                const Core::hresult status = telemetry->PublishEvent(telemetryPayload, TELEMETRY_MARKER_VICTIM_SELECTION, true);
+                telemetry->Release();
+                if (Core::ERROR_NONE != status) {
+                    LOGWARN("VictimSelection telemetry publishing failed for appId=%s (status=%d)", appId.c_str(), status);
+                }
+            }
+        }
         complete(evicted, evicted ? EVICT_ERROR_NONE : EVICT_ERROR_TERMINATION_FAILED);
     }
 }
