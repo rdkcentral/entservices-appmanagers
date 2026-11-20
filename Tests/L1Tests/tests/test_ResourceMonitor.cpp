@@ -413,16 +413,15 @@ TEST(ResourceMonitorImplementationTest, UnregisterNullNotification)
 TEST(ResourceMonitorImplementationTest, ValidPsiMetrics)
 {
     TestableResourceMonitorImplementation impl;
-    char psiFile[] = "/tmp/resource_monitor_psi_XXXXXX";
-    const int fd = mkstemp(psiFile);
-    ASSERT_NE(-1, fd);
-    close(fd);
+    const std::string psiFile = "/tmp/resource_monitor_psi_000000.txt";
     {
         std::ofstream file(psiFile);
         ASSERT_TRUE(file.is_open());
         file << "some avg10=1.25 avg60=2.50 avg300=3.75 total=123456\n";
         file << "full avg10=0.50 avg60=1.50 avg300=2.50 total=654321\n";
+        file.close();
     }
+
     const string config =
         string("{\"root\":{") +
         "\"psi_checking_enabled\":true,"
@@ -444,7 +443,7 @@ TEST(ResourceMonitorImplementationTest, ValidPsiMetrics)
     EXPECT_DOUBLE_EQ(1.25, value);
     EXPECT_EQ(123456ULL, total);
     EXPECT_EQ(Core::ERROR_BAD_REQUEST, impl.CallGetPsiMetrics("invalid_metric", value, total));
-    std::remove(psiFile);
+    EXPECT_EQ(0, std::remove(psiFile.c_str()));
 }
 
 TEST(ResourceMonitorImplementationTest, PsiMetricsFileNotFound)

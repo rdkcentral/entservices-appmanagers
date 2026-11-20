@@ -412,18 +412,19 @@ namespace WPEFramework {
         LOGINFO("Entering GetFlashSpace()");
     
         // Ensure directory exists
-        struct stat statBuffer {};
-        if (stat(mountPoint.c_str(), &statBuffer) != 0) {
-            if (errno == ENOENT) {
-                if (mkdir(mountPoint.c_str(), 0744) != 0 && errno != EEXIST) {
-                    LOGERR("Failed to create hibernated apps path=%s", mountPoint.c_str());
+        if (0 != mkdir(mountPoint.c_str(), 0744)) {
+            if (EEXIST == errno) {
+                struct stat mountPointstat {};
+                if ((0 != stat(mountPoint.c_str(), &mountPointstat)) || !S_ISDIR(mountPointstat.st_mode)) {
+                    LOGERR("Path exists but is not a directory: %s", mountPoint.c_str());
                     return Core::ERROR_GENERAL;
                 }
-                LOGINFO("Created hibernated apps path=%s", mountPoint.c_str());
             } else {
-                LOGERR("Failed to access hibernated apps path=%s", mountPoint.c_str());
+                LOGERR("Failed to create hibernated apps path=%s", mountPoint.c_str());
                 return Core::ERROR_GENERAL;
             }
+        } else {
+            LOGINFO("Created hibernated apps path=%s", mountPoint.c_str());
         }
     
         // Query filesystem space
@@ -651,12 +652,13 @@ namespace WPEFramework {
                 if (_config.ZramCheckingEnabled()) {
                     GetSwapUsed(swapUsed, memUsedTotal);
                     swapTotalBytes = swapTotal * 1024ULL;
+                    double percent = 0.0;
                     if (swapTotalBytes > 0) {
-                        double percent = (static_cast<double>(swapUsed) * 100.0) / static_cast<double>(swapTotalBytes);
+                        percent = (static_cast<double>(swapUsed) * 100.0) / static_cast<double>(swapTotalBytes);
                         swapPercentage = static_cast<uint32_t>(percent + 0.5); // round to nearest
                     }
 
-                    LOGINFO("SWAP percentage: %.2f", (static_cast<double>(swapUsed) * 100.0) / static_cast<double>(swapTotalBytes));
+                    LOGINFO("SWAP percentage: %.2f", percent);
                     if (swapPercentage >= _config.HardThresholdMaxSwapPercentage()) {
                         LOGWARN("Hard SWAP threshold exceeded");
                         hardEvictionRequired = true;

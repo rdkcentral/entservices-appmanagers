@@ -118,7 +118,7 @@ namespace WPEFramework {
             ASSERT(mService == service);
             SYSLOG(Logging::Shutdown, (string(_T("ResourceMonitor::Deinitialize"))));
 			if (nullptr != mService) {
-                 mService->Unregister(&mResourceMonitorNotification);
+                mService->Unregister(&mResourceMonitorNotification);
             }
             if (nullptr != mResourceMonitor) {
                 mResourceMonitor->Unregister(&mResourceMonitorNotification);
@@ -147,8 +147,10 @@ namespace WPEFramework {
                 }
             }
             _connectionId = 0;
-            mService->Release();
-            mService = nullptr;
+            if (nullptr != mService) {
+                mService->Release();
+                mService = nullptr;
+            }
             SYSLOG(Logging::Shutdown, (string(_T("ResourceMonitor de-initialised"))));
         }
 
