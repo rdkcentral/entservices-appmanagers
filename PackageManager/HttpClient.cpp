@@ -17,8 +17,11 @@
 * limitations under the License.
 **/
 
+#include <fcntl.h>
 #include <iostream>
 #include <math.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "Module.h"
 
@@ -42,7 +45,7 @@ HttpClient::~HttpClient() {
 }
 
 HttpClient::Status
-HttpClient::downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit) {
+HttpClient::downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit, int directoryFd) {
     Status status = Status::Success;
     CURLcode cc = CURLE_OK;
     FILE *fp;
@@ -53,7 +56,25 @@ HttpClient::downloadFile(const std::string & url, const std::string & fileName, 
         (void) curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         setRateLimit(rateLimit);
 
-        fp = fopen(fileName.c_str(), "wb");
+        fp = nullptr;
+        if (directoryFd >= 0) {
+            const size_t separator = fileName.find_last_of('/');
+            const std::string filename = separator == std::string::npos ? fileName : fileName.substr(separator + 1);
+            const int output = openat(directoryFd, filename.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0600);
+            struct stat outputStat;
+            if (output >= 0
+                && fstat(output, &outputStat) == 0
+                && S_ISREG(outputStat.st_mode)
+                && outputStat.st_uid == geteuid()
+                && ftruncate(output, 0) == 0) {
+                fp = fdopen(output, "wb");
+            }
+            if (output >= 0 && fp == nullptr) {
+                close(output);
+            }
+        } else {
+            fp = fopen(fileName.c_str(), "wb");
+        }
         if (fp != NULL) {
             (void) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
             (void) curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);

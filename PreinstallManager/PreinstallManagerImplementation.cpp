@@ -53,7 +53,10 @@ namespace WPEFramework
 
         if (mInstallThread.joinable())
         {
-            mInstallThread.join();
+            if (mInstallThread.get_id() == std::this_thread::get_id())
+                mInstallThread.detach();
+            else
+                mInstallThread.join();
         }
 
         _instance = nullptr;
@@ -174,9 +177,15 @@ namespace WPEFramework
      */
     void PreinstallManagerImplementation::sendOnPreinstallationCompleteEvent()
     {
-        LOGINFO("Dispatching OnPreinstallationComplete event");
-        JsonObject eventDetails; // OnPreinstallationComplete doesn't need any params
-        dispatchEvent(PREINSTALL_MANAGER_ONPREINSTALLATIONCOMPLETE, eventDetails);
+        mAdminLock.Lock();
+        const bool hasNotifications = !mPreinstallManagerNotifications.empty();
+        mAdminLock.Unlock();
+        if (hasNotifications)
+        {
+            LOGINFO("Dispatching OnPreinstallationComplete event");
+            JsonObject eventDetails; // OnPreinstallationComplete doesn't need any params
+            dispatchEvent(PREINSTALL_MANAGER_ONPREINSTALLATIONCOMPLETE, eventDetails);
+        }
     }
 
     Core::hresult PreinstallManagerImplementation::createPackageManagerObject(Exchange::IPackageInstaller*& packageInstaller)
@@ -220,7 +229,7 @@ namespace WPEFramework
         std::string base2 = (pos2 == std::string::npos) ? v2 : v2.substr(0, pos2);
 
         auto parseVersion = [](const std::string& version, int& major, int& minor, int& patch, int& build) -> bool {
-            if (version.empty() || ('.' == version.back()))
+            if (version.empty() || version.front() == '.' || version.back() == '.')
             {
                 return false;
             }
@@ -359,10 +368,10 @@ namespace WPEFramework
         if (Core::ERROR_NONE != createPackageManagerObject(packageInstaller))
         {
             LOGERR("Failed to create PackageManagerObject for install");
+            sendOnPreinstallationCompleteEvent();
             mAdminLock.Lock();
             mPreinstallState = State::COMPLETED;
             mAdminLock.Unlock();
-            sendOnPreinstallationCompleteEvent();
             return;
         }
 
