@@ -791,12 +791,14 @@ void AppManagerImplementation::handleOnAppLifecycleStateChanged(const string& ap
  */
 void AppManagerImplementation::handleOnAppLaunchRejected(const string& appId, const Exchange::IAppManager::AppErrorReason errorReason)
 {
-    AppInfoManager& appInfoManager = AppInfoManager::getInstance();
-    const Exchange::IAppManager::AppLifecycleState currentState = appInfoManager.getAppNewState(appId);
+    AppInfo appInfo;
+    // A missing record retains AppInfo's unloaded state and empty instance ID.
+    AppInfoManager::getInstance().get(appId, appInfo);
+    const Exchange::IAppManager::AppLifecycleState currentState = appInfo.getAppNewState();
     JsonObject eventDetails;
 
     eventDetails["appId"] = appId;
-    eventDetails["appInstanceId"] = appInfoManager.getAppInstanceId(appId);
+    eventDetails["appInstanceId"] = appInfo.getAppInstanceId();
     eventDetails["newState"] = static_cast<int>(currentState);
     eventDetails["oldState"] = static_cast<int>(currentState);
     eventDetails["errorReason"] = static_cast<int>(errorReason);
