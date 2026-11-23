@@ -159,6 +159,7 @@ namespace Plugin {
         std::unique_ptr<DownloadManagerHttpClient> mHttpClient;
 
         mutable std::mutex mLifecycleMutex;
+        bool mDeinitializing { false };
         mutable std::mutex mQueueMutex;
         std::condition_variable mDownloadThreadCV;
         std::unique_ptr<std::thread> mDownloadThreadPtr;

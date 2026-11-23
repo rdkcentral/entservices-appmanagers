@@ -53,10 +53,7 @@ namespace WPEFramework
 
         if (mInstallThread.joinable())
         {
-            if (mInstallThread.get_id() == std::this_thread::get_id())
-                mInstallThread.detach();
-            else
-                mInstallThread.join();
+           mInstallThread.join();
         }
 
         _instance = nullptr;
@@ -177,9 +174,7 @@ namespace WPEFramework
      */
     void PreinstallManagerImplementation::sendOnPreinstallationCompleteEvent()
     {
-        mAdminLock.Lock();
         const bool hasNotifications = !mPreinstallManagerNotifications.empty();
-        mAdminLock.Unlock();
         if (hasNotifications)
         {
             LOGINFO("Dispatching OnPreinstallationComplete event");
@@ -368,8 +363,8 @@ namespace WPEFramework
         if (Core::ERROR_NONE != createPackageManagerObject(packageInstaller))
         {
             LOGERR("Failed to create PackageManagerObject for install");
-            sendOnPreinstallationCompleteEvent();
             mAdminLock.Lock();
+            sendOnPreinstallationCompleteEvent();
             mPreinstallState = State::COMPLETED;
             mAdminLock.Unlock();
             return;

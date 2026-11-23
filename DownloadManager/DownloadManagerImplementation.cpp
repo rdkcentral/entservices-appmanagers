@@ -202,12 +202,14 @@ namespace Plugin {
     {
         std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_NONE;
+        bool serviceAcquired = false;
         LOGINFO("entry");
 
         if (service != nullptr && mCurrentservice == nullptr)
         {
             mCurrentservice = service;
             mCurrentservice->AddRef();
+            serviceAcquired = true;
 
             LOGINFO("DM: ConfigLine=%s", service->ConfigLine().c_str());
             DownloadManagerImplementation::Configuration config;
@@ -248,13 +250,16 @@ namespace Plugin {
             result = Core::ERROR_GENERAL;
         }
 
-        if (result != Core::ERROR_NONE && mCurrentservice != nullptr) {
+        if (result != Core::ERROR_NONE && serviceAcquired) {
             if (mDownloadDirectoryFd >= 0) {
                 close(mDownloadDirectoryFd);
                 mDownloadDirectoryFd = -1;
             }
-            mCurrentservice->Release();
-            mCurrentservice = nullptr;
+            if (mCurrentservice != nullptr)
+            {
+                mCurrentservice->Release();
+                mCurrentservice = nullptr;
+            }
             DownloadManagerTelemetryReporting::getInstance().reset();
         }
         LOGINFO("exit");
@@ -263,12 +268,13 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Deinitialize(PluginHost::IShell* service)
     {
-        std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
+        std::unique_lock<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO();
-        if (mCurrentservice == nullptr) {
+        if (mCurrentservice == nullptr || mDeinitializing) {
             return result;
         }
+        mDeinitializing = true;
 
         /*  Added lock to avoid race condition with downloader
             Stop the downloader thread */
@@ -279,10 +285,12 @@ namespace Plugin {
         mDownloadThreadCV.notify_one();
         if (mDownloadThreadPtr && mDownloadThreadPtr->joinable())
         {
+            lifecycleLock.unlock();
             mDownloadThreadPtr->join();
-            mDownloadThreadPtr.reset();
+            lifecycleLock.lock();
         }
-
+        
+        mDownloadThreadPtr.reset();
         /* Clear download queues */
         {
             std::lock_guard<std::mutex> lock(mQueueMutex);
@@ -307,10 +315,14 @@ namespace Plugin {
             }
         }
 
-        mCurrentservice->Release();
-        mCurrentservice = nullptr;
+        if (mCurrentservice != nullptr)
+        {
+           mCurrentservice->Release();
+           mCurrentservice = nullptr;
+	}
 
         DownloadManagerTelemetryReporting::getInstance().reset();
+	mDeinitializing = false;
 
         return result;
     }
@@ -322,7 +334,7 @@ namespace Plugin {
     {
         std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_GENERAL;
-        if (mCurrentservice == nullptr) {
+        if (mCurrentservice == nullptr || mDeinitializing) {
             return Core::ERROR_UNAVAILABLE;
         }
 

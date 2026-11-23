@@ -272,11 +272,13 @@ namespace Plugin {
     {
         std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_GENERAL;
+        bool serviceAcquired = false;
         LOGINFO("entry");
 
         if (service != nullptr && mCurrentservice == nullptr) {
             mCurrentservice = service;
             mCurrentservice->AddRef();
+            serviceAcquired = true;
             if (Core::ERROR_NONE != createStorageManagerObject()) {
                 LOGERR("Failed to create createStorageManagerObject");
             } else {
@@ -316,7 +318,7 @@ namespace Plugin {
             LOGERR("invalid service or already initialized\n");
         }
 
-        if (result != Core::ERROR_NONE && mCurrentservice != nullptr) {
+        if (result != Core::ERROR_NONE && serviceAcquired) {
             if (mDownloadDirectoryFd >= 0) {
                 close(mDownloadDirectoryFd);
                 mDownloadDirectoryFd = -1;
