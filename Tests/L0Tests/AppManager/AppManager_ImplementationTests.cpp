@@ -3439,7 +3439,7 @@ uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion()
     L0Test::TestResult tr;
     std::atomic<bool> spawnCalled{false};
     std::mutex captureLock;
-    std::string lockVersionSeen;
+    std::string lockPackageIdSeen;
     std::string spawnedRuntimeConfig;
 
     L0Test::MockLifecycleManager lifecycleManager;
@@ -3454,12 +3454,12 @@ uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion()
         return WPEFramework::Core::ERROR_NONE;
     };
 
-    packageHandler.lockHandler = [&captureLock, &lockVersionSeen](const std::string&, const std::string& version,
+    packageHandler.lockHandler = [&captureLock, &lockPackageIdSeen](const std::string& packageId,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
         std::lock_guard<std::mutex> guard(captureLock);
-        lockVersionSeen = version;
+        lockPackageIdSeen = packageId;
         lockId = 88;
         unpackedPath = "/tmp/app.worker.preload.suspended";
         configMetadata = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
@@ -3520,16 +3520,16 @@ uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion()
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
-    std::string observedLockVersion;
+    std::string observedLockPackageId;
     {
         std::lock_guard<std::mutex> guard(captureLock);
-        observedLockVersion = lockVersionSeen;
+        observedLockPackageId = lockPackageIdSeen;
     }
 
     L0Test::ExpectEqU32(tr, packageHandler.lockCount, 0u,
         "PRELOAD loaded+suspended path reuses cached running package and does not acquire a new lock");
-    L0Test::ExpectEqStr(tr, observedLockVersion, std::string(),
-        "No new PackageHandler::Lock call means no observed lock version");
+    L0Test::ExpectEqStr(tr, observedLockPackageId, std::string(),
+        "No new PackageHandler::Lock call means no observed lock packageId");
     L0Test::ExpectTrue(tr, packageHandler.unlockCount == 0u,
         "PRELOAD loaded+suspended success path does not trigger unlock cleanup");
     L0Test::ExpectTrue(tr, spawnCalled.load(std::memory_order_acquire),
