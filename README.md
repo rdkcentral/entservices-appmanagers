@@ -6,6 +6,14 @@
 
 The **entservices-appmanagers** repository provides a comprehensive suite of WPEFramework plugins for managing application lifecycle, package installation, runtime containers, and system resources on RDK-based set-top boxes and streaming devices.
 
+For suspended-app replacement, rollback defers replacement-lock releases until
+the old instance's `UNLOADED` cleanup successfully releases its lock. This avoids
+the versionless `Unlock(packageId)` selecting the still-running instance's lock;
+the replacement package remains locked until that cleanup.
+If cleanup fails, the instance, pending relaunch, and release progress are retained
+for a subsequent unload notification. Retries do not repeat successful releases
+or the unloaded notification, and new package locks are rejected until cleanup succeeds.
+
 ---
 
 ## System Architecture

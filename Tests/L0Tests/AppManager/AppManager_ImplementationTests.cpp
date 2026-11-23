@@ -404,6 +404,10 @@ uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
     pendingPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLING;
     installer.installedPackages.push_back(installedPkg);
     installer.installedPackages.push_back(pendingPkg);
+    auto previousPkg = installedPkg;
+    previousPkg.version = "1.0.0";
+    previousPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    installer.installedPackages.push_back(previousPkg);
 
     L0Test::AppManagerServiceMock::Config cfg(&installer);
     cfg.packageHandler = &handler;
@@ -433,6 +437,8 @@ uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
     L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE, "GetInstalledApps() succeeds when package list is available");
     L0Test::ExpectTrue(tr, apps.find("app.good") != std::string::npos, "GetInstalledApps() includes installed app ids in output");
     L0Test::ExpectTrue(tr, apps.find("app.pending") == std::string::npos, "GetInstalledApps() excludes non-installed entries");
+    L0Test::ExpectTrue(tr, apps.find("1.0.0") == std::string::npos, "GetInstalledApps() excludes replaced versions of the same app");
+    L0Test::ExpectTrue(tr, apps.find("1.2.3") != std::string::npos, "GetInstalledApps() reports the current installed version");
 
     impl->Release();
     return tr.failures;
@@ -714,7 +720,7 @@ uint32_t Test_AM_LaunchAppWithPackageHandler()
 
     impl->Configure(&service);
 
-    packageHandler.lockHandler = [](const std::string&, const std::string&,
+    packageHandler.lockHandler = [](const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
@@ -792,7 +798,7 @@ uint32_t Test_AM_PreloadAppWithPackageHandler()
 
     impl->Configure(&service);
 
-    packageHandler.lockHandler = [](const std::string&, const std::string&,
+    packageHandler.lockHandler = [](const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
@@ -2004,7 +2010,7 @@ uint32_t Test_AM_PackageUnlockFails()
 
     // Custom handler whose Unlock always fails
     auto* handler = new L0Test::MockPackageHandler();
-    handler->unlockHandler = [](const std::string&, const std::string&) -> WPEFramework::Core::hresult {
+    handler->unlockHandler = [](const std::string&) -> WPEFramework::Core::hresult {
         return WPEFramework::Core::ERROR_GENERAL;
     };
 
@@ -2033,7 +2039,136 @@ uint32_t Test_AM_PackageUnlockFails()
     return tr.failures;
 }
 
-// Covers the LOGERR "AppId not found in map to get the version" branch inside
+uint32_t Test_AM_ReplacementRollbackDefersUntilUnload()
+{
+    AppManagerTestFixture fixture(true, true);
+    auto* handler = static_cast<L0Test::MockPackageHandler*>(fixture.impl->mPackageManagerHandlerObject);
+    const std::string appId = "app.replacement.rollback";
+    WPEFramework::Plugin::AppInfoManager::getInstance().setPackageInfoVersion(appId, "1.0.0");
+    WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId(appId, "old-instance");
+
+    auto* connector = fixture.impl->mLifecycleInterfaceConnector;
+    auto* lifecycle = static_cast<L0Test::MockLifecycleManager*>(connector->mLifecycleManagerRemoteObject);
+    lifecycle->killAppHandler = [&fixture](const std::string& instanceId, std::string& errorReason, bool& success) {
+        L0Test::ExpectTrue(fixture.tr, instanceId == "old-instance", "Replacement attempts to kill the old instance");
+        errorReason = "mock replacement kill failure";
+        success = false;
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+    WPEFramework::Plugin::LifecycleInterfaceConnector::PendingRelaunchRequest relaunch;
+    relaunch.appId = appId;
+    relaunch.requestedVersion = "2.0.0";
+    connector->mPendingRelaunches["old-instance"] = relaunch;
+    std::string runtimeConfig = "{}";
+    L0Test::ExpectEqU32(fixture.tr,
+        connector->restartSuspendedWithRequestedVersion(appId, "", "", runtimeConfig, "old-instance", "2.0.0"),
+        WPEFramework::Core::ERROR_GENERAL, "Replacement reports the KillApp failure");
+    L0Test::ExpectTrue(fixture.tr, connector->mPendingRelaunches.empty(),
+        "KillApp failure cancels the pending relaunch");
+    L0Test::ExpectTrue(fixture.tr,
+        WPEFramework::Plugin::AppInfoManager::getInstance().getAppInstanceId(appId) == "old-instance",
+        "The old instance remains tracked after KillApp failure");
+    const auto deferred = fixture.impl->mDeferredReplacementUnlocks.find(appId);
+    L0Test::ExpectTrue(fixture.tr,
+        deferred != fixture.impl->mDeferredReplacementUnlocks.end() && deferred->second == 1U,
+        "KillApp failure queues the replacement release instead of unlocking the old version");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->releaseDeferredReplacementLock(appId, "2.0.0"),
+        WPEFramework::Core::ERROR_NONE, "Duplicate replacement rollback is deferred");
+    L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 0U,
+        "Rollback does not unlock the running instance");
+
+    WPEFramework::Core::JSON::VariantContainer params;
+    params["appId"] = appId;
+    params["appInstanceId"] = std::string("old-instance");
+    fixture.impl->Dispatch(WPEFramework::Plugin::AppManagerImplementation::APP_EVENT_UNLOADED, params);
+
+    L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 3U,
+        "Unload releases the old lock followed by both deferred replacement locks");
+    L0Test::ExpectTrue(fixture.tr, fixture.impl->mDeferredReplacementUnlocks.empty(),
+        "Successful cleanup clears deferred unlocks");
+    return fixture.tr.failures;
+}
+
+uint32_t Test_AM_ReplacementRollbackAfterUnloadAndUnlockFailure()
+{
+    uint32_t failures = 0;
+    for (const uint32_t failedUnlock : {2U, 3U})
+    {
+        AppManagerTestFixture fixture(true, true);
+        auto* handler = static_cast<L0Test::MockPackageHandler*>(fixture.impl->mPackageManagerHandlerObject);
+        auto* connector = fixture.impl->mLifecycleInterfaceConnector;
+        const std::string appId = "app.replacement.failure";
+        WPEFramework::Plugin::AppInfoManager::getInstance().setPackageInfoVersion(appId, "1.0.0");
+
+        L0Test::ExpectEqU32(fixture.tr, fixture.impl->releaseDeferredReplacementLock(appId, "2.0.0"),
+            WPEFramework::Core::ERROR_NONE, "Relaunch failure releases the replacement immediately after old-version cleanup");
+        L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 1U,
+            "Replacement unlock is immediate when the old instance has been removed");
+
+        WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId(appId, "old-instance");
+        fixture.impl->releaseDeferredReplacementLock(appId, "2.0.0");
+        WPEFramework::Plugin::LifecycleInterfaceConnector::PendingRelaunchRequest relaunch;
+        relaunch.appId = appId;
+        relaunch.requestedVersion = "2.0.0";
+        relaunch.packageInfo.version = "2.0.0";
+        relaunch.runtimeConfigPayload = "{}";
+        connector->mPendingRelaunches["old-instance"] = relaunch;
+        handler->unlockHandler = [handler, failedUnlock](const std::string&) {
+            return handler->unlockCount.load() == failedUnlock
+                ? WPEFramework::Core::ERROR_GENERAL : WPEFramework::Core::ERROR_NONE;
+        };
+        auto* notification = new RefNotification();
+        fixture.impl->Register(notification);
+        WPEFramework::Core::JSON::VariantContainer params;
+        params["appId"] = appId;
+        params["appInstanceId"] = std::string("old-instance");
+        fixture.impl->Dispatch(WPEFramework::Plugin::AppManagerImplementation::APP_EVENT_UNLOADED, params);
+
+        L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), failedUnlock,
+            "Cleanup stops at the failed old-instance or deferred unlock");
+        L0Test::ExpectTrue(fixture.tr,
+            WPEFramework::Plugin::AppInfoManager::getInstance().getAppInstanceId(appId) == "old-instance",
+            "Failed cleanup retains the old instance so another unload can retry");
+        const auto deferred = fixture.impl->mDeferredReplacementUnlocks.find(appId);
+        L0Test::ExpectTrue(fixture.tr,
+            deferred != fixture.impl->mDeferredReplacementUnlocks.end() && deferred->second == 1U,
+            "Failed cleanup retains the deferred replacement release");
+        L0Test::ExpectTrue(fixture.tr, connector->mPendingRelaunches.count("old-instance") == 1U,
+            "Failed cleanup retains the pending relaunch");
+        L0Test::ExpectEqU32(fixture.tr, notification->unloaded, 1U,
+            "Unload is notified even when package cleanup fails");
+
+        WPEFramework::Plugin::AppManagerTypes::PackageInfo packageData;
+        packageData.version = "2.0.0";
+        bool acquired = true;
+        const uint32_t lockCount = handler->lockCount.load();
+        L0Test::ExpectEqU32(fixture.tr,
+            fixture.impl->packageLock(appId, packageData, WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH, &acquired),
+            WPEFramework::Core::ERROR_GENERAL, "New package locks cannot overwrite the retained cleanup state");
+        L0Test::ExpectTrue(fixture.tr, !acquired && handler->lockCount.load() == lockCount,
+            "Pending cleanup prevents another package reference from being acquired");
+
+        fixture.impl->Dispatch(WPEFramework::Plugin::AppManagerImplementation::APP_EVENT_UNLOADED, params);
+        L0Test::ExpectEqU32(fixture.tr, handler->unlockCount.load(), 4U,
+            "Retry releases only the remaining references, without repeating a successful old-instance unlock");
+        L0Test::ExpectTrue(fixture.tr,
+            fixture.impl->mDeferredReplacementUnlocks.empty() && fixture.impl->mUnloadCleanupStates.empty(),
+            "Successful retry clears deferred releases and cleanup progress");
+        L0Test::ExpectTrue(fixture.tr, connector->mPendingRelaunches.empty(),
+            "Successful cleanup resumes the pending relaunch");
+        L0Test::ExpectTrue(fixture.tr,
+            WPEFramework::Plugin::AppInfoManager::getInstance().getAppInstanceId(appId) == "instance-1",
+            "The replacement is launched after cleanup succeeds");
+        L0Test::ExpectEqU32(fixture.tr, notification->unloaded, 1U,
+            "Cleanup retry does not duplicate the unloaded notification");
+        fixture.impl->Unregister(notification);
+        notification->Release();
+        failures += fixture.tr.failures;
+    }
+    return failures;
+}
+
+// Covers the LOGERR "AppId not found in map to unlock" branch inside
 // packageUnLock() when the app is NOT in AppInfoManager.  In that case both
 // !pkgVersion.empty() and exists(appId) are false, so the unlock block is skipped
 // entirely and the trailing !exists check logs the error.
@@ -2359,7 +2494,7 @@ uint32_t Test_AM_PackageLockLockFails()
     L0Test::TestResult tr;
 
     auto* handler = new L0Test::MockPackageHandler();
-    handler->lockHandler = [](const std::string&, const std::string&,
+    handler->lockHandler = [](const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t&, std::string&, std::string&,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*&) {
@@ -2822,7 +2957,7 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
     L0Test::MockStore2 store;
     L0Test::MockStorageManager storageManager;
 
-    packageHandler.lockHandler = [](const std::string&, const std::string&,
+    packageHandler.lockHandler = [](const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
@@ -2939,7 +3074,7 @@ uint32_t Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn()
     L0Test::MockStore2 store;
     L0Test::MockStorageManager storageManager;
 
-    packageHandler.lockHandler = [](const std::string&, const std::string&,
+    packageHandler.lockHandler = [](const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
@@ -2950,7 +3085,8 @@ uint32_t Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn()
         return WPEFramework::Core::ERROR_NONE;
     };
     lifecycleManager.spawnAppHandler = [&spawnCalled](
-        const std::string&, const std::string&,
+        const std::string&,
+        const std::string&,
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
         const std::string&, const std::string&,
         std::string&, std::string&, bool&) {
@@ -3018,7 +3154,7 @@ uint32_t Test_AM_WorkerThreadPackageLockFails()
     L0Test::MockStorageManager storageManager;
 
     packageHandler.lockHandler = [&lockAttempted](
-        const std::string&, const std::string&,
+        const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t&, std::string&, std::string&,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*&) {
@@ -3084,7 +3220,7 @@ uint32_t Test_AM_WorkerThreadPreloadSuccess()
     L0Test::MockStore2 store;
     L0Test::MockStorageManager storageManager;
 
-    packageHandler.lockHandler = [](const std::string&, const std::string&,
+    packageHandler.lockHandler = [](const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
@@ -3303,7 +3439,7 @@ uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion()
     L0Test::TestResult tr;
     std::atomic<bool> spawnCalled{false};
     std::mutex captureLock;
-    std::string lockVersionSeen;
+    std::string lockPackageIdSeen;
     std::string spawnedRuntimeConfig;
 
     L0Test::MockLifecycleManager lifecycleManager;
@@ -3318,12 +3454,12 @@ uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion()
         return WPEFramework::Core::ERROR_NONE;
     };
 
-    packageHandler.lockHandler = [&captureLock, &lockVersionSeen](const std::string&, const std::string& version,
+    packageHandler.lockHandler = [&captureLock, &lockPackageIdSeen](const std::string& packageId,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
         std::lock_guard<std::mutex> guard(captureLock);
-        lockVersionSeen = version;
+        lockPackageIdSeen = packageId;
         lockId = 88;
         unpackedPath = "/tmp/app.worker.preload.suspended";
         configMetadata = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
@@ -3384,16 +3520,16 @@ uint32_t Test_AM_WorkerThreadPreloadLoadedSuspendedUsesRunningVersion()
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
-    std::string observedLockVersion;
+    std::string observedLockPackageId;
     {
         std::lock_guard<std::mutex> guard(captureLock);
-        observedLockVersion = lockVersionSeen;
+        observedLockPackageId = lockPackageIdSeen;
     }
 
     L0Test::ExpectEqU32(tr, packageHandler.lockCount, 0u,
         "PRELOAD loaded+suspended path reuses cached running package and does not acquire a new lock");
-    L0Test::ExpectEqStr(tr, observedLockVersion, std::string(),
-        "No new PackageHandler::Lock call means no observed lock version");
+    L0Test::ExpectEqStr(tr, observedLockPackageId, std::string(),
+        "No new PackageHandler::Lock call means no observed lock packageId");
     L0Test::ExpectTrue(tr, packageHandler.unlockCount == 0u,
         "PRELOAD loaded+suspended success path does not trigger unlock cleanup");
     L0Test::ExpectTrue(tr, spawnCalled.load(std::memory_order_acquire),
@@ -3464,7 +3600,7 @@ uint32_t Test_AM_PackageUnLockNullPackageHandler()
     L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
     impl->Configure(&service);
 
-    // Insert app in AppInfoManager with a package version so the unlock block is entered
+    // Insert an AppInfoManager entry so the unlock block is entered
     WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
         "app.unlock.nullhandler",
         [](WPEFramework::Plugin::AppInfo& a) {
@@ -3777,7 +3913,6 @@ uint32_t Test_AM_PackageLockCreateOrUpdateFails()
     // Lock returns ERROR_NONE but does NOT set unpackedPath (stays "").
     // createOrUpdatePackageInfoByAppId checks unpackedPath.empty() → returns false.
     handler->lockHandler = [](const std::string&,
-        const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t& lockId,
         std::string& /*unpackedPath*/,

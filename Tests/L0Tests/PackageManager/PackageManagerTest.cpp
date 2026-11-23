@@ -26,17 +26,29 @@ extern uint32_t Test_PM_Impl_RuntimeConfigPayloadComplexScenarios();
 extern uint32_t Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload();
 extern uint32_t Test_PM_Impl_DeleteFilePaths();
 extern uint32_t Test_PM_Impl_InstallAndUninstallFlowWithNotifications();
+extern uint32_t Test_PM_Impl_InstallNotificationUsesArtifactVersion();
+extern uint32_t Test_PM_Impl_MetadataExtractionFailurePublishesInstallFailure();
+extern uint32_t Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled();
+extern uint32_t Test_PM_Impl_UninstallAfterRejectedUpgradeReportsUninstalled();
+extern uint32_t Test_PM_Impl_GetConfigForInstalledPackage();
+extern uint32_t Test_PM_Impl_UnlockReleasesUpgradedAwayVersionFirst();
+extern uint32_t Test_PM_Impl_UnlockFailurePreservesReferenceCount();
+extern uint32_t Test_PM_Impl_UnlockUsesDevelopReferenceCounts();
+#ifdef USE_LIBPACKAGE_RALF
+extern uint32_t Test_PM_Impl_RetryRuntimeUnlockProcessesBlockedUninstall();
+extern uint32_t Test_PM_Impl_RuntimeUnlockRetryPreservesNewHolder();
+extern uint32_t Test_PM_Impl_ApplicationUnlockFailurePreservesRuntime();
+#endif
 extern uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo();
 extern uint32_t Test_PM_Impl_DownloadAndStorageInfoPaths();
 extern uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths();
 extern uint32_t Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths();
 extern uint32_t Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable();
 extern uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath();
+extern uint32_t Test_PM_Impl_InstallMultipleVersions();
 extern uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageSuccess();
 extern uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageBackendFailure();
 extern uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable();
-extern uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock();
-extern uint32_t Test_PM_Impl_InstallDifferentVersionWhileLocked();
 extern uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock();
 extern uint32_t Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure();
 extern uint32_t Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState();
@@ -61,6 +73,14 @@ int main()
         { "PM_Shell_InformationReturnsEmptyString", Test_PM_Shell_InformationReturnsEmptyString },
         { "PM_Shell_DownloadPathThroughPluginAggregate", Test_PM_Shell_DownloadPathThroughPluginAggregate },
         { "PM_Impl_InitializeAndDeinitialize", Test_PM_Impl_InitializeAndDeinitialize },
+        { "PM_Impl_UnlockReleasesUpgradedAwayVersionFirst", Test_PM_Impl_UnlockReleasesUpgradedAwayVersionFirst },
+        { "PM_Impl_UnlockFailurePreservesReferenceCount", Test_PM_Impl_UnlockFailurePreservesReferenceCount },
+        { "PM_Impl_UnlockUsesDevelopReferenceCounts", Test_PM_Impl_UnlockUsesDevelopReferenceCounts },
+#ifdef USE_LIBPACKAGE_RALF
+        { "PM_Impl_RetryRuntimeUnlockProcessesBlockedUninstall", Test_PM_Impl_RetryRuntimeUnlockProcessesBlockedUninstall },
+        { "PM_Impl_RuntimeUnlockRetryPreservesNewHolder", Test_PM_Impl_RuntimeUnlockRetryPreservesNewHolder },
+        { "PM_Impl_ApplicationUnlockFailurePreservesRuntime", Test_PM_Impl_ApplicationUnlockFailurePreservesRuntime },
+#endif
         { "PM_Impl_DownloaderRegisterUnregister", Test_PM_Impl_DownloaderRegisterUnregister },
         { "PM_Impl_InstallerRegisterUnregister", Test_PM_Impl_InstallerRegisterUnregister },
         { "PM_Impl_UnregisterUnknownNotification", Test_PM_Impl_UnregisterUnknownNotification },
@@ -78,6 +98,11 @@ int main()
         { "PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload", Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload },
         { "PM_Impl_DeleteFilePaths", Test_PM_Impl_DeleteFilePaths },
         { "PM_Impl_InstallAndUninstallFlowWithNotifications", Test_PM_Impl_InstallAndUninstallFlowWithNotifications },
+        { "PM_Impl_InstallNotificationUsesArtifactVersion", Test_PM_Impl_InstallNotificationUsesArtifactVersion },
+        { "PM_Impl_MetadataExtractionFailurePublishesInstallFailure", Test_PM_Impl_MetadataExtractionFailurePublishesInstallFailure },
+        { "PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled", Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled },
+        { "PM_Impl_UninstallAfterRejectedUpgradeReportsUninstalled", Test_PM_Impl_UninstallAfterRejectedUpgradeReportsUninstalled },
+        { "PM_Impl_GetConfigForInstalledPackage", Test_PM_Impl_GetConfigForInstalledPackage },
         // Temporarily disabled: capabilities expectation drift in CI environment.
         // { "PM_Impl_LockUnlockAndGetLockedInfo", Test_PM_Impl_LockUnlockAndGetLockedInfo },
         { "PM_Impl_DownloadAndStorageInfoPaths", Test_PM_Impl_DownloadAndStorageInfoPaths },
@@ -85,10 +110,10 @@ int main()
         { "PM_Impl_GetLockedInfoAndUnlockNegativePaths", Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths },
         { "PM_Impl_DownloadWithoutInternetReturnsUnavailable", Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable },
         { "PM_Impl_GetConfigForPackageSuccessPath", Test_PM_Impl_GetConfigForPackageSuccessPath },
+        { "PM_Impl_InstallMultipleVersions", Test_PM_Impl_InstallMultipleVersions },
         { "PM_Impl_GetRunningApplicationsUsingPackageSuccess", Test_PM_Impl_GetRunningApplicationsUsingPackageSuccess },
         { "PM_Impl_GetRunningApplicationsUsingPackageBackendFailure", Test_PM_Impl_GetRunningApplicationsUsingPackageBackendFailure },
         { "PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable", Test_PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable },
-        { "PM_Impl_InstallDifferentVersionWhileLocked", Test_PM_Impl_InstallDifferentVersionWhileLocked },
         { "PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock", Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock },
         { "PM_Impl_InstallCreateStorageFailureReportsInstallFailure", Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure },
         { "PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState", Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState },
