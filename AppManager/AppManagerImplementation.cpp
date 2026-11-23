@@ -30,6 +30,7 @@
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
+#include "UtilsLaunchArgs.h"
 
 #define TIME_DATA_SIZE           200
 #define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
@@ -323,7 +324,8 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 }
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
                                 getCustomValues(runtimeConfig);
-                                string launchArgs = appRequestParam->launchArgs;
+                                // Normalize percent-encoded launchArgs so env/debugger handling sees the same JSON the connector forwards.
+                                string launchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(appRequestParam->launchArgs);
                                 JsonObject launchArgsObj;
                                 launchArgsObj.FromString(launchArgs);
                                 bool debugLaunchRequested = false;
@@ -345,8 +347,6 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 {
                                     LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
                                 }
-
-				AppInfoManager::getInstance().setRequestedLaunchVersion(appId, packageData.version);
 
                                 // Launch upserts launchArgs["env"] into the runtime config; preload keeps appending (legacy behavior).
                                 // A launch carrying a Firebolt intent does not also apply launchArgs env (intent and launchArgs are exclusive).
@@ -392,6 +392,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
 
                                 if (status == Core::ERROR_NONE)
                                 {
+                                    AppInfoManager::getInstance().setRequestedLaunchVersion(appId, packageData.version);
                                     mAdminLock.Lock();
                                     if (nullptr == mLifecycleInterfaceConnector)
                                     {
@@ -433,14 +434,21 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     (Core::ERROR_INVALID_PARAMETER == status) ? Exchange::IAppManager::APP_ERROR_INVALID_PARAM : Exchange::IAppManager::APP_ERROR_UNKNOWN);
                                 removeAppInfoByAppId(appId);
                             }
-                            else if ((Core::ERROR_NONE != status) && deferredReplacementLockAcquired && (false == launchInvoked))
+                            else if ((Core::ERROR_NONE != status) && (false == launchInvoked))
                             {
-                                const Core::hresult releaseStatus = releaseDeferredReplacementLock(appId, deferredReplacementVersion);
-                                if (Core::ERROR_NONE != releaseStatus)
+                                // Rejected before reaching the connector while the app keeps its existing package
+                                // (cached same-version or deferred replacement): leave its state, record and lock intact.
+                                if (deferredReplacementLockAcquired)
                                 {
-                                    LOGERR("Failed to release deferred replacement lock after pre-launch failure for appId=%s requestedVersion=%s status=%d",
-                                        appId.c_str(), deferredReplacementVersion.c_str(), releaseStatus);
+                                    const Core::hresult releaseStatus = releaseDeferredReplacementLock(appId, deferredReplacementVersion);
+                                    if (Core::ERROR_NONE != releaseStatus)
+                                    {
+                                        LOGERR("Failed to release deferred replacement lock after pre-launch failure for appId=%s requestedVersion=%s status=%d",
+                                            appId.c_str(), deferredReplacementVersion.c_str(), releaseStatus);
+                                    }
                                 }
+                                handleOnAppLaunchRejected(appId,
+                                    (Core::ERROR_INVALID_PARAMETER == status) ? Exchange::IAppManager::APP_ERROR_INVALID_PARAM : Exchange::IAppManager::APP_ERROR_UNKNOWN);
                             }
                         }
                         else
@@ -750,6 +758,28 @@ void AppManagerImplementation::handleOnAppLifecycleStateChanged(const string& ap
 
     LOGINFO("Notify App Lifecycle state change for appId %s: appInstanceId %s oldState=%d, newState=%d",
         appId.c_str(), (appInstanceId.empty()?" ":appInstanceId.c_str()), static_cast<int>(oldState), static_cast<int>(newState));
+
+    dispatchEvent(APP_EVENT_LIFECYCLE_STATE_CHANGED, eventDetails);
+}
+
+/*
+ * @brief Notify client that a launch/preload request was rejected for an app that keeps running
+ *        its existing package. Reports the unchanged current state and skips state-transition tracking.
+ */
+void AppManagerImplementation::handleOnAppLaunchRejected(const string& appId, const Exchange::IAppManager::AppErrorReason errorReason)
+{
+    AppInfoManager& appInfoManager = AppInfoManager::getInstance();
+    const Exchange::IAppManager::AppLifecycleState currentState = appInfoManager.getAppNewState(appId);
+    JsonObject eventDetails;
+
+    eventDetails["appId"] = appId;
+    eventDetails["appInstanceId"] = appInfoManager.getAppInstanceId(appId);
+    eventDetails["newState"] = static_cast<int>(currentState);
+    eventDetails["oldState"] = static_cast<int>(currentState);
+    eventDetails["errorReason"] = static_cast<int>(errorReason);
+
+    LOGERR("Request rejected for appId %s: state=%d unchanged, errorReason=%d",
+        appId.c_str(), static_cast<int>(currentState), static_cast<int>(errorReason));
 
     dispatchEvent(APP_EVENT_LIFECYCLE_STATE_CHANGED, eventDetails);
 }

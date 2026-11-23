@@ -209,6 +209,15 @@ namespace ralf
                                                     const Json::Value &manifestRootNode, const std::vector<std::string> &envVariables);
 
         /**
+         * Merges runtime environment entries (NAME=VALUE) into the OCI process environment,
+         * overriding package values of the same name. Malformed entries and permission-gated
+         * names (FIREBOLT_ENDPOINT, THUNDER_ACCESS) are skipped.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param envVariables The runtime environment entries.
+         */
+        void addRuntimeEnvironmentToOCIConfig(Json::Value &ociConfigRootNode, const std::vector<std::string> &envVariables);
+
+        /**
          * Updates the OCI config JSON at rdkPlugins.logging.data.fileOptions.path to point to the
          * application's log file for easier debugging of logs from the containerized app.
          * The configured log filename is derived from the host-side appStoragePath and appId

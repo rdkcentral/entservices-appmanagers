@@ -231,6 +231,7 @@ namespace Plugin {
         void handleOnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::IAppManager::AppLifecycleState newState,
                                         const Exchange::IAppManager::AppLifecycleState oldState, const Exchange::IAppManager::AppErrorReason errorReason);
         void handleOnAppUnloaded(const string& appId, const string& appInstanceId);
+        void handleOnAppLaunchRejected(const string& appId, const Exchange::IAppManager::AppErrorReason errorReason);
         void handleOnAppLaunchRequest(const string& appId, const string& intent, const string& source);
         std::string getInstallAppType(ApplicationType type);
 

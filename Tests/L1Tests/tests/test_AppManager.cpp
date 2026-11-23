@@ -1185,6 +1185,253 @@ TEST_F(AppManagerTest, LaunchAppWithInvalidLaunchArgsEnvIsRejected)
     releaseResources();
 }
 
+/* * Test Case for LaunchAppWithEncodedLaunchArgsEnvUpsertsRuntimeConfig
+ * Percent-encoded launchArgs carrying valid env entries are normalized before parsing,
+ * so the entries reach the runtime config passed to SpawnApp
+ */
+TEST_F(AppManagerTest, LaunchAppWithEncodedLaunchArgsEnvUpsertsRuntimeConfig)
+{
+    Core::hresult status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    // {"env":["CUSTOM_VAR=hello","BASE=2"]}
+    const std::string encodedLaunchArgs = "%7B%22env%22%3A%5B%22CUSTOM_VAR%3Dhello%22%2C%22BASE%3D2%22%5D%7D";
+    const std::string decodedLaunchArgs = R"({"env":["CUSTOM_VAR=hello","BASE=2"]})";
+    std::string capturedPayload;
+    mPreLoadSpawmCalled = false;
+    PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = FillPackageIterator();
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly([&](const string&, const string&, const Exchange::IPackageHandler::LockReason&, uint32_t& lockId, string& unpackedPath, std::string& configMetadata, Exchange::IPackageHandler::ILockIterator*&) {
+            lockId = 1;
+            unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
+            configMetadata = runtimeConfigPayload;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
+        .WillRepeatedly([&](const std::string&, bool& loaded) {
+            loaded = false;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(APPMANAGER_APP_ID, "", ::testing::_, ::testing::_, decodedLaunchArgs, ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce([&](const string&, const string&, const Exchange::ILifecycleManager::LifecycleState,
+            const std::string& runtimeConfigObject, const string&, string& appInstanceId, string& errorReason, bool& success) {
+            appInstanceId = APPMANAGER_APP_INSTANCE;
+            errorReason = "";
+            success = true;
+            {
+                std::lock_guard<std::mutex> lock(mPreLoadMutex);
+                capturedPayload = runtimeConfigObject;
+                mPreLoadSpawmCalled = true;
+            }
+            mPreLoadCV.notify_one();
+            return Core::ERROR_NONE;
+        });
+
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, "", encodedLaunchArgs));
+    {
+        std::unique_lock<std::mutex> lock(mPreLoadMutex);
+        ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&]{ return mPreLoadSpawmCalled; }));
+    }
+
+    JsonObject runtimeConfig;
+    ASSERT_TRUE(runtimeConfig.FromString(capturedPayload));
+    std::vector<std::string> environment;
+    const JsonArray envArray = runtimeConfig["envVariables"].Array();
+    for (uint16_t index = 0; index < envArray.Length(); ++index)
+    {
+        environment.push_back(envArray[index].String());
+    }
+    auto hasEntry = [&](const std::string& entry) {
+        return std::find(environment.begin(), environment.end(), entry) != environment.end();
+    };
+    EXPECT_TRUE(hasEntry("CUSTOM_VAR=hello"));
+    EXPECT_TRUE(hasEntry("BASE=2"));
+    EXPECT_FALSE(hasEntry("BASE=1"));
+
+    releaseResources();
+}
+
+/* * Test Case for LaunchAppWithEncodedInvalidLaunchArgsEnvIsRejected
+ * Percent-encoded launchArgs carrying an invalid env entry must still be validated:
+ * SpawnApp is never invoked and the failure is reported via the lifecycle state notification
+ */
+TEST_F(AppManagerTest, LaunchAppWithEncodedInvalidLaunchArgsEnvIsRejected)
+{
+    Core::hresult status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    // {"env":["NO_EQUALS"]}
+    const std::string encodedLaunchArgs = "%7B%22env%22%3A%5B%22NO_EQUALS%22%5D%7D";
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = "";
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM;
+    PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = FillPackageIterator();
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly([&](const string&, const string&, const Exchange::IPackageHandler::LockReason&, uint32_t& lockId, string& unpackedPath, std::string& configMetadata, Exchange::IPackageHandler::ILockIterator*&) {
+            lockId = 1;
+            unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
+            configMetadata = runtimeConfigPayload;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Unlock(::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Return(Core::ERROR_NONE));
+    EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
+        .WillRepeatedly([&](const std::string&, bool& loaded) {
+            loaded = false;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
+
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, "", encodedLaunchArgs));
+    const uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    mAppManagerImpl->Unregister(&notification);
+
+    releaseResources();
+}
+
+/* * Test Case for LaunchAppWithInvalidLaunchArgsEnvOnLoadedAppPreservesRunningApp
+ * Invalid launchArgs.env for an already-loaded app (cached same-version package, no new lock)
+ * is reported as APP_ERROR_INVALID_PARAM with the unchanged current state, without
+ * spawning, unlocking, or altering the running app's record
+ */
+TEST_F(AppManagerTest, LaunchAppWithInvalidLaunchArgsEnvOnLoadedAppPreservesRunningApp)
+{
+    Core::hresult status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    const std::string launchArgs = R"({"env":["NO_EQUALS"]})";
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM;
+    PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = FillPackageIterator();
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
+        .WillRepeatedly([&](const std::string&, bool& loaded) {
+            loaded = true;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
+    EXPECT_CALL(*mPackageManagerMock, Unlock(::testing::_, ::testing::_))
+        .Times(0);
+    EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
+
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, "", launchArgs));
+    const uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    mAppManagerImpl->Unregister(&notification);
+
+    EXPECT_TRUE(AppInfoManager::getInstance().exists(APPMANAGER_APP_ID));
+    EXPECT_EQ(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE, AppInfoManager::getInstance().getAppNewState(APPMANAGER_APP_ID));
+    EXPECT_EQ(std::string(APPMANAGER_APP_INSTANCE), AppInfoManager::getInstance().getAppInstanceId(APPMANAGER_APP_ID));
+    EXPECT_EQ(std::string(APPMANAGER_APP_VERSION), AppInfoManager::getInstance().getPackageInfoVersion(APPMANAGER_APP_ID));
+
+    releaseResources();
+}
+
+/* * Test Case for LaunchAppWithInvalidLaunchArgsEnvReleasesDeferredReplacementLock
+ * Invalid launchArgs.env for a suspended app whose newer version was locked as a deferred
+ * replacement releases only that deferred lock and reports APP_ERROR_INVALID_PARAM,
+ * leaving the running app's state and package record intact
+ */
+TEST_F(AppManagerTest, LaunchAppWithInvalidLaunchArgsEnvReleasesDeferredReplacementLock)
+{
+    Core::hresult status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    const std::string runningVersion = "1.0.0";
+    const std::string launchArgs = R"({"env":["NO_EQUALS"]})";
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM;
+    PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [&](Plugin::AppInfo& a) {
+        AppManagerTypes::PackageInfo pkgInfo = a.getPackageInfo();
+        pkgInfo.version = runningVersion;
+        a.setPackageInfo(pkgInfo);
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
+    });
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = FillPackageIterator();
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
+        .WillRepeatedly([&](const std::string&, bool& loaded) {
+            loaded = true;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Lock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce([&](const string&, const string&, const Exchange::IPackageHandler::LockReason&, uint32_t& lockId, string& unpackedPath, std::string& configMetadata, Exchange::IPackageHandler::ILockIterator*& appMetadata) {
+            lockId = 2;
+            unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
+            configMetadata = runtimeConfigPayload;
+            appMetadata = nullptr;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
+        .WillOnce(::testing::Return(Core::ERROR_NONE));
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, runningVersion))
+        .Times(0);
+    EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
+
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, "", launchArgs));
+    const uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    mAppManagerImpl->Unregister(&notification);
+
+    EXPECT_TRUE(AppInfoManager::getInstance().exists(APPMANAGER_APP_ID));
+    EXPECT_EQ(Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED, AppInfoManager::getInstance().getAppNewState(APPMANAGER_APP_ID));
+    EXPECT_EQ(runningVersion, AppInfoManager::getInstance().getPackageInfoVersion(APPMANAGER_APP_ID));
+
+    releaseResources();
+}
+
 /* * Test Case for LaunchAppWithIntentIgnoresLaunchArgsEnv
  * A launch that carries a Firebolt intent must not also apply launchArgs.env
  */
