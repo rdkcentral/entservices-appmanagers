@@ -72,9 +72,6 @@ namespace ralf
             }
         }
 
-        // Runtime entries (package envVariables, launchArgs env, launch parameters) go after package values so they override them.
-        addRuntimeEnvironmentToOCIConfig(ociConfigRootNode, runtimeConfigObject.envVariables);
-
         if (generateHooksForOCIConfig(ociConfigRootNode) == false)
         {
             LOGERR("Failed to generate hooks for OCI config");
@@ -816,28 +813,6 @@ namespace ralf
         return true;
     }
 
-    void RalfOCIConfigGenerator::addRuntimeEnvironmentToOCIConfig(Json::Value &ociConfigRootNode, const std::vector<std::string> &envVariables)
-    {
-        for (const std::string &envPair : envVariables)
-        {
-            const size_t separator = envPair.find('=');
-            if ((std::string::npos == separator) || (0 == separator))
-            {
-                LOGWARN("Skipping malformed runtime environment entry (length %zu)\n", envPair.size());
-                continue;
-            }
-
-            const std::string name = envPair.substr(0, separator);
-            // Permission-gated variables are only added by addPermissionBasedEnvironmentVariables().
-            if ((FIREBOLT_ENDPOINT_ENV_KEY == name) || (THUNDER_ACCESS_ENV_KEY == name))
-            {
-                continue;
-            }
-
-            addToEnvironment(ociConfigRootNode, name, envPair.substr(separator + 1));
-        }
-    }
-
     void RalfOCIConfigGenerator::addTimezoneInfo(Json::Value &ociConfigRootNode)
     {
         /* As per HLA , three paths needs to be mounted.
@@ -918,14 +893,14 @@ namespace ralf
 
         if (firstMatchIndex < 0)
         {
-            LOGDBG("Added environment variable to OCI config: %s\n", key.c_str());
+            LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
             envNode.append(std::move(envVar));
             return;
         }
 
         if (!duplicateFound)
         {
-            LOGDBG("Added environment variable to OCI config: %s\n", key.c_str());
+            LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
             envNode[static_cast<Json::ArrayIndex>(firstMatchIndex)] = std::move(envVar);
             return;
         }
@@ -955,11 +930,11 @@ namespace ralf
             }
             else
             {
-                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", key.c_str());
+                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existingStr.c_str());
             }
         }
 
         processNode[ENV] = std::move(deduped);
-        LOGDBG("Added environment variable to OCI config: %s\n", key.c_str());
+        LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf
