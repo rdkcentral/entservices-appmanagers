@@ -2864,7 +2864,7 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
     auto* impl = CreateImpl();
     impl->Configure(&service);
 
-    impl->LaunchApp("app.worker.launch", "defaultIntent", R"({"env":["EXTRA_ONE=1","EXTRA_TWO=two"]})");
+    impl->LaunchApp("app.worker.launch", "", R"({"env":["EXTRA_ONE=1","EXTRA_TWO=two"]})");
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
     while (!spawnCalled.load(std::memory_order_acquire) &&
