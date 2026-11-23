@@ -249,6 +249,25 @@ notifications or cleanup.
 This replaces the previous AppCrashed payload containing `appInstanceId` and
 `crashReason` with the fields above.
 
+### AppCloseError telemetry
+
+`ENTS_INFO_RDKAMAppCloseError` reports a failure while closing, terminating,
+killing, or cleaning up after closing an app. It contains exactly these fields:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `appId` | string | Application ID |
+| `appVersion` | string | Package version from package metadata (empty, with a warning, if the app is no longer tracked) |
+| `closeType` | string | `DEACTIVATE` (close targeting SUSPENDED/HIBERNATED, i.e. inactive), `CLOSE`, `TERMINATE`, or `KILL` |
+| `errorCode` | integer | `CurrentActionError`: 1 `ERROR_INVALID_PARAMS`, 2 `ERROR_INTERNAL`, 4 `ERROR_PACKAGE_UNLOCK`, 9 `ERROR_UNLOAD_APP`, 10 `ERROR_KILL_APP`, 11 `ERROR_SET_TARGET_APP_STATE` |
+
+`closeType` follows the app's outstanding close/terminate/kill action, so a
+package-unlock failure during terminate cleanup is reported as `TERMINATE`.
+Other error codes are not reported. The event is submitted via
+`TelemetryMetrics.PublishEvent(..., false)`; it is enabled by default and
+independent of `APP_MANAGER_OBSERVABILITY_VERBOSE`. Publication failures are
+logged and do not affect close handling. Launch errors are unchanged.
+
 ### Exchange::IAppManager Interface
 
 The primary interface implemented by AppManagerImplementation:

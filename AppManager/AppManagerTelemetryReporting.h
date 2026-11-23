@@ -43,6 +43,8 @@ class AppManagerTelemetryReporting : public Utils::TelemetryReportingBase
         void initialize(PluginHost::IShell* service);
 
     private /*methods*/:
+        void reportAppCloseErrorTelemetry(const std::string& appId, AppManagerImplementation::CurrentAction currentAction, AppManagerImplementation::CurrentActionError errorCode);
+        void publishEventDirect(const std::string& appId, const JsonObject& jsonParam, const char* marker);
         AppManagerTelemetryReporting();
         ~AppManagerTelemetryReporting();
 

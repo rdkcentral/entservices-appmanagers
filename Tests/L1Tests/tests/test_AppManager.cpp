@@ -5245,3 +5245,71 @@ TEST_P(AppCrashedSuppressionTest, IntentionalUnloadOrStaleInstanceDoesNotPublish
 }
 
 INSTANTIATE_TEST_SUITE_P(IntentionalAndStale, AppCrashedSuppressionTest, ::testing::Bool());
+
+class AppCloseErrorTest : public AppCrashedTelemetryTest {
+protected:
+    void ExpectCloseError(const string& type, int code)
+    {
+        EXPECT_CALL(*telemetry, PublishEvent(::testing::_, "ENTS_INFO_RDKAMAppCloseError", false))
+            .WillOnce([type, code](const string& payload, const string&, bool) {
+                JsonObject expected;
+                expected["appId"] = APPMANAGER_APP_ID;
+                expected["appVersion"] = APPMANAGER_APP_VERSION;
+                expected["closeType"] = type;
+                expected["errorCode"] = code;
+                string expectedPayload;
+                expected.ToString(expectedPayload);
+                EXPECT_EQ(expectedPayload, payload);
+                return Core::ERROR_NONE;
+            });
+    }
+
+    void Seed(AppManagerTypes::CurrentAction action, Exchange::IAppManager::AppLifecycleState target)
+    {
+        AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [&](AppInfo& app) {
+            app.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+            app.setCurrentAction(action);
+            app.setTargetAppState(target);
+            app.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+        });
+    }
+};
+
+TEST_F(AppCloseErrorTest, CloseTypesAndErrorCodesArePublishedWithoutVerboseGating)
+{
+    using Act = Plugin::AppManagerImplementation;
+    const auto unloaded = Exchange::IAppManager::APP_STATE_UNLOADED;
+    const struct {
+        AppManagerTypes::CurrentAction action;
+        Exchange::IAppManager::AppLifecycleState target;
+        Act::CurrentActionError error;
+        const char* closeType;
+    } cases[] = {
+        { Act::APP_ACTION_CLOSE, unloaded, Act::ERROR_SET_TARGET_APP_STATE, "CLOSE" },
+        { Act::APP_ACTION_CLOSE, Exchange::IAppManager::APP_STATE_SUSPENDED, Act::ERROR_INTERNAL, "DEACTIVATE" },
+        { Act::APP_ACTION_CLOSE, Exchange::IAppManager::APP_STATE_HIBERNATED, Act::ERROR_INVALID_PARAMS, "DEACTIVATE" },
+        { Act::APP_ACTION_TERMINATE, unloaded, Act::ERROR_UNLOAD_APP, "TERMINATE" },
+        { Act::APP_ACTION_KILL, unloaded, Act::ERROR_KILL_APP, "KILL" },
+    };
+    for (const auto& test : cases) {
+        Seed(test.action, test.target);
+        ExpectCloseError(test.closeType, static_cast<int>(test.error));
+        AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(APPMANAGER_APP_ID, test.action, test.error);
+    }
+}
+
+TEST_F(AppCloseErrorTest, CleanupErrorUsesOutstandingTerminateAction)
+{
+    Seed(Plugin::AppManagerImplementation::APP_ACTION_TERMINATE, Exchange::IAppManager::APP_STATE_UNLOADED);
+    ExpectCloseError("TERMINATE", Plugin::AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+    AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(APPMANAGER_APP_ID,
+        Plugin::AppManagerImplementation::APP_ACTION_CLOSE, Plugin::AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+}
+
+TEST_F(AppCloseErrorTest, UnsupportedErrorCodeIsNotPublished)
+{
+    Seed(Plugin::AppManagerImplementation::APP_ACTION_CLOSE, Exchange::IAppManager::APP_STATE_UNLOADED);
+    EXPECT_CALL(*telemetry, PublishEvent(::testing::_, ::testing::_, ::testing::_)).Times(0);
+    AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(APPMANAGER_APP_ID,
+        Plugin::AppManagerImplementation::APP_ACTION_CLOSE, Plugin::AppManagerImplementation::ERROR_SPAWN_APP);
+}

@@ -219,11 +219,19 @@ namespace Plugin
             return;
         }
 
+        LOGINFO("Received data for appId %s current action %d app errorCode %d",appId.c_str(), currentAction, errorCode);
+
+        if ((AppManagerImplementation::APP_ACTION_CLOSE == currentAction) ||
+            (AppManagerImplementation::APP_ACTION_TERMINATE == currentAction) ||
+            (AppManagerImplementation::APP_ACTION_KILL == currentAction))
+        {
+            reportAppCloseErrorTelemetry(appId, currentAction, errorCode);
+            return;
+        }
+
         JsonObject jsonParam;
         std::string telemetryMetrics = "";
         std::string markerName = "";
-
-        LOGINFO("Received data for appId %s current action %d app errorCode %d",appId.c_str(), currentAction, errorCode);
 
         if(!ensureTelemetryClient())
         {
@@ -235,11 +243,6 @@ namespace Plugin
             case AppManagerImplementation::APP_ACTION_LAUNCH:
             case AppManagerImplementation::APP_ACTION_PRELOAD:
                 markerName = TELEMETRY_MARKER_LAUNCH_ERROR;
-            break;
-            case AppManagerImplementation::APP_ACTION_CLOSE:
-            case AppManagerImplementation::APP_ACTION_TERMINATE:
-            case AppManagerImplementation::APP_ACTION_KILL:
-                markerName = TELEMETRY_MARKER_CLOSE_ERROR;
             break;
             default:
                 LOGERR("currentAction is invalid");
@@ -310,26 +313,90 @@ namespace Plugin
         jsonParam["appId"] = appId;
         jsonParam["appVersion"] = appVersion;
         jsonParam["lifecycleState"] = state;
+        publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_APP_CRASHED);
+    }
+
+    void AppManagerTelemetryReporting::reportAppCloseErrorTelemetry(const std::string& appId,
+        AppManagerImplementation::CurrentAction currentAction, AppManagerImplementation::CurrentActionError errorCode)
+    {
+        switch (errorCode) {
+            case AppManagerImplementation::ERROR_INVALID_PARAMS:
+            case AppManagerImplementation::ERROR_INTERNAL:
+            case AppManagerImplementation::ERROR_PACKAGE_UNLOCK:
+            case AppManagerImplementation::ERROR_UNLOAD_APP:
+            case AppManagerImplementation::ERROR_KILL_APP:
+            case AppManagerImplementation::ERROR_SET_TARGET_APP_STATE:
+                break;
+            default:
+                LOGWARN("AppCloseError telemetry skipped: unsupported errorCode %d for appId=%s", static_cast<int>(errorCode), appId.c_str());
+                return;
+        }
+
+        // Prefer the app's outstanding close-type action: cleanup errors are reported with APP_ACTION_CLOSE
+        // even when the close was started by terminate or kill.
+        AppManagerImplementation::CurrentAction closeAction = currentAction;
+        std::string appVersion;
+        AppInfo snapshot;
+        if (AppInfoManager::getInstance().get(appId, snapshot)) {
+            appVersion = snapshot.getPackageInfo().version;
+            const AppManagerImplementation::CurrentAction active = snapshot.getCurrentAction();
+            if ((AppManagerImplementation::APP_ACTION_CLOSE == active) ||
+                (AppManagerImplementation::APP_ACTION_TERMINATE == active) ||
+                (AppManagerImplementation::APP_ACTION_KILL == active)) {
+                closeAction = active;
+            }
+        }
+
+        std::string closeType;
+        switch (closeAction) {
+            case AppManagerImplementation::APP_ACTION_CLOSE:
+                closeType = ((Exchange::IAppManager::APP_STATE_SUSPENDED == snapshot.getTargetAppState()) ||
+                             (Exchange::IAppManager::APP_STATE_HIBERNATED == snapshot.getTargetAppState())) ? "DEACTIVATE" : "CLOSE";
+                break;
+            case AppManagerImplementation::APP_ACTION_TERMINATE:
+                closeType = "TERMINATE";
+                break;
+            case AppManagerImplementation::APP_ACTION_KILL:
+                closeType = "KILL";
+                break;
+            default:
+                LOGWARN("AppCloseError telemetry skipped: invalid close action %d for appId=%s", static_cast<int>(closeAction), appId.c_str());
+                return;
+        }
+        if (appVersion.empty()) {
+            LOGWARN("AppCloseError for appId=%s has no package version metadata", appId.c_str());
+        }
+
+        JsonObject jsonParam;
+        jsonParam["appId"] = appId;
+        jsonParam["appVersion"] = appVersion;
+        jsonParam["closeType"] = closeType;
+        jsonParam["errorCode"] = static_cast<int>(errorCode);
+        publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_CLOSE_ERROR);
+    }
+
+    void AppManagerTelemetryReporting::publishEventDirect(const std::string& appId, const JsonObject& jsonParam, const char* marker)
+    {
         std::string telemetryMetrics;
         if (!buildTelemetryPayload(jsonParam, telemetryMetrics)) {
-            LOGERR("Failed to serialize AppCrashed telemetry for appId=%s", appId.c_str());
+            LOGERR("Failed to serialize %s telemetry for appId=%s", marker, appId.c_str());
             return;
         }
         PluginHost::IShell* service = getService();
         if (nullptr == service) {
-            LOGWARN("AppCrashed telemetry skipped: AppManager service is unavailable");
+            LOGWARN("%s telemetry skipped: AppManager service is unavailable", marker);
             return;
         }
         Exchange::ITelemetryMetrics* telemetry =
             service->QueryInterfaceByCallsign<Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics");
         if (nullptr == telemetry) {
-            LOGWARN("AppCrashed telemetry skipped: TelemetryMetrics is unavailable");
+            LOGWARN("%s telemetry skipped: TelemetryMetrics is unavailable", marker);
             return;
         }
-        const Core::hresult status = telemetry->PublishEvent(telemetryMetrics, TELEMETRY_MARKER_APP_CRASHED, false);
+        const Core::hresult status = telemetry->PublishEvent(telemetryMetrics, marker, false);
         telemetry->Release();
         if (Core::ERROR_NONE != status) {
-            LOGWARN("AppCrashed telemetry publishing failed for appId=%s (status=%d)", appId.c_str(), status);
+            LOGWARN("%s telemetry publishing failed for appId=%s (status=%d)", marker, appId.c_str(), status);
         }
     }
 
