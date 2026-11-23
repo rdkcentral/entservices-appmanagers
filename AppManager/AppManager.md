@@ -205,7 +205,9 @@ AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
 
 **Purpose**: Bridge between AppManager and LifecycleManager for lifecycle operations.
 
-The launch configuration crosses manager boundaries as a flat, opaque JSON string. AppManager parses the package payload to set `unpackedPath`; for preload requests it preserves the existing behavior of appending strings from `launchArgs.env` to the `envVariables` JSON array. It then reserializes the payload without dropping unknown properties.
+For launch requests with an intent, all supplied `launchArgs` are ignored, including debugger flags, custom environment entries and encoded launch parameters. The intent is forwarded unchanged and the lifecycle launch receives empty launch arguments. Preload retains its existing launch-argument behavior.
+
+The launch configuration crosses manager boundaries as a flat, opaque JSON string. AppManager parses the package payload to set `unpackedPath`; for launch requests it upserts the strings from `launchArgs.env` (format `{"env":["NAME=VALUE", ...]}`) into the `envVariables` JSON array, so a launchArgs value overrides a package value with the same name; preload requests keep the existing behavior of appending them. A launch that carries an intent does not apply `launchArgs.env` (intent and launchArgs are exclusive). It then reserializes the payload without dropping unknown properties. LifecycleManager subsequently upserts `FIREBOLT_ENDPOINT` and `TARGET_STATE` and passes the payload to RuntimeManager, which injects `envVariables` into the container. If `launchArgs.env` is not an array of strings, or (for launch requests) contains an entry that is not a valid `NAME=VALUE`, the request is rejected asynchronously with `APP_ERROR_INVALID_PARAM` via `onAppLifecycleStateChanged` and no container is spawned. Percent-encoded `launchArgs` are decoded before this validation. If the app is already loaded, the event reports its unchanged current state (`oldState` == `newState`) and the running app, its record and its package lock are left intact.
 
 **Key Methods**:
 ```cpp
