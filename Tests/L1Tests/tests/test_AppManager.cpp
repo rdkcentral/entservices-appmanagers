@@ -94,6 +94,18 @@ const string runtimeConfigPayload = R"({"capabilities":"dial-app,wan-lan","envVa
 }
 class AppManagerTest : public ::testing::Test {
 protected:
+    // Declare after locals captured by mock callbacks so workers stop before those locals are destroyed.
+    class ScopedResourceCleanup {
+    public:
+        explicit ScopedResourceCleanup(AppManagerTest& fixture) : mFixture(fixture) {}
+        ~ScopedResourceCleanup() { mFixture.releaseResources(); }
+        ScopedResourceCleanup(const ScopedResourceCleanup&) = delete;
+        ScopedResourceCleanup& operator=(const ScopedResourceCleanup&) = delete;
+
+    private:
+        AppManagerTest& mFixture;
+    };
+
     ServiceMock* mServiceMock = nullptr;
     LifecycleManagerMock* mLifecycleManagerMock = nullptr;
     LifecycleManagerStateMock* mLifecycleManagerStateMock = nullptr;
@@ -291,13 +303,6 @@ protected:
                     }));
         }
 
-        Wraps::setImpl(nullptr);
-        if (p_wrapsImplMock != nullptr)
-        {
-            delete p_wrapsImplMock;
-            p_wrapsImplMock = nullptr;
-        }
-
         if (mStorageManagerMock != nullptr)
         {
             EXPECT_CALL(*mStorageManagerMock, Release())
@@ -310,11 +315,17 @@ protected:
         dispatcher->Deactivate();
         dispatcher->Release();
 
-        AppInfoManager::getInstance().clear();
         drainWorkerPool();
         plugin->Deinitialize(mServiceMock);
         delete mServiceMock;
         mAppManagerImpl = nullptr;
+        AppInfoManager::getInstance().clear();
+        Wraps::setImpl(nullptr);
+        if (p_wrapsImplMock != nullptr)
+        {
+            delete p_wrapsImplMock;
+            p_wrapsImplMock = nullptr;
+        }
     }
     AppManagerTest()
         : plugin(Core::ProxyType<Plugin::AppManager>::Create()),
@@ -1064,12 +1075,12 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcSuccess)
  */
 TEST_F(AppManagerTest, LaunchAppWithLaunchArgsEnvUpsertsRuntimeConfig)
 {
-    Core::hresult status = createResources();
-    EXPECT_EQ(Core::ERROR_NONE, status);
-
     const std::string launchArgs =
         R"({"debugger":"true","env":["CUSTOM_VAR=hello world","BASE=temporary","BASE=2","EMPTY=","EQUALS=a=b"]})";
     std::string capturedPayload;
+    Core::hresult status = createResources();
+    ScopedResourceCleanup cleanup(*this);
+    ASSERT_EQ(Core::ERROR_NONE, status);
     mPreLoadSpawmCalled = false;
     PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
 
@@ -1134,8 +1145,6 @@ TEST_F(AppManagerTest, LaunchAppWithLaunchArgsEnvUpsertsRuntimeConfig)
     EXPECT_TRUE(hasEntry("EMPTY="));
     EXPECT_TRUE(hasEntry("EQUALS=a=b"));
     EXPECT_TRUE(hasName("APPLICATION_LAUNCH_PARAMETERS"));
-
-    releaseResources();
 }
 
 /* * Test Case for LaunchAppWithInvalidLaunchArgsEnvIsRejected
@@ -1211,13 +1220,13 @@ INSTANTIATE_TEST_SUITE_P(InvalidEnvironment, AppManagerInvalidLaunchArgsEnvTest,
  */
 TEST_F(AppManagerTest, LaunchAppWithEncodedLaunchArgsEnvUpsertsRuntimeConfig)
 {
-    Core::hresult status = createResources();
-    EXPECT_EQ(Core::ERROR_NONE, status);
-
     // {"env":["CUSTOM_VAR=hello","BASE=2"]}
     const std::string encodedLaunchArgs = "%7B%22env%22%3A%5B%22CUSTOM_VAR%3Dhello%22%2C%22BASE%3D2%22%5D%7D";
     const std::string decodedLaunchArgs = R"({"env":["CUSTOM_VAR=hello","BASE=2"]})";
     std::string capturedPayload;
+    Core::hresult status = createResources();
+    ScopedResourceCleanup cleanup(*this);
+    ASSERT_EQ(Core::ERROR_NONE, status);
     mPreLoadSpawmCalled = false;
     PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
 
@@ -1273,8 +1282,6 @@ TEST_F(AppManagerTest, LaunchAppWithEncodedLaunchArgsEnvUpsertsRuntimeConfig)
     EXPECT_TRUE(hasEntry("CUSTOM_VAR=hello"));
     EXPECT_TRUE(hasEntry("BASE=2"));
     EXPECT_FALSE(hasEntry("BASE=1"));
-
-    releaseResources();
 }
 
 /* * Test Case for LaunchAppWithInvalidLaunchArgsEnvOnLoadedAppPreservesRunningApp
@@ -1466,11 +1473,11 @@ TEST_F(AppManagerTest, LaunchAppWithInvalidLaunchArgsEnvReleasesDeferredReplacem
  */
 TEST_F(AppManagerTest, LaunchAppWithIntentIgnoresLaunchArgsEnv)
 {
-    Core::hresult status = createResources();
-    EXPECT_EQ(Core::ERROR_NONE, status);
-
     const std::string launchArgs = R"({"debugger":true,"env":["CUSTOM_VAR=hello"]})";
     std::string capturedPayload;
+    Core::hresult status = createResources();
+    ScopedResourceCleanup cleanup(*this);
+    ASSERT_EQ(Core::ERROR_NONE, status);
     mPreLoadSpawmCalled = false;
     PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
 
@@ -1518,8 +1525,6 @@ TEST_F(AppManagerTest, LaunchAppWithIntentIgnoresLaunchArgsEnv)
     ASSERT_EQ(2u, environment.Length());
     EXPECT_EQ("BASE=1", environment[0].String());
     EXPECT_EQ("APPLICATION_LAUNCH_PARAMETERS=", environment[1].String());
-
-    releaseResources();
 }
 
 /* * Test Case for LaunchAppUsingJSONRpcSuccess
