@@ -94,6 +94,36 @@ RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting
 namespace WPEFramework {
 namespace Plugin {
 
+// Validates launchArgs["env"]: absent, or an array of strings (each NAME=VALUE when validateEntries is set).
+static bool isValidLaunchArgsEnv(JsonObject& launchArgsObj, bool validateEntries, std::string& error)
+{
+    if (!launchArgsObj.HasLabel("env"))
+    {
+        return true;
+    }
+    if (launchArgsObj["env"].Content() != JsonValue::type::ARRAY)
+    {
+        error = "launchArgs.env must be an array of strings";
+        return false;
+    }
+    const JsonArray& extraEnv = launchArgsObj["env"].Array();
+    auto it = extraEnv.Elements();
+    while (it.Next())
+    {
+        if (it.Current().Content() != JsonValue::type::STRING)
+        {
+            error = "launchArgs.env must be an array of strings";
+            return false;
+        }
+        if (validateEntries && !isValidLaunchEnvEntry(it.Current().String()))
+        {
+            error = "launchArgs.env entries must be NAME=VALUE";
+            return false;
+        }
+    }
+    return true;
+}
+
 SERVICE_REGISTRATION(AppManagerImplementation, 1, 0);
 AppManagerImplementation* AppManagerImplementation::_instance = nullptr;
 
@@ -353,9 +383,8 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 const bool intentLaunch = (APP_ACTION_LAUNCH == action) && !appRequestParam->intent.empty();
                                 if ((Core::ERROR_NONE == status) && launchArgsObj.HasLabel("env") && !intentLaunch)
                                 {
-                                    if (launchArgsObj["env"].Content() != JsonValue::type::ARRAY)
+                                    if (!isValidLaunchArgsEnv(launchArgsObj, (APP_ACTION_LAUNCH == action), payloadError))
                                     {
-                                        payloadError = "launchArgs.env must be an array of strings";
                                         status = Core::ERROR_INVALID_PARAMETER;
                                     }
                                     else
@@ -364,17 +393,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                         auto it = extraEnv.Elements();
                                         while (it.Next() && (status == Core::ERROR_NONE))
                                         {
-                                            if (it.Current().Content() != JsonValue::type::STRING)
-                                            {
-                                                payloadError = "launchArgs.env must be an array of strings";
-                                                status = Core::ERROR_INVALID_PARAMETER;
-                                            }
-                                            else if ((APP_ACTION_LAUNCH == action) && !isValidLaunchEnvEntry(it.Current().String()))
-                                            {
-                                                payloadError = "launchArgs.env entries must be NAME=VALUE";
-                                                status = Core::ERROR_INVALID_PARAMETER;
-                                            }
-                                            else if (!((APP_ACTION_LAUNCH == action)
+                                            if (!((APP_ACTION_LAUNCH == action)
                                                 ? runtimeConfig.UpsertEnvironment(it.Current().String(), payloadError)
                                                 : runtimeConfig.AppendString("envVariables", it.Current().String(), payloadError)))
                                             {
@@ -582,12 +601,14 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 newState = static_cast<AppLifecycleState>(params["newState"].Number());
                 oldState = static_cast<AppLifecycleState>(params["oldState"].Number());
                 errorReason = static_cast<AppErrorReason>(params["errorReason"].Number());
+                const bool requestRejected = params.HasLabel("requestRejected") && params["requestRejected"].Boolean();
                 mAdminLock.Lock();
                 for (auto& notification : mAppManagerNotification)
                 {
                     notification->OnAppLifecycleStateChanged(appId, appInstanceId, newState, oldState, errorReason);
                 }
-                if ((Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == oldState) && (Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == newState))
+                if (!requestRejected &&
+                    (Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == oldState) && (Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == newState))
                 {
                     LOGERR("Transition from loading state failed. Killing the application ....");
                     Core::hresult status = Core::ERROR_UNAVAILABLE;
@@ -777,6 +798,8 @@ void AppManagerImplementation::handleOnAppLaunchRejected(const string& appId, co
     eventDetails["newState"] = static_cast<int>(currentState);
     eventDetails["oldState"] = static_cast<int>(currentState);
     eventDetails["errorReason"] = static_cast<int>(errorReason);
+    // Marks a request rejection so Dispatch does not treat LOADING -> LOADING as a failed transition.
+    eventDetails["requestRejected"] = true;
 
     LOGERR("Request rejected for appId %s: state=%d unchanged, errorReason=%d",
         appId.c_str(), static_cast<int>(currentState), static_cast<int>(errorReason));
@@ -1704,12 +1727,29 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
             if (request->mRequestParam != nullptr)
             {
 #ifdef APP_MANAGER_RESOURCE_MONITOR
-                mAdminLock.Unlock();
-                const Core::hresult reconcileStatus = Reconcile(appId, GetAppRamTargetMB(appId), true);
-                mAdminLock.Lock();
-                if (Core::ERROR_NONE != reconcileStatus)
+                // Reconciliation may terminate a victim app, so skip it for a launch the worker will reject;
+                // the request is still queued so the rejection is reported asynchronously as usual.
+                bool launchEnvValid = true;
+                if (intent.empty())
                 {
-                    LOGWARN("Resource reconciliation could not be started for launch of appId %s", appId.c_str());
+                    JsonObject launchArgsObj;
+                    launchArgsObj.FromString(::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs));
+                    std::string envError;
+                    launchEnvValid = isValidLaunchArgsEnv(launchArgsObj, true, envError);
+                    if (!launchEnvValid)
+                    {
+                        LOGERR("Skipping resource reconciliation for appId %s: %s", appId.c_str(), envError.c_str());
+                    }
+                }
+                if (launchEnvValid)
+                {
+                    mAdminLock.Unlock();
+                    const Core::hresult reconcileStatus = Reconcile(appId, GetAppRamTargetMB(appId), true);
+                    mAdminLock.Lock();
+                    if (Core::ERROR_NONE != reconcileStatus)
+                    {
+                        LOGWARN("Resource reconciliation could not be started for launch of appId %s", appId.c_str());
+                    }
                 }
 #endif
                 mAppManagerLock.lock();

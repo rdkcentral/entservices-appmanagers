@@ -1365,6 +1365,64 @@ TEST_F(AppManagerTest, LaunchAppWithInvalidLaunchArgsEnvOnLoadedAppPreservesRunn
     releaseResources();
 }
 
+/* * Test Case for LaunchAppWithInvalidLaunchArgsEnvOnLoadingAppDoesNotKillApp
+ * Invalid launchArgs.env for an already-loaded app in LOADING state is reported as a
+ * LOADING -> LOADING rejection with APP_ERROR_INVALID_PARAM; it must not be treated as a
+ * failed loading transition, so the existing app is not killed
+ */
+TEST_F(AppManagerTest, LaunchAppWithInvalidLaunchArgsEnvOnLoadingAppDoesNotKillApp)
+{
+    Core::hresult status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    const std::string launchArgs = R"({"env":["NO_EQUALS"]})";
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM;
+    PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING);
+    });
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = FillPackageIterator();
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
+        .WillRepeatedly([&](const std::string&, bool& loaded) {
+            loaded = true;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
+    EXPECT_CALL(*mPackageManagerMock, Unlock(::testing::_, ::testing::_))
+        .Times(0);
+    EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
+    EXPECT_CALL(*mLifecycleManagerMock, KillApp(::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
+
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, "", launchArgs));
+    const uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    // Unregister takes the admin lock held by Dispatch, so the LOADING kill check has completed by now.
+    mAppManagerImpl->Unregister(&notification);
+
+    EXPECT_TRUE(AppInfoManager::getInstance().exists(APPMANAGER_APP_ID));
+    EXPECT_EQ(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING, AppInfoManager::getInstance().getAppNewState(APPMANAGER_APP_ID));
+    EXPECT_EQ(std::string(APPMANAGER_APP_INSTANCE), AppInfoManager::getInstance().getAppInstanceId(APPMANAGER_APP_ID));
+
+    releaseResources();
+}
+
 /* * Test Case for LaunchAppWithInvalidLaunchArgsEnvReleasesDeferredReplacementLock
  * Invalid launchArgs.env for a suspended app whose newer version was locked as a deferred
  * replacement releases only that deferred lock and reports APP_ERROR_INVALID_PARAM,

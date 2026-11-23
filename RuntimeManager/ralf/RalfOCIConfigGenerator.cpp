@@ -823,7 +823,7 @@ namespace ralf
             const size_t separator = envPair.find('=');
             if ((std::string::npos == separator) || (0 == separator))
             {
-                LOGWARN("Skipping malformed runtime environment entry: %s\n", envPair.c_str());
+                LOGWARN("Skipping malformed runtime environment entry (length %zu)\n", envPair.size());
                 continue;
             }
 
@@ -918,14 +918,14 @@ namespace ralf
 
         if (firstMatchIndex < 0)
         {
-            LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+            LOGDBG("Added environment variable to OCI config: %s\n", key.c_str());
             envNode.append(std::move(envVar));
             return;
         }
 
         if (!duplicateFound)
         {
-            LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+            LOGDBG("Added environment variable to OCI config: %s\n", key.c_str());
             envNode[static_cast<Json::ArrayIndex>(firstMatchIndex)] = std::move(envVar);
             return;
         }
@@ -955,11 +955,11 @@ namespace ralf
             }
             else
             {
-                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existingStr.c_str());
+                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", key.c_str());
             }
         }
 
         processNode[ENV] = std::move(deduped);
-        LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+        LOGDBG("Added environment variable to OCI config: %s\n", key.c_str());
     }
 } // namespace ralf
