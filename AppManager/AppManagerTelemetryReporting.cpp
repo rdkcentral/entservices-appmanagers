@@ -22,6 +22,7 @@
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 #include <interfaces/ITelemetryMetrics.h>
+#include <climits>
 #include <utility>
 
 namespace WPEFramework
@@ -187,6 +188,10 @@ namespace Plugin
                             jsonParam["totalCloseTime"] = (int)(currentTime - stateSnap.getCurrentActionTime());
                             jsonParam["closeType"] = ((AppManagerImplementation::APP_ACTION_CLOSE == stateSnap.getCurrentAction())?"CLOSE":((AppManagerImplementation::APP_ACTION_TERMINATE == stateSnap.getCurrentAction())?"TERMINATE":"KILL"));
                             markerName = TELEMETRY_MARKER_CLOSE_TIME;
+                            if (AppManagerImplementation::APP_ACTION_CLOSE != stateSnap.getCurrentAction())
+                            {
+                                reportAppCloseCompleteTelemetry(appId, stateSnap.getCurrentAction());
+                            }
                         }
                 break;
                 default:
@@ -313,7 +318,7 @@ namespace Plugin
         jsonParam["appId"] = appId;
         jsonParam["appVersion"] = appVersion;
         jsonParam["lifecycleState"] = state;
-        publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_APP_CRASHED);
+        publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_APP_CRASHED, false);
     }
 
     void AppManagerTelemetryReporting::reportAppCloseErrorTelemetry(const std::string& appId,
@@ -372,10 +377,54 @@ namespace Plugin
         jsonParam["appVersion"] = appVersion;
         jsonParam["closeType"] = closeType;
         jsonParam["errorCode"] = static_cast<int>(errorCode);
-        publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_CLOSE_ERROR);
+        publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_CLOSE_ERROR, false);
     }
 
-    void AppManagerTelemetryReporting::publishEventDirect(const std::string& appId, const JsonObject& jsonParam, const char* marker)
+    void AppManagerTelemetryReporting::reportAppCloseCompleteTelemetry(const std::string& appId,
+        AppManagerImplementation::CurrentAction currentAction)
+    {
+        if (!Utils::isTelemetryMetricsEnabled()) {
+            return;
+        }
+
+        // CloseApp only moves the app to the inactive state, so it is reported as DEACTIVATE.
+        std::string closeType;
+        switch (currentAction) {
+            case AppManagerImplementation::APP_ACTION_CLOSE:
+                closeType = "DEACTIVATE";
+                break;
+            case AppManagerImplementation::APP_ACTION_TERMINATE:
+                closeType = "TERMINATE";
+                break;
+            case AppManagerImplementation::APP_ACTION_KILL:
+                closeType = "KILL";
+                break;
+            default:
+                return;
+        }
+
+        AppInfo snapshot;
+        if (!AppInfoManager::getInstance().get(appId, snapshot) || (currentAction != snapshot.getCurrentAction())) {
+            // The app is gone or another close action took over, so this close did not complete.
+            return;
+        }
+        const std::string appVersion = snapshot.getPackageInfo().version;
+        const long long totalCloseTime = static_cast<long long>(currentTimestampMs()) - static_cast<long long>(snapshot.getCurrentActionTime());
+        if (appVersion.empty() || (totalCloseTime < 0) || (totalCloseTime > INT_MAX)) {
+            LOGWARN("AppCloseComplete telemetry skipped for appId=%s: version empty=%d totalCloseTime=%lld",
+                appId.c_str(), appVersion.empty(), totalCloseTime);
+            return;
+        }
+
+        JsonObject jsonParam;
+        jsonParam["appId"] = appId;
+        jsonParam["appVersion"] = appVersion;
+        jsonParam["totalCloseTime"] = static_cast<int>(totalCloseTime);
+        jsonParam["closeType"] = closeType;
+        publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_CLOSE_COMPLETE, true);
+    }
+
+    void AppManagerTelemetryReporting::publishEventDirect(const std::string& appId, const JsonObject& jsonParam, const char* marker, bool verboseOnly)
     {
         std::string telemetryMetrics;
         if (!buildTelemetryPayload(jsonParam, telemetryMetrics)) {
@@ -393,7 +442,7 @@ namespace Plugin
             LOGWARN("%s telemetry skipped: TelemetryMetrics is unavailable", marker);
             return;
         }
-        const Core::hresult status = telemetry->PublishEvent(telemetryMetrics, marker, false);
+        const Core::hresult status = telemetry->PublishEvent(telemetryMetrics, marker, verboseOnly);
         telemetry->Release();
         if (Core::ERROR_NONE != status) {
             LOGWARN("%s telemetry publishing failed for appId=%s (status=%d)", marker, appId.c_str(), status);

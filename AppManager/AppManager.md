@@ -249,6 +249,29 @@ notifications or cleanup.
 This replaces the previous AppCrashed payload containing `appInstanceId` and
 `crashReason` with the fields above.
 
+### AppCloseComplete telemetry
+
+`ENTS_INFO_RDKAMAppCloseComplete` reports the total time taken to close an app.
+It contains exactly these fields:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `appId` | string | Application ID |
+| `appVersion` | string | Package version from package metadata |
+| `totalCloseTime` | integer | Milliseconds from the close request to completion |
+| `closeType` | string | `DEACTIVATE` or `TERMINATE` or `KILL` (see below) |
+
+- `CloseApp` does not close the app; it moves it to the inactive state. Once
+  the app is confirmed inactive, the event is reported as `DEACTIVATE`.
+- `TerminateApp` / `KillApp` report `TERMINATE` / `KILL` when the app reaches `UNLOADED`.
+- Failed or timed-out closes, closes taken over by terminate/kill, and apps without a
+  package version are not reported. `CLOSE` is not emitted because `CloseApp` never exits the app.
+
+The event is submitted via `TelemetryMetrics.PublishEvent(..., true)`, so it is
+published only when the `APP_MANAGER_OBSERVABILITY_VERBOSE` RFC is enabled; the
+RFC check is performed by TelemetryMetrics only. The existing `AppCloseTime`
+marker is unchanged.
+
 ### AppCloseError telemetry
 
 `ENTS_INFO_RDKAMAppCloseError` reports a failure while closing, terminating,

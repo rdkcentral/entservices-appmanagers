@@ -5313,3 +5313,54 @@ TEST_F(AppCloseErrorTest, UnsupportedErrorCodeIsNotPublished)
     AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(APPMANAGER_APP_ID,
         Plugin::AppManagerImplementation::APP_ACTION_CLOSE, Plugin::AppManagerImplementation::ERROR_SPAWN_APP);
 }
+
+class AppCloseCompleteTest : public AppCloseErrorTest {
+protected:
+    void ExpectComplete(const string& type)
+    {
+        EXPECT_CALL(*telemetry, PublishEvent(::testing::_, "ENTS_INFO_RDKAMAppCloseComplete", true))
+            .WillOnce([type](const string& payload, const string&, bool) {
+                JsonObject event;
+                EXPECT_TRUE(event.FromString(payload));
+                EXPECT_EQ(APPMANAGER_APP_ID, event["appId"].String());
+                EXPECT_EQ(APPMANAGER_APP_VERSION, event["appVersion"].String());
+                EXPECT_EQ(type, event["closeType"].String());
+                EXPECT_GE(event["totalCloseTime"].Number(), 0);
+                EXPECT_FALSE(event.HasLabel("appInstanceId"));
+                return Core::ERROR_NONE;
+            });
+    }
+
+    void SeedAction(AppManagerTypes::CurrentAction action)
+    {
+        Seed(action, Exchange::IAppManager::APP_STATE_UNLOADED);
+        AppInfoManager::getInstance().update(APPMANAGER_APP_ID, [](AppInfo& app) {
+            app.setCurrentActionTime(AppManagerTelemetryReporting::getInstance().getCurrentTimestampMs());
+        });
+    }
+};
+
+TEST_F(AppCloseCompleteTest, CloseTerminateAndKillCompletionsArePublishedAsVerboseOnly)
+{
+    using Act = Plugin::AppManagerImplementation;
+    const struct { AppManagerTypes::CurrentAction action; const char* type; } cases[] = {
+        { Act::APP_ACTION_CLOSE, "DEACTIVATE" },
+        { Act::APP_ACTION_TERMINATE, "TERMINATE" },
+        { Act::APP_ACTION_KILL, "KILL" },
+    };
+    for (const auto& test : cases) {
+        SeedAction(test.action);
+        ExpectComplete(test.type);
+        AppManagerTelemetryReporting::getInstance().reportAppCloseCompleteTelemetry(APPMANAGER_APP_ID, test.action);
+    }
+}
+
+TEST_F(AppCloseCompleteTest, SupersededOrUnrelatedActionsAreNotPublished)
+{
+    using Act = Plugin::AppManagerImplementation;
+    EXPECT_CALL(*telemetry, PublishEvent(::testing::_, ::testing::_, ::testing::_)).Times(0);
+    SeedAction(Act::APP_ACTION_TERMINATE);
+    AppManagerTelemetryReporting::getInstance().reportAppCloseCompleteTelemetry(APPMANAGER_APP_ID, Act::APP_ACTION_CLOSE);
+    AppManagerTelemetryReporting::getInstance().reportAppCloseCompleteTelemetry(APPMANAGER_APP_ID, Act::APP_ACTION_LAUNCH);
+    AppManagerTelemetryReporting::getInstance().reportAppCloseCompleteTelemetry("unknown-app", Act::APP_ACTION_KILL);
+}

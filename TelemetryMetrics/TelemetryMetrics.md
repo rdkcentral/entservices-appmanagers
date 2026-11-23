@@ -219,6 +219,7 @@ The following markers are defined in `helpers/Telemetry/TelemetryMarkers.h`:
 | `TELEMETRY_MARKER_LAUNCH_TIME` | App launch time |
 | `TELEMETRY_MARKER_LAUNCH_ERROR` | App launch error |
 | `TELEMETRY_MARKER_CLOSE_TIME` | App close time |
+| `TELEMETRY_MARKER_CLOSE_COMPLETE` | App close complete (verbose only) |
 | `TELEMETRY_MARKER_CLOSE_ERROR` | App close error |
 ### Telemetry Data Format
 

@@ -36,6 +36,7 @@ static const std::unordered_map<std::string, std::unordered_set<std::string>> ma
     {TELEMETRY_MARKER_LAUNCH_TIME, {"totalLaunchTime", "appManagerLaunchTime", "packageManagerLockTime", "lifecycleManagerSpawnTime", "windowManagerCreateDisplayTime", "runtimeManagerRunTime", "storageManagerLaunchTime", "fireboltGatewayLaunchTime", "appId", "appInstanceId", "appVersion", "runtimeId", "runtimeVersion", "launchType", "markerName"}},
     {TELEMETRY_MARKER_LAUNCH_ERROR, {"errorCode", "markerName"}},
     {TELEMETRY_MARKER_CLOSE_TIME, {"totalCloseTime", "appManagerCloseTime", "packageManagerUnlockTime", "lifecycleManagerSetTargetStateTime", "windowManagerDestroyTime", "runtimeManagerTerminateTime", "storageManagerTime", "fireboltGatewayTerminateTime", "appId", "appInstanceId", "appVersion", "closeType", "markerName"}},
+    {TELEMETRY_MARKER_CLOSE_COMPLETE, {"appId", "appVersion", "totalCloseTime", "closeType", "markerName"}},
     {TELEMETRY_MARKER_CLOSE_ERROR, {"appId", "appVersion", "closeType", "errorCode", "markerName"}},
     {TELEMETRY_MARKER_SUSPEND_TIME, {"lifecycleManagerSetTargetStateTime", "runtimeManagerSuspendTime", "appId", "appInstanceId", "markerName"}},
     {TELEMETRY_MARKER_RESUME_TIME, {"lifecycleManagerSetTargetStateTime", "runtimeManagerResumeTime", "appId", "appInstanceId", "markerName"}},

@@ -1717,6 +1717,7 @@ Core::hresult AppManagerImplementation::CloseApp(const string& appId)
         {
             updateCurrentActionTime(appId, requestTime, AppManagerImplementation::APP_ACTION_CLOSE);
             appManagerTelemetryReporting.reportTelemetryData(appId, AppManagerImplementation::APP_ACTION_CLOSE);
+            appManagerTelemetryReporting.reportAppCloseCompleteTelemetry(appId, AppManagerImplementation::APP_ACTION_CLOSE);
         }
         mAdminLock.Unlock();
     }
