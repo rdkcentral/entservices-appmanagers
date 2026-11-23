@@ -28,6 +28,8 @@
 #include "AppManager.h"
 #include "AppManagerImplementation.h"
 #include "AppInfoManager.h"
+#include "AppManagerTelemetryReporting.h"
+#include <interfaces/ITelemetryMetrics.h>
 #include "ServiceMock.h"
 #include "LifecycleManagerMock.h"
 #include "PackageManagerMock.h"
@@ -5087,3 +5089,159 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
         }
     }
 
+class AppCrashTelemetryMock : public Exchange::ITelemetryMetrics {
+public:
+    BEGIN_INTERFACE_MAP(AppCrashTelemetryMock)
+    INTERFACE_ENTRY(Exchange::ITelemetryMetrics)
+    END_INTERFACE_MAP
+    MOCK_METHOD(Core::hresult, Record, (const string&, const string&, const string&), (override));
+    MOCK_METHOD(Core::hresult, Publish, (const string&, const string&), (override));
+    MOCK_METHOD(Core::hresult, PublishEvent, (const string&, const string&, bool), (override));
+};
+
+class AppCrashedTelemetryTest : public AppManagerTest {
+protected:
+    AppCrashTelemetryMock* telemetry = nullptr;
+
+    void SetUp() override
+    {
+        if (!Plugin::Utils::isTelemetryMetricsEnabled()) {
+            GTEST_SKIP() << "Build with AIMANAGERS_TELEMETRY_METRICS_SUPPORT=ON";
+        }
+        ASSERT_EQ(Core::ERROR_NONE, createResources());
+        telemetry = Core::Service<AppCrashTelemetryMock>::Create<AppCrashTelemetryMock>();
+        EXPECT_CALL(*mServiceMock, QueryInterfaceByCallsign(Exchange::ITelemetryMetrics::ID, "org.rdk.TelemetryMetrics"))
+            .Times(::testing::AnyNumber())
+            .WillRepeatedly([this](uint32_t, const string&) -> void* {
+                telemetry->AddRef();
+                return static_cast<Exchange::ITelemetryMetrics*>(telemetry);
+            });
+    }
+
+    void TearDown() override
+    {
+        if (nullptr != telemetry) {
+            releaseResources();
+            telemetry->Release();
+        }
+    }
+
+    void ExpectCrashPayload(const string& state, Core::hresult status = Core::ERROR_NONE)
+    {
+        EXPECT_CALL(*telemetry, PublishEvent(::testing::_, "ENTS_INFO_RDKAMAppCrashed", false))
+            .WillOnce([state, status](const string& payload, const string&, bool) {
+                JsonObject event;
+                EXPECT_TRUE(event.FromString(payload));
+                EXPECT_EQ(APPMANAGER_APP_ID, event["appId"].String());
+                EXPECT_EQ(APPMANAGER_APP_VERSION, event["appVersion"].String());
+                EXPECT_EQ(state, event["lifecycleState"].String());
+                JsonObject expected;
+                expected["appId"] = APPMANAGER_APP_ID;
+                expected["appVersion"] = APPMANAGER_APP_VERSION;
+                expected["lifecycleState"] = state;
+                string expectedPayload;
+                expected.ToString(expectedPayload);
+                EXPECT_EQ(expectedPayload, payload);
+                return status;
+            });
+    }
+};
+
+TEST_F(AppCrashedTelemetryTest, ForegroundAndBackgroundCrashesPublishWithoutVerboseGating)
+{
+    const struct {
+        Exchange::ILifecycleManager::LifecycleState state;
+        const char* reportedState;
+    } cases[] = {
+        { Exchange::ILifecycleManager::ACTIVE, "ACTIVE" },
+        { Exchange::ILifecycleManager::PAUSED, "INACTIVE" },
+        { Exchange::ILifecycleManager::SUSPENDED, "INACTIVE" },
+        { Exchange::ILifecycleManager::HIBERNATED, "INACTIVE" },
+    };
+    for (const auto& test : cases) {
+        ExpectCrashPayload(test.reportedState);
+        AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(
+            APPMANAGER_APP_ID, APPMANAGER_APP_VERSION, test.state);
+    }
+}
+
+TEST_F(AppCrashedTelemetryTest, StartupFailuresAndIncompleteIdentityDoNotPublish)
+{
+    EXPECT_CALL(*telemetry, PublishEvent(::testing::_, ::testing::_, ::testing::_)).Times(0);
+    for (const auto state : { Exchange::ILifecycleManager::UNLOADED, Exchange::ILifecycleManager::LOADING,
+        Exchange::ILifecycleManager::INITIALIZING, Exchange::ILifecycleManager::TERMINATING }) {
+        AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(
+            APPMANAGER_APP_ID, APPMANAGER_APP_VERSION, state);
+    }
+    AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(
+        "", APPMANAGER_APP_VERSION, Exchange::ILifecycleManager::ACTIVE);
+    AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(
+        APPMANAGER_APP_ID, "", Exchange::ILifecycleManager::ACTIVE);
+}
+
+class AppCrashedCompletionTest : public AppCrashedTelemetryTest, public ::testing::WithParamInterface<Core::hresult> {
+};
+
+TEST_P(AppCrashedCompletionTest, UnexpectedCrashCapturesVersionBeforeCleanupAndPublishesOnce)
+{
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& app) {
+        app.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        app.setAppNewState(Exchange::IAppManager::APP_STATE_ACTIVE);
+        app.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+    });
+    ExpectCrashPayload("ACTIVE", GetParam());
+    ASSERT_NE(nullptr, mLifecycleManagerStateNotification_cb);
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::APP_STATE_UNLOADED;
+    expectedEvent.oldState = Exchange::IAppManager::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = Exchange::IAppManager::APP_ERROR_ABORT;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->Register(&notification);
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE, Exchange::ILifecycleManager::ACTIVE,
+        Exchange::ILifecycleManager::UNLOADED, "unexpectedTermination");
+    EXPECT_TRUE(notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded) & AppManager_onAppUnloaded);
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE, Exchange::ILifecycleManager::ACTIVE,
+        Exchange::ILifecycleManager::UNLOADED, "unexpectedTermination");
+    EXPECT_TRUE(notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded) & AppManager_onAppUnloaded);
+    mAppManagerImpl->Unregister(&notification);
+}
+
+INSTANTIATE_TEST_SUITE_P(PublishSuccessAndFailure, AppCrashedCompletionTest,
+    ::testing::Values(Core::ERROR_NONE, Core::ERROR_GENERAL));
+
+class AppCrashedSuppressionTest : public AppCrashedTelemetryTest, public ::testing::WithParamInterface<bool> {
+};
+
+TEST_P(AppCrashedSuppressionTest, IntentionalUnloadOrStaleInstanceDoesNotPublish)
+{
+    const bool staleInstance = GetParam();
+    const string instance = staleInstance ? "stale-instance" : APPMANAGER_APP_INSTANCE;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& app) {
+        app.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        app.setAppNewState(Exchange::IAppManager::APP_STATE_ACTIVE);
+        app.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+    });
+    EXPECT_CALL(*telemetry, PublishEvent(::testing::_, ::testing::_, ::testing::_)).Times(0);
+    ASSERT_NE(nullptr, mLifecycleManagerStateNotification_cb);
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = instance;
+    expectedEvent.newState = Exchange::IAppManager::APP_STATE_UNLOADED;
+    expectedEvent.oldState = Exchange::IAppManager::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = staleInstance ? Exchange::IAppManager::APP_ERROR_ABORT : Exchange::IAppManager::APP_ERROR_NONE;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->Register(&notification);
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID, instance, Exchange::ILifecycleManager::ACTIVE,
+        Exchange::ILifecycleManager::UNLOADED, staleInstance ? "unexpectedTermination" : "");
+    EXPECT_TRUE(notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded) & AppManager_onAppUnloaded);
+    mAppManagerImpl->Unregister(&notification);
+}
+
+INSTANTIATE_TEST_SUITE_P(IntentionalAndStale, AppCrashedSuppressionTest, ::testing::Bool());

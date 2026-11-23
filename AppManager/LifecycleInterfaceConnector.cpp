@@ -1176,9 +1176,17 @@ End:
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
                 bool notifyPauseCV = false;
+                bool reportUnexpectedCrash = false;
+                std::string crashedAppVersion;
                 AppInfoManager::getInstance().update(appId, [&](AppInfo& a) {
                     if (a.getAppInstanceId() == appInstanceId)
                     {
+                        reportUnexpectedCrash = ("unexpectedTermination" == navigationIntent) &&
+                            (Exchange::ILifecycleManager::UNLOADED == newState) &&
+                            (Exchange::IAppManager::APP_STATE_UNLOADED != a.getAppNewState());
+                        if (reportUnexpectedCrash) {
+                            crashedAppVersion = a.getPackageInfo().version;
+                        }
                         a.setAppOldState(oldAppState);
                         a.setAppNewState(newAppState);
                         a.setAppLifecycleState(newState);
@@ -1237,11 +1245,8 @@ End:
                         {
                             LOGINFO("Unexpected container termination detected");
                             appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
-                            const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
-                            if (false == storedInstanceId.empty())
-                            {
-                                const std::string crashReason = "Terminated unexpectedly";
-                                AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
+                            if (reportUnexpectedCrash) {
+                                AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, crashedAppVersion, oldState);
                             }
                         }
                         mAppCurrentActionList.erase(appId);

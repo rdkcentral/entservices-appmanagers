@@ -21,6 +21,7 @@
 #include "AppInfoManager.h"
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
+#include <interfaces/ITelemetryMetrics.h>
 #include <utility>
 
 namespace WPEFramework
@@ -280,31 +281,55 @@ namespace Plugin
         }
     }
 
-    void AppManagerTelemetryReporting::reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId, const std::string& crashReason)
+    void AppManagerTelemetryReporting::reportAppCrashedTelemetry(const std::string& appId, const std::string& appVersion,
+        Exchange::ILifecycleManager::LifecycleState lifecycleState)
     {
         if (!Utils::isTelemetryMetricsEnabled()) {
             return;
         }
 
-        LOGINFO("Received app crash data for appId %s appInstanceId %s crashReason %s", appId.c_str(), appInstanceId.c_str(), crashReason.c_str());
-
-        if (!ensureTelemetryClient())
-        {
-            LOGERR("Failed to create TelemetryMetrics client");
+        std::string state;
+        switch (lifecycleState) {
+            case Exchange::ILifecycleManager::ACTIVE:
+                state = "ACTIVE";
+                break;
+            case Exchange::ILifecycleManager::PAUSED:
+            case Exchange::ILifecycleManager::SUSPENDED:
+            case Exchange::ILifecycleManager::HIBERNATED:
+                state = "INACTIVE";
+                break;
+            default:
+                return;
+        }
+        if (appId.empty() || appVersion.empty()) {
+            LOGWARN("AppCrashed telemetry skipped: app identity or package version is missing for appId=%s", appId.c_str());
             return;
         }
 
         JsonObject jsonParam;
         jsonParam["appId"] = appId;
-        jsonParam["appInstanceId"] = appInstanceId;
-        jsonParam["crashReason"] = crashReason;
-
+        jsonParam["appVersion"] = appVersion;
+        jsonParam["lifecycleState"] = state;
         std::string telemetryMetrics;
-        jsonParam.ToString(telemetryMetrics);
-        if (!telemetryMetrics.empty())
-        {
-            getTelemetryClient().record(appId, telemetryMetrics, TELEMETRY_MARKER_APP_CRASHED);
-            getTelemetryClient().publish(appId, TELEMETRY_MARKER_APP_CRASHED);
+        if (!buildTelemetryPayload(jsonParam, telemetryMetrics)) {
+            LOGERR("Failed to serialize AppCrashed telemetry for appId=%s", appId.c_str());
+            return;
+        }
+        PluginHost::IShell* service = getService();
+        if (nullptr == service) {
+            LOGWARN("AppCrashed telemetry skipped: AppManager service is unavailable");
+            return;
+        }
+        Exchange::ITelemetryMetrics* telemetry =
+            service->QueryInterfaceByCallsign<Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics");
+        if (nullptr == telemetry) {
+            LOGWARN("AppCrashed telemetry skipped: TelemetryMetrics is unavailable");
+            return;
+        }
+        const Core::hresult status = telemetry->PublishEvent(telemetryMetrics, TELEMETRY_MARKER_APP_CRASHED, false);
+        telemetry->Release();
+        if (Core::ERROR_NONE != status) {
+            LOGWARN("AppCrashed telemetry publishing failed for appId=%s (status=%d)", appId.c_str(), status);
         }
     }
 

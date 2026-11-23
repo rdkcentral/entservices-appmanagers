@@ -39,7 +39,7 @@ uint32_t Test_AM_TelemetryReportingStability()
     telemetry.reportTelemetryData("app-telemetry", WPEFramework::Plugin::AppManagerImplementation::APP_ACTION_LAUNCH);
     telemetry.reportTelemetryDataOnStateChange("app-telemetry", WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
     telemetry.reportTelemetryErrorData("app-telemetry", WPEFramework::Plugin::AppManagerImplementation::APP_ACTION_LAUNCH, WPEFramework::Plugin::AppManagerImplementation::ERROR_INTERNAL);
-    telemetry.reportAppCrashedTelemetry("app-telemetry", "instance-1", "crash");
+    telemetry.reportAppCrashedTelemetry("app-telemetry", "1.0.0", WPEFramework::Exchange::ILifecycleManager::ACTIVE);
 
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     L0Test::ExpectTrue(tr, true, "Telemetry reporting paths remain stable in the L0 environment");

@@ -223,6 +223,32 @@ Core::hresult sendIntent(const string& appId, const string& intent);
 
 ## 4. Class & Interface Documentation
 
+### AppCrashed telemetry
+
+`ENTS_INFO_RDKAMAppCrashed` reports unexpected application termination for
+troubleshooting. It contains exactly these event fields:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `appId` | string | Crashed application's ID |
+| `appVersion` | string | Running package version captured from package metadata before cleanup |
+| `lifecycleState` | string | `ACTIVE` for foreground; `INACTIVE` for PAUSED, SUSPENDED, or HIBERNATED |
+
+Reporting is triggered by an `UNLOADED` lifecycle notification carrying
+`unexpectedTermination`. It uses the state before unloading, not `UNLOADED`.
+Startup failures, intentional termination, duplicate notifications, and
+notifications for a stale app instance do not publish this marker.
+
+AppManager submits the event via `TelemetryMetrics.PublishEvent(..., false)`.
+It is enabled whenever telemetry support is built in and does not require
+`APP_MANAGER_OBSERVABILITY_VERBOSE`. AppManager performs no RFC lookup.
+Missing package identity/version or an unavailable telemetry service causes
+reporting to be skipped with a warning; publication failures do not affect crash
+notifications or cleanup.
+
+This replaces the previous AppCrashed payload containing `appInstanceId` and
+`crashReason` with the fields above.
+
 ### Exchange::IAppManager Interface
 
 The primary interface implemented by AppManagerImplementation:
