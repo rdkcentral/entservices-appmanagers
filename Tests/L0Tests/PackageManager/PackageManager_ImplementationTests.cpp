@@ -1121,6 +1121,16 @@ uint32_t Test_PM_Impl_MissingRuntimeBlocksConfigAndLock()
                         ERROR_NONE,
                         "Config() succeeds once the runtime is installed");
 
+    std::string errorReason;
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Uninstall("CobaltRuntime", errorReason),
+                        ERROR_NONE,
+                        "Uninstall() of the 'cobalt' runtime succeeds");
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Config(appId, version, runtimeConfig),
+                        ERROR_UNKNOWN_KEY,
+                        "Config() fails with ERROR_UNKNOWN_KEY again once the runtime is uninstalled");
+
     return tr.failures;
 }
 

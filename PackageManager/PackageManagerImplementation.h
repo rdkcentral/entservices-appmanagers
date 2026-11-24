@@ -77,6 +77,8 @@ class PackageManagerImplementation
             FailReason failReason = Exchange::IPackageInstaller::FailReason::NONE;
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
             string runtimeType;                             // blank for runtime package
+            string requiredRuntimeType;                     // runtime type taken from the package mime type, used only to detect a missing runtime
+            string providedRuntimeType;                     // for a runtime package, the runtime type it provides (e.g. "cobalt")
             string packageType;                              // OCI package type (e.g. "runtime", "application")
             std::pair<std::string, std::string> runtimeApp; // runtime package id & version
         };
