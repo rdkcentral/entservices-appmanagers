@@ -26,6 +26,7 @@
 #include <thread>
 #include <fstream>
 #include <sstream>
+#include <time.h>
 #include <unistd.h>
 #include <plugins/System.h>
 #include "UtilsLogging.h"
@@ -72,6 +73,8 @@ namespace WPEFramework
                 std::string requestedVersion;
                 std::string runtimeConfigPayload;
                 AppManagerTypes::PackageInfo packageInfo;
+                Exchange::IAppManager::AppLifecycleState initialState = Exchange::IAppManager::APP_STATE_UNLOADED;
+                time_t launchStartTime = 0;
             };
 
             class NotificationHandler : public Exchange::ILifecycleManagerState::INotification {

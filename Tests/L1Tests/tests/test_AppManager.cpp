@@ -5430,6 +5430,90 @@ TEST_F(AppCloseCompleteTest, SupersededOrUnrelatedActionsAreNotPublished)
     AppManagerTelemetryReporting::getInstance().reportAppCloseCompleteTelemetry("unknown-app", Act::APP_ACTION_KILL);
 }
 
+class AppLaunchCompleteTest : public AppCrashedTelemetryTest {
+protected:
+    void SeedLaunch(Exchange::IAppManager::AppLifecycleState initialState,
+        Plugin::AppManagerImplementation::CurrentAction action,
+        AppManagerTypes::ApplicationType type, const string& configMetadata = "")
+    {
+        AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [&](AppInfo& app) {
+            app.setCurrentAction(action);
+            app.setCurrentActionTime(AppManagerTelemetryReporting::getInstance().getCurrentTimestampMs());
+            app.setAppNewState(Exchange::IAppManager::APP_STATE_ACTIVE);
+            app.setLaunchTelemetryContext(initialState, "launch-intent", APPMANAGER_APP_VERSION);
+            app.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+            app.getPackageInfoMutable().type = type;
+            app.getPackageInfoMutable().configMetadata = configMetadata;
+        });
+    }
+};
+
+TEST_F(AppLaunchCompleteTest, ColdAndInactiveLaunchesPublishFullPayloadByDefault)
+{
+    using Act = Plugin::AppManagerImplementation;
+    const struct {
+        Exchange::IAppManager::AppLifecycleState initialState;
+        Act::CurrentAction action;
+        const char* initialStateName;
+        AppManagerTypes::ApplicationType appType;
+        const char* appTypeName;
+        const char* configMetadata;
+    } cases[] = {
+        { Exchange::IAppManager::APP_STATE_UNLOADED, Act::APP_ACTION_LAUNCH, "COLD",
+            AppManagerTypes::APPLICATION_TYPE_INTERACTIVE, "INTERACTIVE_APP", "" },
+        { Exchange::IAppManager::APP_STATE_HIBERNATED, Act::APP_ACTION_RESUME, "HIBERNATED",
+            AppManagerTypes::APPLICATION_TYPE_SYSTEM, "HOME_APP", R"({"capabilities":"home-app"})" },
+        { Exchange::IAppManager::APP_STATE_SUSPENDED, Act::APP_ACTION_RESUME, "SUSPENDED",
+            AppManagerTypes::APPLICATION_TYPE_SYSTEM, "SYSTEM_APP", "" },
+        { Exchange::IAppManager::APP_STATE_PAUSED, Act::APP_ACTION_RESUME, "PAUSED",
+            AppManagerTypes::APPLICATION_TYPE_INTERACTIVE, "INTERACTIVE_APP", "" },
+    };
+    constexpr size_t caseCount = sizeof(cases) / sizeof(cases[0]);
+    size_t eventIndex = 0;
+    EXPECT_CALL(*telemetry, PublishEvent(::testing::_, "ENTS_INFO_RDKAMAppLaunchComplete", false))
+        .Times(4)
+        .WillRepeatedly([&](const string& payload, const string&, bool) {
+            JsonObject event;
+            EXPECT_TRUE(event.FromString(payload));
+            if (eventIndex >= caseCount) {
+                ADD_FAILURE() << "Received more AppLaunchComplete events than expected";
+                return Core::ERROR_GENERAL;
+            }
+            const auto& expected = cases[eventIndex++];
+            EXPECT_EQ(APPMANAGER_APP_ID, event["appId"].String());
+            EXPECT_EQ(APPMANAGER_APP_VERSION, event["appVersion"].String());
+            EXPECT_EQ(expected.initialStateName, event["initialState"].String());
+            EXPECT_EQ(expected.appTypeName, event["appType"].String());
+            EXPECT_GE(event["totalLaunchTime"].Number(), 0);
+            EXPECT_FALSE(event.HasLabel("launchType"));
+            EXPECT_FALSE(event.HasLabel("markerName"));
+            return Core::ERROR_NONE;
+        });
+
+    for (const auto& test : cases) {
+        SeedLaunch(test.initialState, test.action, test.appType, test.configMetadata);
+        AppManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(
+            APPMANAGER_APP_ID, Exchange::ILifecycleManager::ACTIVE);
+    }
+    EXPECT_EQ(caseCount, eventIndex);
+}
+
+TEST_F(AppLaunchCompleteTest, NonLaunchActionsAndInvalidResumeOriginDoNotPublish)
+{
+    using Act = Plugin::AppManagerImplementation;
+    EXPECT_CALL(*telemetry, PublishEvent(::testing::_, ::testing::_, ::testing::_)).Times(0);
+
+    SeedLaunch(Exchange::IAppManager::APP_STATE_UNLOADED, Act::APP_ACTION_PRELOAD,
+        AppManagerTypes::APPLICATION_TYPE_INTERACTIVE);
+    AppManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(
+        APPMANAGER_APP_ID, Exchange::ILifecycleManager::ACTIVE);
+
+    SeedLaunch(Exchange::IAppManager::APP_STATE_UNLOADED, Act::APP_ACTION_RESUME,
+        AppManagerTypes::APPLICATION_TYPE_INTERACTIVE);
+    AppManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(
+        APPMANAGER_APP_ID, Exchange::ILifecycleManager::ACTIVE);
+}
+
 class AppPreloadCompleteTest : public AppCrashedTelemetryTest {
 protected:
     void SeedPreload(Exchange::IAppManager::AppLifecycleState initialState,

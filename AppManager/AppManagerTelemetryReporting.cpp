@@ -242,6 +242,12 @@ namespace Plugin
         AppInfo stateSnap;
         bool stateFound = AppInfoManager::getInstance().get(appId, stateSnap);
         if (stateFound &&
+            (Exchange::ILifecycleManager::LifecycleState::ACTIVE == newState) &&
+            ((AppManagerImplementation::APP_ACTION_LAUNCH == stateSnap.getCurrentAction()) ||
+             (AppManagerImplementation::APP_ACTION_RESUME == stateSnap.getCurrentAction()))) {
+            reportAppLaunchCompleteTelemetry(appId);
+        }
+        if (stateFound &&
             (AppManagerImplementation::APP_ACTION_PRELOAD == stateSnap.getCurrentAction()) &&
             (Exchange::ILifecycleManager::LifecycleState::PAUSED == newState)) {
             reportAppPreloadCompleteTelemetry(appId);
@@ -258,6 +264,8 @@ namespace Plugin
                         markerName = TELEMETRY_MARKER_LAUNCH_TIME;
                     }
                 break;
+                case AppManagerImplementation::APP_ACTION_RESUME:
+                    break;
                 case AppManagerImplementation::APP_ACTION_PRELOAD:
                     if(Exchange::ILifecycleManager::LifecycleState::PAUSED == newState)
                     {
@@ -394,6 +402,50 @@ namespace Plugin
         jsonParam["errorCode"] = static_cast<uint32_t>(errorCode);
         jsonParam["fireboltIntent"] = found ? snapshot.getLaunchTelemetryIntent() : std::string{};
         publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_LAUNCH_ERROR, false);
+    }
+
+    void AppManagerTelemetryReporting::reportAppLaunchCompleteTelemetry(const std::string& appId)
+    {
+        if (!Utils::isTelemetryMetricsEnabled()) {
+            return;
+        }
+        if (appId.empty()) {
+            LOGWARN("AppLaunchComplete telemetry skipped: appId is empty");
+            return;
+        }
+
+        AppInfo snapshot;
+        if (!AppInfoManager::getInstance().get(appId, snapshot) ||
+            ((AppManagerImplementation::APP_ACTION_LAUNCH != snapshot.getCurrentAction()) &&
+             (AppManagerImplementation::APP_ACTION_RESUME != snapshot.getCurrentAction())) ||
+            (Exchange::IAppManager::APP_STATE_ACTIVE != snapshot.getAppNewState())) {
+            return;
+        }
+
+        const std::string initialState = initialLaunchStateName(snapshot.getLaunchInitialState());
+        if ((AppManagerImplementation::APP_ACTION_RESUME == snapshot.getCurrentAction()) &&
+            (Exchange::IAppManager::APP_STATE_UNLOADED == snapshot.getLaunchInitialState())) {
+            return;
+        }
+        const std::string appVersion = snapshot.getLaunchTelemetryVersion().empty()
+            ? snapshot.getPackageInfo().version : snapshot.getLaunchTelemetryVersion();
+        const std::string appType = appTypeName(snapshot.getPackageInfo());
+        const long long totalLaunchTime = static_cast<long long>(currentTimestampMs()) -
+            static_cast<long long>(snapshot.getCurrentActionTime());
+        if (initialState.empty() || appVersion.empty() || appType.empty() ||
+            (totalLaunchTime < 0) || (totalLaunchTime > INT_MAX)) {
+            LOGWARN("AppLaunchComplete telemetry skipped for appId=%s: initialState empty=%d version empty=%d appType empty=%d totalLaunchTime=%lld",
+                appId.c_str(), initialState.empty(), appVersion.empty(), appType.empty(), totalLaunchTime);
+            return;
+        }
+
+        JsonObject jsonParam;
+        jsonParam["appId"] = appId;
+        jsonParam["appVersion"] = appVersion;
+        jsonParam["initialState"] = initialState;
+        jsonParam["appType"] = appType;
+        jsonParam["totalLaunchTime"] = static_cast<int>(totalLaunchTime);
+        publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_LAUNCH_COMPLETE, false);
     }
 
     void AppManagerTelemetryReporting::reportAppPreloadCompleteTelemetry(const std::string& appId)

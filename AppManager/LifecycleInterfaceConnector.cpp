@@ -381,8 +381,12 @@ namespace WPEFramework
             pendingRelaunch.appId.c_str(),suspendedAppInstanceId.c_str());
             mAdminLock.Lock();
             AppInfoManager::getInstance().upsert(pendingRelaunch.appId, [&](AppInfo& a) {
-            a.setPackageInfo(pendingRelaunch.packageInfo);
-            a.setRequestedLaunchVersion(pendingRelaunch.requestedVersion);});
+                a.setPackageInfo(pendingRelaunch.packageInfo);
+                a.setRequestedLaunchVersion(pendingRelaunch.requestedVersion);
+                a.setLaunchTelemetryContext(pendingRelaunch.initialState, pendingRelaunch.intent,
+                    pendingRelaunch.requestedVersion);
+                a.setCurrentActionTime(pendingRelaunch.launchStartTime);
+            });
             std::string runtimeConfigPayload = pendingRelaunch.runtimeConfigPayload;
             Core::hresult status = launchRequestedPackage(pendingRelaunch.appId, pendingRelaunch.intent,
                 pendingRelaunch.launchArgs, runtimeConfigPayload);
@@ -529,6 +533,8 @@ namespace WPEFramework
                                    pendingRelaunch.requestedVersion = requestedVersion;
                                    pendingRelaunch.runtimeConfigPayload = runtimeConfigPayload;
                                    pendingRelaunch.packageInfo = appInfoSnap.getPackageInfo();
+                                   pendingRelaunch.initialState = appInfoSnap.getLaunchInitialState();
+                                   pendingRelaunch.launchStartTime = appInfoSnap.getCurrentActionTime();
                                    Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
                                    mPendingRelaunches.emplace(suspendedAppInstanceId, pendingRelaunch);
 

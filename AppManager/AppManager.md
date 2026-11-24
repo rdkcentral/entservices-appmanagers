@@ -276,6 +276,26 @@ they do not represent a failure to reach the ACTIVE lifecycle state.
 `APP_ERROR_PACKAGE_LOCK` (8). When package context is unavailable, the event
 is still sent with the unavailable string field(s) empty and a warning logged.
 
+### AppLaunchComplete telemetry
+
+`ENTS_INFO_RDKAMAppLaunchComplete` reports successful transition to ACTIVE.
+It contains exactly these fields:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `appId` | string | Application ID |
+| `appVersion` | string | Package version from package metadata |
+| `initialState` | string | State before launch: `COLD`, `HIBERNATED`, `SUSPENDED`, or `PAUSED` |
+| `appType` | string | `INTERACTIVE_APP`, `SYSTEM_APP`, or `HOME_APP` |
+| `totalLaunchTime` | integer | Milliseconds from launch start to ACTIVE |
+
+Cold launches report `initialState=COLD`; launches from a preloaded/inactive app
+report its prior `PAUSED`, `SUSPENDED`, or `HIBERNATED` state. `HOME_APP` is
+identified by the `home-app` runtime-config capability. The timer starts before
+package locking. This marker is published with
+`TelemetryMetrics.PublishEvent(..., false)`, so it is enabled by default and
+does not require the verbose RFC. Existing `AppLaunchTime` reporting is unchanged.
+
 ### AppPreloadComplete telemetry
 
 `ENTS_INFO_RDKAMAppPreloadComplete` reports successful preloading from an

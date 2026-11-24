@@ -278,7 +278,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                         if (status == Core::ERROR_NONE)
                         {
                             // Update timestamp after packageLock succeeds (app entry now exists in mAppInfo)
-                            if (APP_ACTION_PRELOAD == action)
+                            if ((APP_ACTION_LAUNCH == action) || (APP_ACTION_PRELOAD == action))
                             {
                                 updateCurrentAction(appId, action);
                             }

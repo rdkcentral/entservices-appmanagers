@@ -218,6 +218,7 @@ The following markers are defined in `helpers/Telemetry/TelemetryMarkers.h`:
 | `TELEMETRY_MARKER_UNINSTALL_ERROR` | Package uninstall error |
 | `TELEMETRY_MARKER_LAUNCH_TIME` | App launch time |
 | `TELEMETRY_MARKER_LAUNCH_ERROR` | App launch error (`appId`, `appVersion`, `initialState`, `appType`, `errorCode`, `fireboltIntent`) |
+| `TELEMETRY_MARKER_LAUNCH_COMPLETE` | App launch complete (`appId`, `appVersion`, `initialState`, `appType`, `totalLaunchTime`) |
 | `TELEMETRY_MARKER_PRELOAD_COMPLETE` | App preload complete (`appId`, `appVersion`, `appType`, `totalPreloadTime`) |
 | `TELEMETRY_MARKER_CLOSE_TIME` | App close time |
 | `TELEMETRY_MARKER_CLOSE_COMPLETE` | App close complete (verbose only) |
