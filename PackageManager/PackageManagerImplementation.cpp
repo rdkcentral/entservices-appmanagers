@@ -367,18 +367,20 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Deinitialize(PluginHost::IShell* service)
     {
-        std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
+        std::unique_lock<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO();
-        if (mCurrentservice == nullptr) {
+        if ((mCurrentservice == nullptr) || mDeinitializing){
             return result;
         }
 
+        mDeinitializing = true;
         done = true;
         cv.notify_one();
+        lifecycleLock.unlock();
 #ifdef DEFER_CACHE_INIT
         // Deferred initialization: thread only exists if StartCacheInitialization() was called
-        if (mDownloadThreadPtr) {
+        if (mDownloadThreadPtr->joinable()) {
             mDownloadThreadPtr->join();
         }
 #else
@@ -387,6 +389,7 @@ namespace Plugin {
             mDownloadThreadPtr->join();
         }
 #endif
+        lifecycleLock.lock();
         mDownloadThreadPtr.reset();
 
         PackageManagerTelemetryReporting::getInstance().reset();

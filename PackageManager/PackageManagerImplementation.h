@@ -325,6 +325,7 @@ class PackageManagerImplementation
         mutable std::mutex mMutex;
         std::condition_variable cv;
         std::unique_ptr<std::thread> mDownloadThreadPtr;
+        bool mDeinitializing { false };
         bool done = false;
         DownloadInfoPtr mInprogressDownload;
 
