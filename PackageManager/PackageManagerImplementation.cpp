@@ -71,7 +71,8 @@ namespace Plugin {
 
     SERVICE_REGISTRATION(PackageManagerImplementation, 1, 0);
 
-    #define CHECK_CACHE() { if ((!cacheInitialized) || (packageImpl.get() == nullptr)) { \
+    #define CHECK_CACHE() { std::lock_guard<std::recursive_mutex> cacheLock(mtxState); \
+        if ((!cacheInitialized) || (packageImpl.get() == nullptr)) { \
         LOGERR("Cache is not initialized!"); \
         return Core::ERROR_UNAVAILABLE; \
     }}
