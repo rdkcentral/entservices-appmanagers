@@ -291,7 +291,7 @@ namespace Plugin {
     }
 
     void PackageManagerImplementation::recordAndPublishTelemetryData(const std::string& marker, const std::string& appId,
-                                                                     time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode,
+                                                                     time_t requestTime,
                                                                      const std::string& runtimeId, const std::string& runtimeVersion,
                                                                      int count, const std::string& backend)
     {
@@ -299,7 +299,6 @@ namespace Plugin {
             marker,
             appId,
             requestTime,
-            static_cast<int>(errorCode),
             runtimeId,
             runtimeVersion,
             count,
@@ -492,13 +491,13 @@ namespace Plugin {
         const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason)
     {
         Core::hresult result = Core::ERROR_GENERAL;
-        PackageManagerImplementation::PackageFailureErrorCode packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE;
         /* Get current timestamp at the start of Install for telemetry */
         time_t requestTime = getCurrentTimestamp();
 
         CHECK_CACHE()
         if (fileLocator.empty()) {
-            recordAndPublishTelemetryData(TELEMETRY_MARKER_INSTALL_ERROR, packageId, requestTime, PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE);
+            PackageManagerTelemetryReporting::getInstance().publishAppPackageInstallErrorTelemetry(
+                packageId, version, "SIGNATURE_INVALID");
             LOGERR("fileLocator is empty '%s' ver:'%s'", packageId.c_str(), version.c_str());
             return Core::ERROR_INVALID_SIGNATURE;
         }
@@ -553,15 +552,36 @@ namespace Plugin {
             }
 
              if (result != Core::ERROR_NONE) {
-                packageFailureErrorCode = (state.failReason == FailReason::PACKAGE_MISMATCH_FAILURE)
-                    ? PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE
-                    : PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
+                string errorTelemetry;
+                switch (state.failReason) {
+                    case FailReason::PACKAGE_MISMATCH_FAILURE:
+                        errorTelemetry = "VERSION_MISMATCH";
+                        break;
+                    case FailReason::INVALID_METADATA_FAILURE:
+                        errorTelemetry = "METADATA_INVALID";
+                        break;
+                    case FailReason::PERSISTENCE_FAILURE:
+                        errorTelemetry = "STORAGE_WRITE_ERROR";
+                        break;
+                    case FailReason::SIGNATURE_VERIFICATION_FAILURE:
+                        errorTelemetry = "SIGNATURE_INVALID";
+                        break;
+                    case FailReason::GENERAL_FAILURE:
+                    case FailReason::NONE:
+                    default:
+                        LOGWARN("AppPackageInstallError not published for unclassified install failure (reason=%d)",
+                            static_cast<int>(state.failReason));
+                        break;
+                }
 
+                if (!errorTelemetry.empty()) {
+                    PackageManagerTelemetryReporting::getInstance().publishAppPackageInstallErrorTelemetry(
+                        packageId, version, errorTelemetry);
+                }
             }
-            recordAndPublishTelemetryData(((PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE == packageFailureErrorCode) ? TELEMETRY_MARKER_INSTALL_TIME : TELEMETRY_MARKER_INSTALL_ERROR),
-                                                        packageId,
-                                                        requestTime,
-                                                        packageFailureErrorCode);
+            if (Core::ERROR_NONE == result) {
+                recordAndPublishTelemetryData(TELEMETRY_MARKER_INSTALL_TIME, packageId, requestTime);
+            }
         }
 
         if (bNewEntry) {
@@ -577,7 +597,7 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_GENERAL;
         string version = GetInstalledVersion(packageId);
 
-        PackageManagerImplementation::PackageFailureErrorCode packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE;
+        string errorTelemetry;
         /* Get current timestamp at the start of Uninstall for telemetry */
         time_t requestTime = getCurrentTimestamp();
 
@@ -595,7 +615,6 @@ namespace Plugin {
                         LOGERR("Failed to create StorageManager");
                     }
                 }
-                ASSERT (nullptr != mStorageManagerObject);
                 if (nullptr != mStorageManagerObject) {
                     // Step 1: Notify that uninstall is in progress
                     state.installState = InstallState::UNINSTALLING;
@@ -615,7 +634,7 @@ namespace Plugin {
                         } else {
                             LOGERR("DeleteStorage failed after successful Uninstall, errorReason [%s]", errorReason.c_str());
                             LOGWARN("Package binaries removed but storage remains at /opt/persistent/storageManager/%s", packageId.c_str());
-                            packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PERSISTENCE_FAILURE;
+                            errorTelemetry = "UNINSTALL_STORAGE_CLEANUP_FAILED";
 
                             // Design decision: Return ERROR_NONE because primary operation (package removal) succeeded.
                             // Storage cleanup is advisory; state accurately reflects UNINSTALLED.
@@ -634,20 +653,20 @@ namespace Plugin {
                         // Map uninstall failure to fail reason for client notification
                         switch (pmResult) {
                             case packagemanager::Result::VERSION_MISMATCH:
-                                packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE;
+                                errorTelemetry = "UNINSTALL_VERSION_MISMATCH";
                                 state.failReason = FailReason::PACKAGE_MISMATCH_FAILURE;
                                 break;
                             case packagemanager::Result::PERSISTENCE_FAILURE:
-                                packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PERSISTENCE_FAILURE;
+                                errorTelemetry = "UNINSTALL_STORAGE_CLEANUP_FAILED";
                                 state.failReason = FailReason::PERSISTENCE_FAILURE;
                                 break;
                             case packagemanager::Result::VERIFICATION_FAILURE:
-                                packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
+                                errorTelemetry = "UNINSTALL_SIGNATURE_INVALID";
                                 state.failReason = FailReason::SIGNATURE_VERIFICATION_FAILURE;
                                 break;
                             case packagemanager::Result::FAILED:
                             default:
-                                packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_INVALID_METADATA_FAILURE;
+                                errorTelemetry = "UNINSTALL_FAILED";
                                 state.failReason = FailReason::GENERAL_FAILURE;
                                 break;
                         }
@@ -655,6 +674,9 @@ namespace Plugin {
                         // Notify clients of uninstall failure
                         NotifyInstallStatus(packageId, version, state);
                     }
+                } else {
+                    result = Core::ERROR_GENERAL;
+                    errorTelemetry = "UNINSTALL_FAILED";
                 }
             } else {
                 state.installState = InstallState::UNINSTALLING;
@@ -669,14 +691,15 @@ namespace Plugin {
 
             result = Core::ERROR_INVALID_PARAMETER;
 
-            packageFailureErrorCode =
-                PackageManagerImplementation::PackageFailureErrorCode::ERROR_VERSION_NOT_FOUND;
+            errorTelemetry = "UNINSTALL_VERSION_NOT_FOUND";
         }
 
-        recordAndPublishTelemetryData(((PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE == packageFailureErrorCode) ? TELEMETRY_MARKER_UNINSTALL_TIME : TELEMETRY_MARKER_UNINSTALL_ERROR),
-                                                    packageId,
-                                                    requestTime,
-                                                    packageFailureErrorCode);
+        if (!errorTelemetry.empty()) {
+            PackageManagerTelemetryReporting::getInstance().publishAppPackageInstallErrorTelemetry(
+                packageId, version, errorTelemetry);
+        } else {
+            recordAndPublishTelemetryData(TELEMETRY_MARKER_UNINSTALL_TIME, packageId, requestTime);
+        }
         return result;
     }
 
@@ -881,7 +904,6 @@ namespace Plugin {
                 recordAndPublishTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME,
                                                             packageId,
                                                             requestTime,
-                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE,
                                                             runtimeId.empty() ? "" : runtimeId,
                                                             runtimeVersion.empty() ? "" : runtimeVersion);
 
@@ -1123,8 +1145,7 @@ namespace Plugin {
         {
             recordAndPublishTelemetryData(TELEMETRY_MARKER_CLOSE_TIME,
                                                        packageId,
-                                                       requestTime,
-                                                       PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE);
+                                                       requestTime);
         }
 
         return result;
@@ -1324,7 +1345,6 @@ namespace Plugin {
           recordAndPublishTelemetryData(TELEMETRY_MARKER_PACKAGE_CACHE_INIT_TIME,
                                                   "CacheInitTimeInternal",
                                                   cacheInitStartTime,
-                                                  PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE,
                                                   "",
                                                   "",
                                                   packageCount,

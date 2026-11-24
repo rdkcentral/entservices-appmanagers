@@ -34,10 +34,12 @@ public:
 
     void initialize(PluginHost::IShell* service);
     void reset();
+    void publishAppPackageInstallErrorTelemetry(const std::string& packageId,
+        const std::string& version,
+        const std::string& errorTelemetry);
     void recordAndPublishTelemetryData(const std::string& marker,
         const std::string& appId,
         uint64_t requestTime,
-        int errorCode,
         const std::string& runtimeId = "",
         const std::string& runtimeVersion = "",
         int count = -1,

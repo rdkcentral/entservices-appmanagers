@@ -19,6 +19,7 @@
 
 #include "PackageManagerTelemetryReporting.h"
 #include "UtilsLogging.h"
+#include <interfaces/ITelemetryMetrics.h>
 
 namespace WPEFramework {
 namespace Plugin {
@@ -50,10 +51,51 @@ void PackageManagerTelemetryReporting::reset()
     resetTelemetryClient();
 }
 
+void PackageManagerTelemetryReporting::publishAppPackageInstallErrorTelemetry(
+    const std::string& packageId,
+    const std::string& version,
+    const std::string& errorTelemetry)
+{
+    if (errorTelemetry.empty()) {
+        LOGERR("AppPackageInstallError telemetry requires an errorTelemetry value");
+        return;
+    }
+
+    JsonObject jsonParam;
+    jsonParam["metricContext"] = packageId + ":" + version;
+    jsonParam["errorTelemetry"] = errorTelemetry;
+
+    std::string telemetryMetrics;
+    if (!buildTelemetryPayload(jsonParam, telemetryMetrics)) {
+        LOGERR("Failed to serialize AppPackageInstallError telemetry for packageId=%s", packageId.c_str());
+        return;
+    }
+
+    PluginHost::IShell* service = getService();
+    if (nullptr == service) {
+        LOGWARN("AppPackageInstallError telemetry skipped: PackageManager service is unavailable");
+        return;
+    }
+
+    Exchange::ITelemetryMetrics* telemetry =
+        service->QueryInterfaceByCallsign<Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics");
+    if (nullptr == telemetry) {
+        LOGWARN("AppPackageInstallError telemetry skipped: TelemetryMetrics is unavailable");
+        return;
+    }
+
+    const Core::hresult status = telemetry->PublishEvent(
+        telemetryMetrics, TELEMETRY_MARKER_APP_PACKAGE_INSTALL_ERROR, false);
+    telemetry->Release();
+    if (Core::ERROR_NONE != status) {
+        LOGWARN("AppPackageInstallError telemetry publishing failed for packageId=%s (status=%d)",
+            packageId.c_str(), status);
+    }
+}
+
 void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::string& marker,
     const std::string& appId,
     uint64_t requestTime,
-    int errorCode,
     const std::string& runtimeId,
     const std::string& runtimeVersion,
     int count,
@@ -102,8 +144,6 @@ void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::
         if (false == backend.empty()) {
             jsonParam["backend"] = backend;
         }
-    } else if ((marker == TELEMETRY_MARKER_INSTALL_ERROR) || (marker == TELEMETRY_MARKER_UNINSTALL_ERROR)) {
-        jsonParam["errorCode"] = errorCode;
     } else {
         LOGERR("Unknown telemetry marker: %s", marker.c_str());
         shouldProcessMarker = false;

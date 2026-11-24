@@ -143,15 +143,6 @@ class PackageManagerImplementation
         typedef std::list<DownloadInfoPtr> DownloadQueue;
 
     public:
-        enum PackageFailureErrorCode{
-            ERROR_NONE,
-            ERROR_SIGNATURE_VERIFICATION_FAILURE,
-            ERROR_PACKAGE_MISMATCH_FAILURE,
-            ERROR_INVALID_METADATA_FAILURE,
-            ERROR_PERSISTENCE_FAILURE,
-            ERROR_VERSION_NOT_FOUND
-        };
-
         PackageManagerImplementation();
         virtual ~PackageManagerImplementation();
 
@@ -306,7 +297,7 @@ class PackageManagerImplementation
         }
     Core::hresult createStorageManagerObject();
     void releaseStorageManagerObject();
-    void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode,
+    void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime,
                                        const std::string& runtimeId = "", const std::string& runtimeVersion = "",
                                        int count = -1, const std::string& backend = "");
     time_t getCurrentTimestamp();

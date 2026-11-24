@@ -213,9 +213,8 @@ The following markers are defined in `helpers/Telemetry/TelemetryMarkers.h`:
 | `TELEMETRY_MARKER_DOWNLOAD_TIME` | Package download time |
 | `TELEMETRY_MARKER_DOWNLOAD_ERROR` | Package download error |
 | `TELEMETRY_MARKER_INSTALL_TIME` | Package install time |
-| `TELEMETRY_MARKER_INSTALL_ERROR` | Package install error |
+| `TELEMETRY_MARKER_APP_PACKAGE_INSTALL_ERROR` | Package install or uninstall error (`metricContext`, `errorTelemetry`; enabled by default) |
 | `TELEMETRY_MARKER_UNINSTALL_TIME` | Package uninstall time |
-| `TELEMETRY_MARKER_UNINSTALL_ERROR` | Package uninstall error |
 | `TELEMETRY_MARKER_LAUNCH_TIME` | App launch time |
 | `TELEMETRY_MARKER_LAUNCH_ERROR` | App launch error (`appId`, `appVersion`, `initialState`, `appType`, `errorCode`, `fireboltIntent`) |
 | `TELEMETRY_MARKER_LAUNCH_COMPLETE` | App launch complete (`appId`, `appVersion`, `initialState`, `appType`, `totalLaunchTime`) |

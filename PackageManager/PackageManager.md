@@ -63,6 +63,31 @@ graph TB
     Impl --> FS
 ```
 
+### AppPackageInstallError Telemetry
+
+PackageManager publishes `ENTS_INFO_RDKAMAppPackageInstallError` when an install or uninstall operation fails. The event is enabled by default and includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `metricContext` | string | Opaque package identity in `packageId:version` format |
+| `errorTelemetry` | string | Hierarchical error category |
+
+| Category | Value | Description |
+|----------|-------|-------------|
+| Signature | `SIGNATURE_INVALID` | Package signature verification failed |
+| Version | `VERSION_MISMATCH` | Package version mismatch |
+| Version | `VERSION_NOT_FOUND` | Requested version is not available |
+| Metadata | `METADATA_INVALID` | Package metadata is invalid or corrupted |
+| Storage | `STORAGE_WRITE_ERROR` | Unable to persist package data to storage |
+| Uninstall | `UNINSTALL_FAILED` | Generic uninstall failure with no specific reason |
+| Uninstall | `UNINSTALL_SIGNATURE_INVALID` | Signature verification failed during uninstall |
+| Uninstall | `UNINSTALL_VERSION_MISMATCH` | Package version mismatch during uninstall |
+| Uninstall | `UNINSTALL_METADATA_INVALID` | Invalid metadata encountered during uninstall |
+| Uninstall | `UNINSTALL_STORAGE_CLEANUP_FAILED` | Storage cleanup failed after package removal |
+| Uninstall | `UNINSTALL_VERSION_NOT_FOUND` | Requested version was not found during uninstall |
+
+Unclassified install failures are logged and skipped. The current package-manager result interface does not distinguish an install `VERSION_NOT_FOUND` or an uninstall `UNINSTALL_METADATA_INVALID` result; generic uninstall failures use `UNINSTALL_FAILED`.
+
 ### High-Level Package Workflow
 
 The following diagram combines download and installation phases for orientation. `DOWNLOADING` and `DOWNLOADED` are download workflow labels, not values from the `IPackageInstaller::InstallState` enum documented below.
