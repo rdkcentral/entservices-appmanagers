@@ -88,6 +88,18 @@ PackageManager publishes `ENTS_INFO_RDKAMAppPackageInstallError` when an install
 
 Unclassified install failures are logged and skipped. The current package-manager result interface does not distinguish an install `VERSION_NOT_FOUND` or an uninstall `UNINSTALL_METADATA_INVALID` result; generic uninstall failures use `UNINSTALL_FAILED`.
 
+### AppPackageInstallComplete Telemetry
+
+PackageManager publishes `ENTS_INFO_RDKAMAppPackageInstallComplete` after a successful package install. It measures the install operation from the start of PackageManager's `Install` call through package installation and metadata/state updates; download time is not included. Firmware-preinstalled packages use the same event if they go through this install flow. The event is published only when `APP_MANAGER_OBSERVABILITY_VERBOSE` is enabled.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `metricContext` | string | Opaque package identity in `packageId:version` format |
+| `packageSize` | integer | Package file size in bytes |
+| `appId` | string | Package ID verified against package metadata |
+| `version` | string | Package version verified against package metadata |
+| `installTime` | integer | Install duration in milliseconds |
+
 ### High-Level Package Workflow
 
 The following diagram combines download and installation phases for orientation. `DOWNLOADING` and `DOWNLOADED` are download workflow labels, not values from the `IPackageInstaller::InstallState` enum documented below.

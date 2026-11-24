@@ -93,6 +93,52 @@ void PackageManagerTelemetryReporting::publishAppPackageInstallErrorTelemetry(
     }
 }
 
+void PackageManagerTelemetryReporting::publishAppPackageInstallCompleteTelemetry(
+    const std::string& packageId,
+    const std::string& version,
+    uint64_t packageSize,
+    uint64_t installTime)
+{
+    if (packageId.empty() || version.empty()) {
+        LOGWARN("AppPackageInstallComplete telemetry skipped: packageId or version is empty");
+        return;
+    }
+
+    JsonObject jsonParam;
+    jsonParam["metricContext"] = packageId + ":" + version;
+    jsonParam["packageSize"] = packageSize;
+    jsonParam["appId"] = packageId;
+    jsonParam["version"] = version;
+    jsonParam["installTime"] = installTime;
+
+    std::string telemetryMetrics;
+    if (!buildTelemetryPayload(jsonParam, telemetryMetrics)) {
+        LOGERR("Failed to serialize AppPackageInstallComplete telemetry for packageId=%s", packageId.c_str());
+        return;
+    }
+
+    PluginHost::IShell* service = getService();
+    if (nullptr == service) {
+        LOGWARN("AppPackageInstallComplete telemetry skipped: PackageManager service is unavailable");
+        return;
+    }
+
+    Exchange::ITelemetryMetrics* telemetry =
+        service->QueryInterfaceByCallsign<Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics");
+    if (nullptr == telemetry) {
+        LOGWARN("AppPackageInstallComplete telemetry skipped: TelemetryMetrics is unavailable");
+        return;
+    }
+
+    const Core::hresult status = telemetry->PublishEvent(
+        telemetryMetrics, TELEMETRY_MARKER_APP_PACKAGE_INSTALL_COMPLETE, true);
+    telemetry->Release();
+    if (Core::ERROR_NONE != status) {
+        LOGWARN("AppPackageInstallComplete telemetry publishing failed for packageId=%s (status=%d)",
+            packageId.c_str(), status);
+    }
+}
+
 void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::string& marker,
     const std::string& appId,
     uint64_t requestTime,

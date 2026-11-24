@@ -37,6 +37,10 @@ public:
     void publishAppPackageInstallErrorTelemetry(const std::string& packageId,
         const std::string& version,
         const std::string& errorTelemetry);
+    void publishAppPackageInstallCompleteTelemetry(const std::string& packageId,
+        const std::string& version,
+        uint64_t packageSize,
+        uint64_t installTime);
     void recordAndPublishTelemetryData(const std::string& marker,
         const std::string& appId,
         uint64_t requestTime,

@@ -223,3 +223,37 @@ uint32_t Test_PM_Component_TelemetryReporting_AppPackageInstallError()
     reporting.reset();
     return tr.failures;
 }
+
+uint32_t Test_PM_Component_TelemetryReporting_AppPackageInstallComplete()
+{
+    L0Test::TestResult tr;
+
+    CapturingTelemetryMetrics telemetry;
+    L0Test::FakeStorageManager storage;
+    L0Test::ServiceMock::FakeSubSystem subSystem;
+    L0Test::ServiceMock service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry));
+
+    auto& reporting = WPEFramework::Plugin::PackageManagerTelemetryReporting::getInstance();
+    reporting.initialize(&service);
+    reporting.publishAppPackageInstallCompleteTelemetry("com.example.app", "1.2.3", 4096, 250);
+
+    L0Test::ExpectEqU32(tr, telemetry.publishEventCalls.load(), 1U,
+        "AppPackageInstallComplete should publish one direct telemetry event");
+    L0Test::ExpectTrue(tr, telemetry.lastEventName == TELEMETRY_MARKER_APP_PACKAGE_INSTALL_COMPLETE,
+        "event marker should match AppPackageInstallComplete");
+    L0Test::ExpectTrue(tr, telemetry.lastVerboseOnly,
+        "AppPackageInstallComplete should require verbose telemetry enablement");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"metricContext\":\"com.example.app:1.2.3\"") != std::string::npos,
+        "event payload should include package metricContext");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"packageSize\":4096") != std::string::npos,
+        "event payload should include package size in bytes");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"appId\":\"com.example.app\"") != std::string::npos,
+        "event payload should include the package appId");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"version\":\"1.2.3\"") != std::string::npos,
+        "event payload should include the package version");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"installTime\":250") != std::string::npos,
+        "event payload should include install duration in milliseconds");
+
+    reporting.reset();
+    return tr.failures;
+}

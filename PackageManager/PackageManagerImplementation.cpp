@@ -25,8 +25,10 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <limits>
 #include <mutex>
 #include <sys/statvfs.h>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -501,6 +503,13 @@ namespace Plugin {
             LOGERR("fileLocator is empty '%s' ver:'%s'", packageId.c_str(), version.c_str());
             return Core::ERROR_INVALID_SIGNATURE;
         }
+        std::error_code packageSizeError;
+        const std::uintmax_t packageSizeBytes = std::filesystem::file_size(fileLocator, packageSizeError);
+        const bool packageSizeAvailable = !packageSizeError &&
+            (packageSizeBytes <= std::numeric_limits<uint64_t>::max());
+        const uint64_t packageSize = packageSizeAvailable
+            ? static_cast<uint64_t>(packageSizeBytes)
+            : 0;
         LOGDBG("Installing '%s' ver:'%s' fileLocator: '%s'", packageId.c_str(), version.c_str(), fileLocator.c_str());
 
         packagemanager::NameValues keyValues;
@@ -587,6 +596,28 @@ namespace Plugin {
         if (bNewEntry) {
             LOGDBG("Inserting id: %s ver: %s ", key.first.c_str(), key.second.c_str());
             mState.insert( { key, state } );
+        }
+
+        if (Core::ERROR_NONE == result) {
+            if (packageSizeAvailable) {
+                const time_t completionTime = getCurrentTimestamp();
+                if (completionTime >= requestTime) {
+                    PackageManagerTelemetryReporting::getInstance().publishAppPackageInstallCompleteTelemetry(
+                        packageId,
+                        version,
+                        packageSize,
+                        static_cast<uint64_t>(completionTime - requestTime));
+                } else {
+                    LOGWARN("AppPackageInstallComplete telemetry skipped for packageId=%s: invalid install duration",
+                        packageId.c_str());
+                }
+            } else {
+                const std::string sizeError = packageSizeError
+                    ? packageSizeError.message()
+                    : "package size exceeds telemetry range";
+                LOGWARN("AppPackageInstallComplete telemetry skipped for packageId=%s: %s",
+                    packageId.c_str(), sizeError.c_str());
+            }
         }
 
         return result;
