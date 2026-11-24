@@ -289,6 +289,44 @@ uint32_t Test_PM_Component_TelemetryReporting_AppPackageDownloadError()
     return tr.failures;
 }
 
+uint32_t Test_PM_Component_TelemetryReporting_AppPackageDownloadComplete()
+{
+    L0Test::TestResult tr;
+
+    CapturingTelemetryMetrics telemetry;
+    L0Test::FakeStorageManager storage;
+    L0Test::ServiceMock::FakeSubSystem subSystem;
+    L0Test::ServiceMock service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry));
+
+    auto& reporting = WPEFramework::Plugin::PackageManagerTelemetryReporting::getInstance();
+    reporting.initialize(&service);
+    reporting.publishAppPackageDownloadCompleteTelemetry("download-9", 2048, true, 512, 2, 100, 600);
+
+    L0Test::ExpectEqU32(tr, telemetry.publishEventCalls.load(), 1U,
+        "AppPackageDownloadComplete should publish one direct telemetry event");
+    L0Test::ExpectTrue(tr, telemetry.lastEventName == TELEMETRY_MARKER_APP_PACKAGE_DOWNLOAD_COMPLETE,
+        "event marker should match AppPackageDownloadComplete");
+    L0Test::ExpectTrue(tr, telemetry.lastVerboseOnly,
+        "AppPackageDownloadComplete should require verbose telemetry enablement");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"metricContext\":\"download-9\"") != std::string::npos,
+        "event payload should include the opaque download ID");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"packageSize\":2048") != std::string::npos,
+        "event payload should include package size in bytes");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"priority\":true") != std::string::npos,
+        "event payload should include priority");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"rateLimit\":512") != std::string::npos,
+        "event payload should include rate limit");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"totalRetries\":2") != std::string::npos,
+        "event payload should include retries performed");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"timeInQueue\":100") != std::string::npos,
+        "event payload should include queue time");
+    L0Test::ExpectTrue(tr, telemetry.lastEventMetrics.find("\"totalDownloadTime\":600") != std::string::npos,
+        "event payload should include total download time");
+
+    reporting.reset();
+    return tr.failures;
+}
+
 uint32_t Test_PM_Component_DownloadErrorTelemetryMapping()
 {
     L0Test::TestResult tr;

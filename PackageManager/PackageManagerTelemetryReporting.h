@@ -36,6 +36,13 @@ public:
     void reset();
     void publishAppPackageDownloadErrorTelemetry(const std::string& metricContext,
         const std::string& errorTelemetry);
+    void publishAppPackageDownloadCompleteTelemetry(const std::string& metricContext,
+        uint64_t packageSize,
+        bool priority,
+        uint64_t rateLimit,
+        uint32_t totalRetries,
+        uint64_t timeInQueue,
+        uint64_t totalDownloadTime);
     void publishAppPackageInstallErrorTelemetry(const std::string& packageId,
         const std::string& version,
         const std::string& errorTelemetry);

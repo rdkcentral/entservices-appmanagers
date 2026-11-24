@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <condition_variable>
@@ -109,12 +110,14 @@ class PackageManagerImplementation
         class DownloadInfo {
             const unsigned MIN_RETRIES = 2;
             public:
-                DownloadInfo(const string& url, const string& id, uint8_t retries, long limit)
+                DownloadInfo(const string& url, const string& id, bool priority, uint8_t retries, long limit,
+                    std::chrono::steady_clock::time_point requestReceivedAt)
                 : id(id)
                 , url(url)
-                , priority(false)
+                , priority(priority)
                 , retries(retries ? retries : MIN_RETRIES)
                 , rateLimit(limit)
+                , requestReceivedAt(requestReceivedAt)
                 , cancel(false)
                 {
                 }
@@ -124,6 +127,7 @@ class PackageManagerImplementation
                 bool GetPriority() { return priority; }
                 uint8_t GetRetries() { return retries; }
                 long GetRateLimit() { return rateLimit; }
+                std::chrono::steady_clock::time_point GetRequestReceivedAt() { return requestReceivedAt; }
                 string GetFileLocator() { return fileLocator; }
                 void SetFileLocator(string &locator) { fileLocator = locator; }
                 void Cancel() { cancel = true ;}
@@ -135,6 +139,7 @@ class PackageManagerImplementation
                 bool priority;
                 uint8_t retries;
                 long rateLimit;
+                std::chrono::steady_clock::time_point requestReceivedAt;
                 string fileLocator;
                 bool cancel;
         };

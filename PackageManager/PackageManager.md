@@ -112,6 +112,22 @@ PackageManager publishes `ENTS_INFO_RDKAMAppPackageDownloadError` after a packag
 | Network Errors | `NETWORK_CONTENT_ERROR` | Content length mismatch or corruption | `CURLE_PARTIAL_FILE`, content-length mismatch |
 | Network Errors | `NETWORK_ERROR` | Generic fallback for uncategorized network failures | Other CURL errors |
 
+### AppPackageDownloadComplete Telemetry
+
+PackageManager publishes `ENTS_INFO_RDKAMAppPackageDownloadComplete` after a successful package download. The event is enabled only when `APP_MANAGER_OBSERVABILITY_VERBOSE` is enabled. Its `metricContext` is the generated download ID; source URLs are not sent. `timeInQueue` measures from request receipt to the first transfer attempt. `totalDownloadTime` measures from request receipt through successful completion, so network time (including retries) is `totalDownloadTime - timeInQueue`. `totalRetries` counts retry attempts actually made, excluding the initial attempt.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `metricContext` | string | Opaque download ID identifying the package download |
+| `packageSize` | integer | Downloaded package size in bytes |
+| `priority` | boolean | `true` for an immediate/priority download |
+| `rateLimit` | integer | Requested rate limit in kb/s; `0` means unbounded |
+| `totalRetries` | integer | Number of retry attempts made |
+| `timeInQueue` | integer | Milliseconds from request receipt to first transfer attempt |
+| `totalDownloadTime` | integer | Milliseconds from request receipt to successful download completion |
+
+On new devices, a burst of package installs may result in hundreds of downloads in a short period and briefly exceed the Telemetry T2 NFR of 10 events per device per minute.
+
 ### AppPackageInstallComplete Telemetry
 
 PackageManager publishes `ENTS_INFO_RDKAMAppPackageInstallComplete` after a successful package install. It measures the install operation from the start of PackageManager's `Install` call through package installation and metadata/state updates; download time is not included. Firmware-preinstalled packages use the same event if they go through this install flow. The event is published only when `APP_MANAGER_OBSERVABILITY_VERBOSE` is enabled.
