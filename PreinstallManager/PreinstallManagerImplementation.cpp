@@ -174,13 +174,9 @@ namespace WPEFramework
      */
     void PreinstallManagerImplementation::sendOnPreinstallationCompleteEvent()
     {
-        const bool hasNotifications = !mPreinstallManagerNotifications.empty();
-        if (hasNotifications)
-        {
-            LOGINFO("Dispatching OnPreinstallationComplete event");
-            JsonObject eventDetails; // OnPreinstallationComplete doesn't need any params
-            dispatchEvent(PREINSTALL_MANAGER_ONPREINSTALLATIONCOMPLETE, eventDetails);
-        }
+        LOGINFO("Dispatching OnPreinstallationComplete event");
+        JsonObject eventDetails; // OnPreinstallationComplete doesn't need any params
+        dispatchEvent(PREINSTALL_MANAGER_ONPREINSTALLATIONCOMPLETE, eventDetails);
     }
 
     Core::hresult PreinstallManagerImplementation::createPackageManagerObject(Exchange::IPackageInstaller*& packageInstaller)

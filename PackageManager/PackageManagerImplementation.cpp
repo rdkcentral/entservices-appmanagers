@@ -1551,7 +1551,10 @@ namespace Plugin {
                     default: break; /* Do nothing */
                 }
                 NotifyDownloadStatus(di->GetId(), di->GetFileLocator(), reason);
-                mInprogressDownload.reset();
+                {
+                   std::lock_guard<std::mutex> lock(mMutex);
+                   mInprogressDownload.reset();
+                }
             }
         }
     }
