@@ -69,7 +69,7 @@ class LifecycleManagerImplementationTest {
 public:
     using EventNames = LifecycleManagerImplementation::EventNames;
     static constexpr EventNames LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED =
-        LifecycleManagerImplementation::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED;
+        EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED;
 
     static std::list<Exchange::ILifecycleManager::INotification*>&
     getNotifications(LifecycleManagerImplementation& impl)
