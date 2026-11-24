@@ -227,7 +227,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                         time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
                         PackageInfo packageData;
                         packageData.version = appRequestParam->packageVersion;
-                        if (APP_ACTION_LAUNCH == action)
+                        if ((APP_ACTION_LAUNCH == action) || (APP_ACTION_PRELOAD == action))
                         {
                             AppInfoManager::getInstance().upsert(appId, [&](AppInfo& appInfo) {
                                 appInfo.setLaunchTelemetryContext(appInfo.getAppNewState(),
@@ -278,6 +278,10 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                         if (status == Core::ERROR_NONE)
                         {
                             // Update timestamp after packageLock succeeds (app entry now exists in mAppInfo)
+                            if (APP_ACTION_PRELOAD == action)
+                            {
+                                updateCurrentAction(appId, action);
+                            }
                             updateCurrentActionTime(appId, actualStartTime, action);
                             std::string runtimeConfigPayload = packageData.configMetadata;
                             std::string payloadError;

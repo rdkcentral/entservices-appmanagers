@@ -80,6 +80,20 @@ namespace Plugin
                 hasCapability(capabilities.String(), "home-app");
         }
 
+        std::string appTypeName(const AppManagerTypes::PackageInfo& packageInfo)
+        {
+            if (isHomeApp(packageInfo.configMetadata)) {
+                return "HOME_APP";
+            }
+            if (AppManagerTypes::APPLICATION_TYPE_INTERACTIVE == packageInfo.type) {
+                return "INTERACTIVE_APP";
+            }
+            if (AppManagerTypes::APPLICATION_TYPE_SYSTEM == packageInfo.type) {
+                return "SYSTEM_APP";
+            }
+            return "";
+        }
+
         Exchange::IAppManager::AppErrorReason mapLaunchError(
             AppManagerImplementation::CurrentActionError errorCode)
         {
@@ -227,6 +241,11 @@ namespace Plugin
 
         AppInfo stateSnap;
         bool stateFound = AppInfoManager::getInstance().get(appId, stateSnap);
+        if (stateFound &&
+            (AppManagerImplementation::APP_ACTION_PRELOAD == stateSnap.getCurrentAction()) &&
+            (Exchange::ILifecycleManager::LifecycleState::PAUSED == newState)) {
+            reportAppPreloadCompleteTelemetry(appId);
+        }
         if(stateFound && isTelemetryClientAvailable())
         {
             switch(stateSnap.getCurrentAction())
@@ -360,14 +379,7 @@ namespace Plugin
                 : (found ? snapshot.getRequestedLaunchVersion() : std::string{}));
         const std::string initialState = found
             ? initialLaunchStateName(snapshot.getLaunchInitialState()) : "COLD";
-        std::string appType;
-        if (isHomeApp(packageInfo.configMetadata)) {
-            appType = "HOME_APP";
-        } else if (AppManagerTypes::APPLICATION_TYPE_INTERACTIVE == packageInfo.type) {
-            appType = "INTERACTIVE_APP";
-        } else if (AppManagerTypes::APPLICATION_TYPE_SYSTEM == packageInfo.type) {
-            appType = "SYSTEM_APP";
-        }
+        const std::string appType = appTypeName(packageInfo);
 
         if (appVersion.empty() || initialState.empty() || appType.empty()) {
             LOGWARN("AppLaunchError telemetry has incomplete launch context for appId=%s (version=%d initialState=%d appType=%d)",
@@ -382,6 +394,42 @@ namespace Plugin
         jsonParam["errorCode"] = static_cast<uint32_t>(errorCode);
         jsonParam["fireboltIntent"] = found ? snapshot.getLaunchTelemetryIntent() : std::string{};
         publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_LAUNCH_ERROR, false);
+    }
+
+    void AppManagerTelemetryReporting::reportAppPreloadCompleteTelemetry(const std::string& appId)
+    {
+        if (!Utils::isTelemetryMetricsEnabled()) {
+            return;
+        }
+        if (appId.empty()) {
+            LOGWARN("AppPreloadComplete telemetry skipped: appId is empty");
+            return;
+        }
+
+        AppInfo snapshot;
+        if (!AppInfoManager::getInstance().get(appId, snapshot) ||
+            (AppManagerImplementation::APP_ACTION_PRELOAD != snapshot.getCurrentAction()) ||
+            (Exchange::IAppManager::APP_STATE_UNLOADED != snapshot.getLaunchInitialState()) ||
+            (Exchange::IAppManager::APP_STATE_PAUSED != snapshot.getAppNewState())) {
+            return;
+        }
+
+        const std::string& appVersion = snapshot.getPackageInfo().version;
+        const std::string appType = appTypeName(snapshot.getPackageInfo());
+        const long long totalPreloadTime = static_cast<long long>(currentTimestampMs()) -
+            static_cast<long long>(snapshot.getCurrentActionTime());
+        if (appVersion.empty() || appType.empty() || (totalPreloadTime < 0) || (totalPreloadTime > INT_MAX)) {
+            LOGWARN("AppPreloadComplete telemetry skipped for appId=%s: version empty=%d appType empty=%d totalPreloadTime=%lld",
+                appId.c_str(), appVersion.empty(), appType.empty(), totalPreloadTime);
+            return;
+        }
+
+        JsonObject jsonParam;
+        jsonParam["appId"] = appId;
+        jsonParam["appVersion"] = appVersion;
+        jsonParam["appType"] = appType;
+        jsonParam["totalPreloadTime"] = static_cast<int>(totalPreloadTime);
+        publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_PRELOAD_COMPLETE, false);
     }
 
     void AppManagerTelemetryReporting::recordLaunchTime(const std::string& appId, int launchTimeMs)

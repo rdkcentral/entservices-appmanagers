@@ -5429,3 +5429,78 @@ TEST_F(AppCloseCompleteTest, SupersededOrUnrelatedActionsAreNotPublished)
     AppManagerTelemetryReporting::getInstance().reportAppCloseCompleteTelemetry(APPMANAGER_APP_ID, Act::APP_ACTION_LAUNCH);
     AppManagerTelemetryReporting::getInstance().reportAppCloseCompleteTelemetry("unknown-app", Act::APP_ACTION_KILL);
 }
+
+class AppPreloadCompleteTest : public AppCrashedTelemetryTest {
+protected:
+    void SeedPreload(Exchange::IAppManager::AppLifecycleState initialState,
+        AppManagerTypes::ApplicationType type, const string& configMetadata = "")
+    {
+        AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [&](AppInfo& app) {
+            app.setCurrentAction(Plugin::AppManagerImplementation::APP_ACTION_PRELOAD);
+            app.setCurrentActionTime(AppManagerTelemetryReporting::getInstance().getCurrentTimestampMs());
+            app.setAppNewState(Exchange::IAppManager::APP_STATE_PAUSED);
+            app.setLaunchTelemetryContext(initialState, "preload-intent", APPMANAGER_APP_VERSION);
+            app.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+            app.getPackageInfoMutable().type = type;
+            app.getPackageInfoMutable().configMetadata = configMetadata;
+        });
+    }
+
+    void ExpectPreloadComplete(const string& type)
+    {
+        EXPECT_CALL(*telemetry, PublishEvent(::testing::_, "ENTS_INFO_RDKAMAppPreloadComplete", false))
+            .WillOnce([type](const string& payload, const string&, bool) {
+                JsonObject event;
+                EXPECT_TRUE(event.FromString(payload));
+                EXPECT_EQ(APPMANAGER_APP_ID, event["appId"].String());
+                EXPECT_EQ(APPMANAGER_APP_VERSION, event["appVersion"].String());
+                EXPECT_EQ(type, event["appType"].String());
+                EXPECT_GE(event["totalPreloadTime"].Number(), 0);
+                EXPECT_FALSE(event.HasLabel("launchType"));
+                EXPECT_FALSE(event.HasLabel("markerName"));
+                return Core::ERROR_NONE;
+            });
+    }
+};
+
+TEST_F(AppPreloadCompleteTest, UnloadedToPausedPreloadPublishesInteractiveEventByDefault)
+{
+    SeedPreload(Exchange::IAppManager::APP_STATE_UNLOADED,
+        AppManagerTypes::APPLICATION_TYPE_INTERACTIVE);
+    ExpectPreloadComplete("INTERACTIVE_APP");
+    AppManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(
+        APPMANAGER_APP_ID, Exchange::ILifecycleManager::PAUSED);
+}
+
+TEST_F(AppPreloadCompleteTest, HomeCapabilityIsReportedAsHomeApp)
+{
+    SeedPreload(Exchange::IAppManager::APP_STATE_UNLOADED,
+        AppManagerTypes::APPLICATION_TYPE_SYSTEM,
+        R"({"capabilities":"runtime-html,home-app=enabled"})");
+    ExpectPreloadComplete("HOME_APP");
+    AppManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(
+        APPMANAGER_APP_ID, Exchange::ILifecycleManager::PAUSED);
+}
+
+TEST_F(AppPreloadCompleteTest, SystemPackageIsReportedAsSystemApp)
+{
+    SeedPreload(Exchange::IAppManager::APP_STATE_UNLOADED,
+        AppManagerTypes::APPLICATION_TYPE_SYSTEM);
+    ExpectPreloadComplete("SYSTEM_APP");
+    AppManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(
+        APPMANAGER_APP_ID, Exchange::ILifecycleManager::PAUSED);
+}
+
+TEST_F(AppPreloadCompleteTest, NonColdOrNonPausedPreloadDoesNotPublish)
+{
+    EXPECT_CALL(*telemetry, PublishEvent(::testing::_, ::testing::_, ::testing::_)).Times(0);
+    SeedPreload(Exchange::IAppManager::APP_STATE_SUSPENDED,
+        AppManagerTypes::APPLICATION_TYPE_INTERACTIVE);
+    AppManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(
+        APPMANAGER_APP_ID, Exchange::ILifecycleManager::PAUSED);
+
+    SeedPreload(Exchange::IAppManager::APP_STATE_UNLOADED,
+        AppManagerTypes::APPLICATION_TYPE_INTERACTIVE);
+    AppManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(
+        APPMANAGER_APP_ID, Exchange::ILifecycleManager::ACTIVE);
+}

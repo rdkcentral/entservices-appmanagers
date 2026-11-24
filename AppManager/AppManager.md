@@ -276,6 +276,24 @@ they do not represent a failure to reach the ACTIVE lifecycle state.
 `APP_ERROR_PACKAGE_LOCK` (8). When package context is unavailable, the event
 is still sent with the unavailable string field(s) empty and a warning logged.
 
+### AppPreloadComplete telemetry
+
+`ENTS_INFO_RDKAMAppPreloadComplete` reports successful preloading from an
+unloaded state to PAUSED. It contains exactly these fields:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `appId` | string | Application ID |
+| `appVersion` | string | Package version from package metadata |
+| `appType` | string | `INTERACTIVE_APP`, `SYSTEM_APP`, or `HOME_APP` |
+| `totalPreloadTime` | integer | Milliseconds from preload start to PAUSED |
+
+`HOME_APP` is identified by the `home-app` token in runtime-config
+capabilities. The event is published via `TelemetryMetrics.PublishEvent(...,
+false)`, so it is enabled by default and does not require the verbose RFC.
+Missing package version/type or an invalid elapsed time skips the event with a
+warning. Existing `AppLaunchTime` reporting is unchanged.
+
 ### AppCloseComplete telemetry
 
 `ENTS_INFO_RDKAMAppCloseComplete` reports the total time taken to close an app.
