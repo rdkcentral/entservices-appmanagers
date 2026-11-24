@@ -27,7 +27,6 @@
 #include <fstream>
 #include <sstream>
 #include <unistd.h>
-#include <plugins/System.h>
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 #include <core/core.h>

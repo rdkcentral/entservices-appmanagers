@@ -34,8 +34,6 @@
 #include <unistd.h>
 #include <cstddef>
 #include <json/json.h>
-#include <plugins/System.h>
-
 #include <interfaces/ILifecycleManager.h>
 #include "AppManagerImplementation.h"
 #include "UtilsLaunchArgs.h"
