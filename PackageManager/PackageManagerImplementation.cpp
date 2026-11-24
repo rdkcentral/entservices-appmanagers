@@ -34,6 +34,7 @@
 
 // Spec: entservices-appmanagers
 #include "PackageManagerImplementation.h"
+#include "PackageManagerDownloadError.h"
 #include "PackageManagerTelemetryReporting.h"
 #include "RuntimeConfigPayload.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -1437,14 +1438,15 @@ namespace Plugin {
                             mHttpClient->getStatusCode(),
                             elapsed);*/
                     }
-                    if ( status == HttpClient::Status::Success || mHttpClient->getStatusCode() == 404) {  // XXX: other status codes
+                    const long httpCode = mHttpClient->getStatusCode();
+                    if ((HttpClient::Status::DiskError != status) && (httpCode >= 400)) {
+                        status = HttpClient::Status::HttpError;
+                    }
+                    if (status == HttpClient::Status::Success || httpCode == 404) {
                         break;
                     }
                 }
 
-                if (mHttpClient->getStatusCode() == 404) {
-                    status = HttpClient::Status::HttpError;
-                }
                 DownloadReason reason = DownloadReason::NONE;
                 switch (status) {
                     case HttpClient::Status::DiskError: reason = DownloadReason::DISK_PERSISTENCE_FAILURE; break;
@@ -1452,6 +1454,12 @@ namespace Plugin {
                     default: break; /* Do nothing */
                 }
                 NotifyDownloadStatus(di->GetId(), di->GetFileLocator(), reason);
+                if (DownloadReason::NONE != reason) {
+                    const std::string errorTelemetry = PackageManagerTelemetry::downloadErrorTelemetry(
+                        di->GetUrl(), status, mHttpClient->getCurlCode(), mHttpClient->getStatusCode());
+                    PackageManagerTelemetryReporting::getInstance().publishAppPackageDownloadErrorTelemetry(
+                        di->GetId(), errorTelemetry);
+                }
                 mInprogressDownload.reset();
             }
         }

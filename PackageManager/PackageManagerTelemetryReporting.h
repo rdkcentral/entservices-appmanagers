@@ -34,6 +34,8 @@ public:
 
     void initialize(PluginHost::IShell* service);
     void reset();
+    void publishAppPackageDownloadErrorTelemetry(const std::string& metricContext,
+        const std::string& errorTelemetry);
     void publishAppPackageInstallErrorTelemetry(const std::string& packageId,
         const std::string& version,
         const std::string& errorTelemetry);

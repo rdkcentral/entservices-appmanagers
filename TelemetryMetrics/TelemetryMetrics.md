@@ -212,6 +212,7 @@ The following markers are defined in `helpers/Telemetry/TelemetryMarkers.h`:
 |--------|-------------|
 | `TELEMETRY_MARKER_DOWNLOAD_TIME` | Package download time |
 | `TELEMETRY_MARKER_DOWNLOAD_ERROR` | Package download error |
+| `TELEMETRY_MARKER_APP_PACKAGE_DOWNLOAD_ERROR` | Package download error (`metricContext`, `errorTelemetry`; enabled by default) |
 | `TELEMETRY_MARKER_INSTALL_TIME` | Package install time |
 | `TELEMETRY_MARKER_APP_PACKAGE_INSTALL_ERROR` | Package install or uninstall error (`metricContext`, `errorTelemetry`; enabled by default) |
 | `TELEMETRY_MARKER_APP_PACKAGE_INSTALL_COMPLETE` | Package install complete (`metricContext`, `packageSize`, `appId`, `version`, `installTime`; verbose only) |

@@ -47,6 +47,8 @@ extern uint32_t Test_PM_Component_TelemetryReporting_Markers();
 extern uint32_t Test_PM_Component_TelemetryReporting_PackageCacheMarkerPayload();
 extern uint32_t Test_PM_Component_TelemetryReporting_AppPackageInstallError();
 extern uint32_t Test_PM_Component_TelemetryReporting_AppPackageInstallComplete();
+extern uint32_t Test_PM_Component_TelemetryReporting_AppPackageDownloadError();
+extern uint32_t Test_PM_Component_DownloadErrorTelemetryMapping();
 
 int main()
 {
@@ -101,6 +103,8 @@ int main()
         { "PM_Component_TelemetryReporting_PackageCacheMarkerPayload", Test_PM_Component_TelemetryReporting_PackageCacheMarkerPayload },
         { "PM_Component_TelemetryReporting_AppPackageInstallError", Test_PM_Component_TelemetryReporting_AppPackageInstallError },
         { "PM_Component_TelemetryReporting_AppPackageInstallComplete", Test_PM_Component_TelemetryReporting_AppPackageInstallComplete },
+        { "PM_Component_TelemetryReporting_AppPackageDownloadError", Test_PM_Component_TelemetryReporting_AppPackageDownloadError },
+        { "PM_Component_DownloadErrorTelemetryMapping", Test_PM_Component_DownloadErrorTelemetryMapping },
     };
 
     L0Test::TestResult tr;

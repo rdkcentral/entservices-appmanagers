@@ -51,6 +51,51 @@ void PackageManagerTelemetryReporting::reset()
     resetTelemetryClient();
 }
 
+void PackageManagerTelemetryReporting::publishAppPackageDownloadErrorTelemetry(
+    const std::string& metricContext,
+    const std::string& errorTelemetry)
+{
+    if (metricContext.empty()) {
+        LOGERR("AppPackageDownloadError telemetry requires a metricContext");
+        return;
+    }
+    if (errorTelemetry.empty()) {
+        LOGERR("AppPackageDownloadError telemetry requires an errorTelemetry value");
+        return;
+    }
+
+    JsonObject jsonParam;
+    jsonParam["metricContext"] = metricContext;
+    jsonParam["errorTelemetry"] = errorTelemetry;
+
+    std::string telemetryMetrics;
+    if (!buildTelemetryPayload(jsonParam, telemetryMetrics)) {
+        LOGERR("Failed to serialize AppPackageDownloadError telemetry");
+        return;
+    }
+
+    PluginHost::IShell* service = getService();
+    if (nullptr == service) {
+        LOGWARN("AppPackageDownloadError telemetry skipped: PackageManager service is unavailable");
+        return;
+    }
+
+    Exchange::ITelemetryMetrics* telemetry =
+        service->QueryInterfaceByCallsign<Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics");
+    if (nullptr == telemetry) {
+        LOGWARN("AppPackageDownloadError telemetry skipped: TelemetryMetrics is unavailable");
+        return;
+    }
+
+    const Core::hresult status = telemetry->PublishEvent(
+        telemetryMetrics, TELEMETRY_MARKER_APP_PACKAGE_DOWNLOAD_ERROR, false);
+    telemetry->Release();
+    if (Core::ERROR_NONE != status) {
+        LOGWARN("AppPackageDownloadError telemetry publishing failed for metricContext=%s (status=%d)",
+            metricContext.c_str(), status);
+    }
+}
+
 void PackageManagerTelemetryReporting::publishAppPackageInstallErrorTelemetry(
     const std::string& packageId,
     const std::string& version,

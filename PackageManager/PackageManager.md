@@ -88,6 +88,30 @@ PackageManager publishes `ENTS_INFO_RDKAMAppPackageInstallError` when an install
 
 Unclassified install failures are logged and skipped. The current package-manager result interface does not distinguish an install `VERSION_NOT_FOUND` or an uninstall `UNINSTALL_METADATA_INVALID` result; generic uninstall failures use `UNINSTALL_FAILED`.
 
+### AppPackageDownloadError Telemetry
+
+PackageManager publishes `ENTS_INFO_RDKAMAppPackageDownloadError` after a package download fails, once retries are exhausted. The event is enabled by default. Its `metricContext` is the generated download ID; source URLs and low-level CURL codes are not sent.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `metricContext` | string | Opaque download ID identifying the package download |
+| `errorTelemetry` | string | Normalized error category from the values below |
+
+| Category | Error value | Description | Examples |
+|----------|-------------|-------------|----------|
+| Disk Errors | `DISK_WRITE_ERROR` | Unable to write to disk, including disk-full, permissions, or I/O errors | `CURLE_WRITE_ERROR`, output file open failure |
+| URL Errors | `URL_INVALID` | Empty, malformed, or unsupported URL | Empty URL |
+| Network Errors | `NETWORK_DNS_FAILURE` | DNS resolution failed | `CURLE_COULDNT_RESOLVE_HOST` |
+| Network Errors | `NETWORK_TIMEOUT` | Connection or operation timed out | `CURLE_OPERATION_TIMEDOUT` |
+| Network Errors | `NETWORK_CONNECTION_REFUSED` | Server refused the connection | `CURLE_COULDNT_CONNECT` |
+| Network Errors | `NETWORK_SSL_ERROR` | SSL/TLS handshake or certificate error | `CURLE_SSL_CACERT_BAD`, `CURLE_SSL_CONNECT_ERROR` |
+| Network Errors | `NETWORK_AUTH_ERROR` | Authentication failed | HTTP 401, 403 |
+| Network Errors | `NETWORK_SERVER_ERROR` | Server returned a 5xx response | HTTP 500, 502, 503, 504 |
+| Network Errors | `NETWORK_RATE_LIMITED` | Rate limit exceeded | HTTP 429 |
+| Network Errors | `NETWORK_NOT_FOUND` | Resource not found on server | HTTP 404 |
+| Network Errors | `NETWORK_CONTENT_ERROR` | Content length mismatch or corruption | `CURLE_PARTIAL_FILE`, content-length mismatch |
+| Network Errors | `NETWORK_ERROR` | Generic fallback for uncategorized network failures | Other CURL errors |
+
 ### AppPackageInstallComplete Telemetry
 
 PackageManager publishes `ENTS_INFO_RDKAMAppPackageInstallComplete` after a successful package install. It measures the install operation from the start of PackageManager's `Install` call through package installation and metadata/state updates; download time is not included. Firmware-preinstalled packages use the same event if they go through this install flow. The event is published only when `APP_MANAGER_OBSERVABILITY_VERBOSE` is enabled.

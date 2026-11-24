@@ -29,6 +29,7 @@
 static const std::unordered_map<std::string, std::unordered_set<std::string>> markerFilters = {
     {TELEMETRY_MARKER_DOWNLOAD_TIME, {"downloadTime", "markerName"}},
     {TELEMETRY_MARKER_DOWNLOAD_ERROR, {"errorCode", "markerName"}},
+    {TELEMETRY_MARKER_APP_PACKAGE_DOWNLOAD_ERROR, {"metricContext", "errorTelemetry", "markerName"}},
     {TELEMETRY_MARKER_INSTALL_TIME, {"installTime", "markerName"}},
     {TELEMETRY_MARKER_APP_PACKAGE_INSTALL_ERROR, {"metricContext", "errorTelemetry", "markerName"}},
     {TELEMETRY_MARKER_APP_PACKAGE_INSTALL_COMPLETE, {"metricContext", "packageSize", "appId", "version", "installTime", "markerName"}},

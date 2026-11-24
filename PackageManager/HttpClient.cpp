@@ -43,13 +43,14 @@ HttpClient::~HttpClient() {
 
 HttpClient::Status
 HttpClient::downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit) {
-    Status status = Status::Success;
-    CURLcode cc = CURLE_OK;
+    Status status = Status::HttpError;
+    CURLcode cc = CURLE_FAILED_INIT;
     FILE *fp;
     bCancel = false;
     httpCode = 0;
 
     if (curl) {
+        status = Status::Success;
         (void) curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         setRateLimit(rateLimit);
 
@@ -79,8 +80,11 @@ HttpClient::downloadFile(const std::string & url, const std::string & fileName, 
             LOGERR("Failed to open %s", fileName.c_str());
             status = Status::DiskError;
         }
+    } else {
+        LOGERR("Download failed: CURL handle is unavailable");
     }
 
+    curlCode = cc;
     return status;
 }
 
