@@ -1636,6 +1636,11 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         LOGERR("Installed package version is empty for app %s.", appId.c_str());
         status = Core::ERROR_GENERAL;
     }
+    else if (isRuntimeMissing(appId, packageData.version)) {
+        LOGERR("Runtime package required by app %s is not installed. Cannot launch.", appId.c_str());
+        appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_NOT_INSTALLED);
+        status = Core::ERROR_UNKNOWN_KEY;
+    }
     else if (nullptr != mLifecycleInterfaceConnector) {
         std::shared_ptr<AppManagerRequest> request = std::make_shared<AppManagerRequest>();
 
@@ -1895,6 +1900,12 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         LOGERR("Installed package version is empty for app %s.", appId.c_str());
         error = "Installed package version is empty";
         status = Core::ERROR_GENERAL;
+    }
+    else if (isRuntimeMissing(appId, packageData.version)) {
+        LOGERR("Runtime package required by app %s is not installed. Cannot preload.", appId.c_str());
+        appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_PRELOAD, AppManagerImplementation::ERROR_PACKAGE_NOT_INSTALLED);
+        error = "App runtime is not installed";
+        status = Core::ERROR_UNKNOWN_KEY;
     }
     else if (nullptr != mLifecycleInterfaceConnector)
     {
@@ -2213,6 +2224,19 @@ void AppManagerImplementation::checkInstallDetails(const std::string& appId, boo
         }
     }
     return;
+}
+
+/* Method to check if the runtime package required by an installed app is missing */
+bool AppManagerImplementation::isRuntimeMissing(const std::string& appId, const std::string& version)
+{
+    if (nullptr == mPackageManagerInstallerObject)
+    {
+        return false;
+    }
+
+    /* PackageManager reports ERROR_UNKNOWN_KEY for an installed app whose runtime package is not installed */
+    std::string payload;
+    return (Core::ERROR_UNKNOWN_KEY == mPackageManagerInstallerObject->Config(appId, version, payload));
 }
 
 Core::hresult AppManagerImplementation::IsInstalled(const std::string& appId, bool& installed)

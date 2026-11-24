@@ -734,8 +734,14 @@ namespace Plugin {
         if (it != mState.end()) {
             auto &state = it->second;
             if (state.installState == InstallState::INSTALLED) {
-                runtimeConfigPayload = state.runtimeConfigPayload;
-                result = Core::ERROR_NONE;
+                // A package whose runtime is not installed cannot be launched; report it
+                // so callers can refuse the launch up front.
+                if (isRuntimeMissing(it->first.first, state)) {
+                    result = Core::ERROR_UNKNOWN_KEY;
+                } else {
+                    runtimeConfigPayload = state.runtimeConfigPayload;
+                    result = Core::ERROR_NONE;
+                }
             }
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
@@ -815,6 +821,12 @@ namespace Plugin {
         CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
+        auto stateIt = mState.find( { packageId, version } );
+        if ((stateIt != mState.end()) && isRuntimeMissing(packageId, stateIt->second)) {
+            LOGERR("Not locking '%s:%s', required runtime '%s' is not installed",
+                packageId.c_str(), version.c_str(), stateIt->second.runtimeType.c_str());
+            return Core::ERROR_UNKNOWN_KEY;
+        }
         packagemanager::ConfigMetaData config;      // XXX: cleanup
         packagemanager::NameValues locks;
         result = LockPackage(packageId, version, lockReason, lockId, unpackedPath, config, locks);
@@ -963,6 +975,26 @@ namespace Plugin {
         }
 
         return result;
+    }
+
+    // Caller must hold mtxState. Re-resolves the runtime lazily because the runtime
+    // may have been installed after the package's state was created.
+    bool PackageManagerImplementation::isRuntimeMissing(const string &packageId, State &state)
+    {
+        if (state.runtimeType.empty() || ("system" == state.runtimeType)) {
+            return false;
+        }
+        if (state.runtimeApp.first.empty() || state.runtimeApp.second.empty()) {
+            auto it = runtimeMap.find(state.runtimeType);
+            if (it != runtimeMap.end()) {
+                state.runtimeApp = it->second;
+            }
+        }
+        if (state.runtimeApp.first.empty() || state.runtimeApp.second.empty()) {
+            LOGERR("failed to find runtime for package '%s' of type '%s'", packageId.c_str(), state.runtimeType.c_str());
+            return true;
+        }
+        return false;
     }
 
     bool PackageManagerImplementation::getRuntimeConfigString(const string &runtimeConfigPayload, const string &key, string &value)
@@ -1460,6 +1492,12 @@ namespace Plugin {
                 {
                     const auto sep = config.mimeType.find('/');
                     state.packageType = (sep != std::string::npos) ? config.mimeType.substr(0, sep) : config.mimeType;
+                }
+                if (state.packageType == "runtime") {
+                    const auto sep = config.mimeType.find('/');
+                    if (sep != std::string::npos) {
+                        runtimeMap[config.mimeType.substr(sep + 1)] = { packageId, version };
+                    }
                 }
                 std::map<std::string, std::pair<std::string, std::string>>::iterator itRuntime = runtimeMap.find(state.runtimeType);
                 if (itRuntime != runtimeMap.end()) {

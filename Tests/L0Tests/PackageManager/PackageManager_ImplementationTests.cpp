@@ -1082,6 +1082,48 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
     return tr.failures;
 }
 
+uint32_t Test_PM_Impl_MissingRuntimeBlocksConfigAndLock()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    const std::string appId = "RuntimeDependentApp";
+    const std::string version = "1.0.0";
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Install(appId, version, nullptr, "/tmp/fake_pkg.ipk", failReason),
+                        ERROR_NONE,
+                        "Install() of an app that needs the 'cobalt' runtime succeeds");
+
+    std::string runtimeConfig;
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Config(appId, version, runtimeConfig),
+                        ERROR_UNKNOWN_KEY,
+                        "Config() fails with ERROR_UNKNOWN_KEY when the runtime is not installed");
+
+    uint32_t lockId = 0;
+    std::string unpackedPath;
+    std::string lockConfig;
+    WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Lock(appId, version, WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH, lockId, unpackedPath, lockConfig, appMetadata),
+                        ERROR_UNKNOWN_KEY,
+                        "Lock() fails with ERROR_UNKNOWN_KEY when the runtime is not installed");
+
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Install("CobaltRuntime", "1.0.0", nullptr, "/tmp/fake_runtime.ipk", failReason),
+                        ERROR_NONE,
+                        "Install() of the 'cobalt' runtime succeeds");
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Config(appId, version, runtimeConfig),
+                        ERROR_NONE,
+                        "Config() succeeds once the runtime is installed");
+
+    return tr.failures;
+}
+
 uint32_t Test_PM_Impl_DownloadAndStorageInfoPaths()
 {
     L0Test::TestResult tr;
