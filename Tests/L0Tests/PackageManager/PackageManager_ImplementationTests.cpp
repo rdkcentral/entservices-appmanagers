@@ -1082,7 +1082,7 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
     return tr.failures;
 }
 
-uint32_t Test_PM_Impl_MissingRuntimeBlocksConfigAndLock()
+uint32_t Test_PM_Impl_MissingRuntimeBlocksLockedInfoAndLock()
 {
     L0Test::TestResult tr;
     ImplFixture fx;
@@ -1100,11 +1100,18 @@ uint32_t Test_PM_Impl_MissingRuntimeBlocksConfigAndLock()
     std::string runtimeConfig;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Config(appId, version, runtimeConfig),
+                        ERROR_NONE,
+                        "Config() is unaffected by a missing runtime");
+
+    std::string unpackedPath;
+    std::string gatewayMetadataPath;
+    bool locked = false;
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->GetLockedInfo(appId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked),
                         ERROR_UNKNOWN_KEY,
-                        "Config() fails with ERROR_UNKNOWN_KEY when the runtime is not installed");
+                        "GetLockedInfo() fails with ERROR_UNKNOWN_KEY when the runtime is not installed");
 
     uint32_t lockId = 0;
-    std::string unpackedPath;
     std::string lockConfig;
     WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
     L0Test::ExpectEqU32(tr,
@@ -1117,9 +1124,9 @@ uint32_t Test_PM_Impl_MissingRuntimeBlocksConfigAndLock()
                         ERROR_NONE,
                         "Install() of the 'cobalt' runtime succeeds");
     L0Test::ExpectEqU32(tr,
-                        fx.impl->Config(appId, version, runtimeConfig),
+                        fx.impl->GetLockedInfo(appId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked),
                         ERROR_NONE,
-                        "Config() succeeds once the runtime is installed");
+                        "GetLockedInfo() succeeds once the runtime is installed");
 
     std::string errorReason;
     L0Test::ExpectEqU32(tr,
@@ -1127,9 +1134,9 @@ uint32_t Test_PM_Impl_MissingRuntimeBlocksConfigAndLock()
                         ERROR_NONE,
                         "Uninstall() of the 'cobalt' runtime succeeds");
     L0Test::ExpectEqU32(tr,
-                        fx.impl->Config(appId, version, runtimeConfig),
+                        fx.impl->GetLockedInfo(appId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked),
                         ERROR_UNKNOWN_KEY,
-                        "Config() fails with ERROR_UNKNOWN_KEY again once the runtime is uninstalled");
+                        "GetLockedInfo() fails with ERROR_UNKNOWN_KEY again once the runtime is uninstalled");
 
     return tr.failures;
 }

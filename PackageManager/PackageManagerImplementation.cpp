@@ -757,14 +757,8 @@ namespace Plugin {
         if (it != mState.end()) {
             auto &state = it->second;
             if (state.installState == InstallState::INSTALLED) {
-                // A package whose runtime is not installed cannot be launched; report it
-                // so callers can refuse the launch up front.
-                if (isRuntimeMissing(it->first.first, state)) {
-                    result = Core::ERROR_UNKNOWN_KEY;
-                } else {
-                    runtimeConfigPayload = state.runtimeConfigPayload;
-                    result = Core::ERROR_NONE;
-                }
+                runtimeConfigPayload = state.runtimeConfigPayload;
+                result = Core::ERROR_NONE;
             }
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
@@ -1279,6 +1273,10 @@ namespace Plugin {
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
             auto &state = it->second;
+            // Only an unlocked package can lack its runtime: a locked (running) package had it when it was locked.
+            if ((0 == state.mLockCount) && isRuntimeMissing(packageId, state)) {
+                return Core::ERROR_UNKNOWN_KEY;
+            }
             unpackedPath = state.unpackedPath;
             if (!updateRuntimeConfigString(state.runtimeConfigPayload, "unpackedPath", state.unpackedPath)) {
                 result = Core::ERROR_GENERAL;

@@ -2229,14 +2229,17 @@ void AppManagerImplementation::checkInstallDetails(const std::string& appId, boo
 /* Method to check if the runtime package required by an installed app is missing */
 bool AppManagerImplementation::isRuntimeMissing(const std::string& appId, const std::string& version)
 {
-    if (nullptr == mPackageManagerInstallerObject)
+    if (nullptr == mPackageManagerHandlerObject)
     {
         return false;
     }
 
-    /* PackageManager reports ERROR_UNKNOWN_KEY for an installed app whose runtime package is not installed */
+    /* PackageManager reports ERROR_UNKNOWN_KEY for an unlocked app whose runtime package is not installed */
+    std::string unpackedPath;
     std::string payload;
-    return (Core::ERROR_UNKNOWN_KEY == mPackageManagerInstallerObject->Config(appId, version, payload));
+    std::string gatewayMetadataPath;
+    bool locked = false;
+    return (Core::ERROR_UNKNOWN_KEY == mPackageManagerHandlerObject->GetLockedInfo(appId, version, unpackedPath, payload, gatewayMetadataPath, locked));
 }
 
 Core::hresult AppManagerImplementation::IsInstalled(const std::string& appId, bool& installed)
