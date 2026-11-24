@@ -496,6 +496,7 @@ namespace Plugin {
         /* Get current timestamp at the start of Install for telemetry */
         time_t requestTime = getCurrentTimestamp();
 
+        CHECK_CACHE()
         if (fileLocator.empty()) {
             recordAndPublishTelemetryData(TELEMETRY_MARKER_INSTALL_ERROR, packageId, requestTime, PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE);
             LOGERR("fileLocator is empty '%s' ver:'%s'", packageId.c_str(), version.c_str());
@@ -513,7 +514,6 @@ namespace Plugin {
         }
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        CHECK_CACHE()
         bool bNewEntry = false;
         StateKey key { packageId, version };
         auto it = mState.find( key );
@@ -582,9 +582,9 @@ namespace Plugin {
         time_t requestTime = getCurrentTimestamp();
 
         LOGDBG("Uninstalling id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
+        CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        CHECK_CACHE()
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
             auto &state = it->second;
@@ -682,11 +682,11 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::ListPackages(Exchange::IPackageInstaller::IPackageIterator*& packages)
     {
+        CHECK_CACHE()
         LOGTRACE("entry");
         Core::hresult result = Core::ERROR_NONE;
         std::list<Exchange::IPackageInstaller::Package> packageList;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        CHECK_CACHE()
 
         for (auto const& [key, state] : mState) {
             Exchange::IPackageInstaller::Package package;
@@ -709,10 +709,10 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Config(const string &packageId, const string &version, string& runtimeConfigPayload)
     {
+        CHECK_CACHE()
         LOGDBG("id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
         Core::hresult result = Core::ERROR_GENERAL;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        CHECK_CACHE()
 
         StateMap::iterator it = mState.end();
         if (!version.empty()) {
@@ -748,10 +748,10 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::PackageState(const string &packageId, const string &version,
         Exchange::IPackageInstaller::InstallState &installState)
     {
+        CHECK_CACHE()
         LOGDBG("id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
         Core::hresult result = Core::ERROR_NONE;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        CHECK_CACHE()
 
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
@@ -812,9 +812,9 @@ namespace Plugin {
         time_t requestTime = getCurrentTimestamp();
 
         LOGDBG("id: %s ver: %s reason=%u", packageId.c_str(), version.c_str(), (uint8_t) lockReason);
+        CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        CHECK_CACHE()
         packagemanager::ConfigMetaData config;      // XXX: cleanup
         packagemanager::NameValues locks;
         result = LockPackage(packageId, version, lockReason, lockId, unpackedPath, config, locks);
@@ -1080,6 +1080,7 @@ namespace Plugin {
         time_t requestTime = getCurrentTimestamp();
         Core::hresult result = Core::ERROR_NONE;
         LOGDBG("id: %s ver: %s", packageId.c_str(), version.c_str());
+        CHECK_CACHE()
 
 #ifdef USE_LIBPACKAGE_RALF
         string rtPackageId;
@@ -1087,7 +1088,6 @@ namespace Plugin {
 #endif
         {
             std::lock_guard<std::recursive_mutex> lock(mtxState);
-            CHECK_CACHE()
             auto it = mState.find( { packageId, version } );
             if (it == mState.end()) {
                 LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
@@ -1198,11 +1198,11 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::GetLockedInfo(const string &packageId, const string &version,
         string &unpackedPath, string& runtimeConfigPayload, string& gatewayMetadataPath, bool &locked)
     {
+        CHECK_CACHE()
         Core::hresult result = Core::ERROR_NONE;
 
         LOGDBG("id: %s ver: %s", packageId.c_str(), version.c_str());
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        CHECK_CACHE()
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
             auto &state = it->second;
@@ -1224,6 +1224,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::GetConfigForPackage(const string &fileLocator, string& id, string &version, string& config)
     {
+        CHECK_CACHE()
         Core::hresult result = Core::ERROR_GENERAL;
 
         if (fileLocator.empty())
@@ -1231,8 +1232,6 @@ namespace Plugin {
             return Core::ERROR_INVALID_SIGNATURE;
         }
 
-        std::lock_guard<std::recursive_mutex> lock(mtxState);
-        CHECK_CACHE()
 	    packagemanager::ConfigMetaData metadata;
         packagemanager::Result pmResult = packageImpl->GetFileMetadata(fileLocator, id, version, metadata);
         if (pmResult == packagemanager::SUCCESS)
@@ -1258,14 +1257,11 @@ namespace Plugin {
         }
 	    #endif
 
-        {
-            std::lock_guard<std::recursive_mutex> lock(mtxState);
-	        #if defined(UNIT_TEST)
-            packageImpl = packagemanager::IPackageImplDummy::instance();
-            #else
-	        packageImpl = packagemanager::IPackageImpl::instance();
-            #endif
-        }
+	    #if defined(UNIT_TEST)
+        packageImpl = packagemanager::IPackageImplDummy::instance();
+        #else
+	    packageImpl = packagemanager::IPackageImpl::instance();
+        #endif
 
         packagemanager::ConfigMetadataArray aConfigMetadata;
         packagemanager::Result pmResult = packageImpl->Initialize(configStr, aConfigMetadata);
@@ -1598,6 +1594,7 @@ namespace Plugin {
     }
     Core::hresult PackageManagerImplementation::GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */)
     {
+        CHECK_CACHE()
         Core::hresult result = Core::ERROR_GENERAL;
 
         if (packageId.empty())
@@ -1605,8 +1602,6 @@ namespace Plugin {
             return Core::ERROR_INVALID_PARAMETER;
         }
 
-        std::lock_guard<std::recursive_mutex> lock(mtxState);
-        CHECK_CACHE()
         packagemanager::Result pmResult = packageImpl->GetInstalledPackageMetadata(packageId, version, config);
         if (pmResult == packagemanager::SUCCESS)
         {
@@ -1616,12 +1611,11 @@ namespace Plugin {
     }
 Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */)
 {
+    CHECK_CACHE()
     Core::hresult result = Core::ERROR_GENERAL;
 
     config.clear();
 
-    std::lock_guard<std::recursive_mutex> lock(mtxState);
-    CHECK_CACHE()
     const packagemanager::Result pmResult = packageImpl->GetConfigListForInstalledPackages(filter, config);
     if (pmResult == packagemanager::SUCCESS)
     {
@@ -1645,11 +1639,11 @@ Core::hresult PackageManagerImplementation::GetPackageSpecifierRuntimes(
         return Core::ERROR_NOT_SUPPORTED;
     }
 
+    CHECK_CACHE()
     packagemanager::PackageSpecifierRuntimeMap runtimeMap;
     std::vector<Exchange::IAppPackageConnector::PackageSpecifierRuntime> runtimeList;
     {
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        CHECK_CACHE()
         const packagemanager::Result pmResult = packageImpl->GetPackageSpecifierRuntimes(runtimeMap);
         if (pmResult != packagemanager::SUCCESS)
         {
@@ -1678,8 +1672,9 @@ Core::hresult PackageManagerImplementation::SetPackageSpecifier(
         return Core::ERROR_NOT_SUPPORTED;
     }
 
-    std::lock_guard<std::recursive_mutex> lock(mtxState);
     CHECK_CACHE()
+
+    std::lock_guard<std::recursive_mutex> lock(mtxState);
     const string installedVersion = GetInstalledVersion(packageId);
     if (installedVersion.empty())
     {
