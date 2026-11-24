@@ -962,13 +962,15 @@ Core::hresult AppManagerImplementation::setRuntimeSessionActive(const string& ap
     Core::hresult status = Core::ERROR_GENERAL;
     const string appInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
 
+    LOGINFO("Requesting RuntimeManager to set the runtime session %s for appId=%s appInstanceId=%s",
+        active ? "active" : "inactive", appId.c_str(), appInstanceId.c_str());
     if (nullptr == mCurrentservice)
     {
-        LOGERR("mCurrentservice is null");
+        LOGERR("Cannot reach RuntimeManager for appId=%s because the plugin service handle is null", appId.c_str());
     }
     else if (appInstanceId.empty())
     {
-        LOGINFO("No appInstanceId for appId=%s, skipping RuntimeManager %s", appId.c_str(), active ? "SetActive" : "SetInactive");
+        LOGINFO("Skipping RuntimeManager %s for appId=%s as the app has no instance yet", active ? "SetActive" : "SetInactive", appId.c_str());
         status = Core::ERROR_NONE;
     }
     else
@@ -976,12 +978,12 @@ Core::hresult AppManagerImplementation::setRuntimeSessionActive(const string& ap
         Exchange::IRuntimeManager* runtimeManager = mCurrentservice->QueryInterfaceByCallsign<Exchange::IRuntimeManager>("org.rdk.RuntimeManager");
         if (nullptr == runtimeManager)
         {
-            LOGERR("Failed to get RuntimeManager object for appId=%s", appId.c_str());
+            LOGERR("Failed to get the RuntimeManager interface, runtime session of appId=%s is left unchanged", appId.c_str());
         }
         else
         {
             status = active ? runtimeManager->SetActive(appInstanceId) : runtimeManager->SetInactive(appInstanceId);
-            LOGINFO("RuntimeManager %s for appId=%s appInstanceId=%s returned %d",
+            LOGINFO("RuntimeManager %s completed for appId=%s appInstanceId=%s with status %d",
                 active ? "SetActive" : "SetInactive", appId.c_str(), appInstanceId.c_str(), static_cast<int>(status));
             runtimeManager->Release();
         }

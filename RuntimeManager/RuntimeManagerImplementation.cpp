@@ -1236,21 +1236,34 @@ namespace WPEFramework
         Core::hresult RuntimeManagerImplementation::SetActive(const string &appInstanceId)
         {
             Core::hresult status = Core::ERROR_NONE;
+            LOGINFO("SetActive request received for appInstanceId=%s", appInstanceId.c_str());
 #ifdef ENABLE_RIALTO
             mRuntimeManagerImplLock.Lock();
             auto it = mRuntimeAppInfo.find(appInstanceId);
-            if ((mRuntimeAppInfo.end() != it) && it->second.usesRialto && mRialtoConnector)
+            if (mRuntimeAppInfo.end() == it)
             {
-                LOGINFO("Rialto session set active for appInstanceId=%s", appInstanceId.c_str());
+                LOGWARN("Cannot activate Rialto session: appInstanceId=%s is not found in the running apps list, the app may not have been launched", appInstanceId.c_str());
+            }
+            else if (!it->second.usesRialto || !mRialtoConnector)
+            {
+                LOGINFO("Nothing to do for appInstanceId=%s as the app does not use a Rialto session", appInstanceId.c_str());
+            }
+            else
+            {
+                LOGINFO("Setting Rialto session to ACTIVE for appId=%s appInstanceId=%s", it->second.appId.c_str(), appInstanceId.c_str());
                 if (!mRialtoConnector->resumeSession(appInstanceId))
                 {
-                    LOGWARN("Rialto set active failed for appInstanceId=%s", appInstanceId.c_str());
+                    LOGWARN("Failed to set Rialto session to ACTIVE for appInstanceId=%s, it may already be in that state", appInstanceId.c_str());
                     status = Core::ERROR_GENERAL;
+                }
+                else
+                {
+                    LOGINFO("Rialto session is now ACTIVE for appInstanceId=%s", appInstanceId.c_str());
                 }
             }
             mRuntimeManagerImplLock.Unlock();
 #else
-            LOGINFO("Rialto not enabled, SetActive ignored for appInstanceId=%s", appInstanceId.c_str());
+            LOGINFO("Rialto is not enabled, SetActive is ignored for appInstanceId=%s", appInstanceId.c_str());
 #endif
             return status;
         }
@@ -1258,21 +1271,34 @@ namespace WPEFramework
         Core::hresult RuntimeManagerImplementation::SetInactive(const string &appInstanceId)
         {
             Core::hresult status = Core::ERROR_NONE;
+            LOGINFO("SetInactive request received for appInstanceId=%s", appInstanceId.c_str());
 #ifdef ENABLE_RIALTO
             mRuntimeManagerImplLock.Lock();
             auto it = mRuntimeAppInfo.find(appInstanceId);
-            if ((mRuntimeAppInfo.end() != it) && it->second.usesRialto && mRialtoConnector)
+            if (mRuntimeAppInfo.end() == it)
             {
-                LOGINFO("Rialto session set inactive for appInstanceId=%s", appInstanceId.c_str());
+                LOGWARN("Cannot deactivate Rialto session: appInstanceId=%s is not found in the running apps list, the app may not have been launched", appInstanceId.c_str());
+            }
+            else if (!it->second.usesRialto || !mRialtoConnector)
+            {
+                LOGINFO("Nothing to do for appInstanceId=%s as the app does not use a Rialto session", appInstanceId.c_str());
+            }
+            else
+            {
+                LOGINFO("Setting Rialto session to INACTIVE for appId=%s appInstanceId=%s", it->second.appId.c_str(), appInstanceId.c_str());
                 if (!mRialtoConnector->suspendSession(appInstanceId))
                 {
-                    LOGWARN("Rialto set inactive failed for appInstanceId=%s", appInstanceId.c_str());
+                    LOGWARN("Failed to set Rialto session to INACTIVE for appInstanceId=%s, it may already be in that state", appInstanceId.c_str());
                     status = Core::ERROR_GENERAL;
+                }
+                else
+                {
+                    LOGINFO("Rialto session is now INACTIVE for appInstanceId=%s", appInstanceId.c_str());
                 }
             }
             mRuntimeManagerImplLock.Unlock();
 #else
-            LOGINFO("Rialto not enabled, SetInactive ignored for appInstanceId=%s", appInstanceId.c_str());
+            LOGINFO("Rialto is not enabled, SetInactive is ignored for appInstanceId=%s", appInstanceId.c_str());
 #endif
             return status;
         }
