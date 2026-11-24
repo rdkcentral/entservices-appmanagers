@@ -29,6 +29,7 @@
 #include <interfaces/IConfiguration.h>
 #include <interfaces/IAppPackageManager.h>
 #include <interfaces/IAppStorageManager.h>
+#include <interfaces/IRuntimeManager.h>
 #include "tracing/Logging.h"
 #include <com/com.h>
 #include <core/core.h>
@@ -245,6 +246,7 @@ namespace Plugin {
         void getCustomValues(Utils::RuntimeConfigPayload& runtimeConfigPayload);
         Core::hresult createStorageManagerRemoteObject();
         void releaseStorageManagerRemoteObject();
+        Core::hresult setRuntimeSessionActive(const string& appId, bool active);
     #ifdef APP_MANAGER_RESOURCE_MONITOR
         Core::hresult createResourceMonitorRemoteObject();
         Core::hresult createResourceMonitorRemoteObjectLocked();

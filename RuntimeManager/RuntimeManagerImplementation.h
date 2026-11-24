@@ -200,6 +200,8 @@ namespace WPEFramework
                 virtual Core::hresult Wake(const string& appInstanceId, const RuntimeState runtimeState) override;
                 virtual Core::hresult Suspend(const string& appInstanceId) override;
                 virtual Core::hresult Resume(const string& appInstanceId) override;
+                virtual Core::hresult SetActive(const string& appInstanceId) override;
+                virtual Core::hresult SetInactive(const string& appInstanceId) override;
                 virtual Core::hresult Terminate(const string& appInstanceId) override;
                 virtual Core::hresult Kill(const string& appInstanceId) override;
                 virtual Core::hresult GetInfo(const string& appInstanceId, string& info) override;

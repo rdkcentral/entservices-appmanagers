@@ -92,6 +92,8 @@ public:
     Core::hresult Wake(const string&, const RuntimeState) override { return Core::ERROR_NONE; }
     Core::hresult Suspend(const string&) override { return Core::ERROR_NONE; }
     Core::hresult Resume(const string&) override { return Core::ERROR_NONE; }
+    Core::hresult SetActive(const string&) override { return Core::ERROR_NONE; }
+    Core::hresult SetInactive(const string&) override { return Core::ERROR_NONE; }
     Core::hresult Terminate(const string&) override { return Core::ERROR_NONE; }
     Core::hresult Kill(const string&) override { return Core::ERROR_NONE; }
     Core::hresult GetInfo(const string& appInstanceId, string& info) override

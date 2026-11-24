@@ -35,6 +35,8 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, Wake, (const string& appInstanceId, const RuntimeState runtimeState), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Suspend, (const string& appInstanceId), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Resume, (const string& appInstanceId), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, SetActive, (const string& appInstanceId), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, SetInactive, (const string& appInstanceId), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Terminate, (const string& appInstanceId), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Kill, (const string& appInstanceId), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetInfo, (const string& appInstanceId, string& info), (override));

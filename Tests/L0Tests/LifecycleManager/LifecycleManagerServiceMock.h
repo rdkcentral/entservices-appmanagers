@@ -91,6 +91,8 @@ public:
     WPEFramework::Core::hresult Wake(const string& /*appInstanceId*/, RuntimeState /*runtimeState*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Suspend(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Resume(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult SetActive(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult SetInactive(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Terminate(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Kill(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult GetInfo(const string& /*appInstanceId*/, string& /*info*/) override { return WPEFramework::Core::ERROR_NONE; }

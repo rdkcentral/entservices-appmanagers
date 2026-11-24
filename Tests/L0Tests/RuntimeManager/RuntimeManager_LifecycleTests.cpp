@@ -46,6 +46,8 @@ public:
     WPEFramework::Core::hresult Wake(const std::string&, const RuntimeState) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Suspend(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Resume(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult SetActive(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult SetInactive(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Terminate(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Kill(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult GetInfo(const std::string&, std::string&) override { return WPEFramework::Core::ERROR_NONE; }
@@ -105,6 +107,8 @@ public:
     WPEFramework::Core::hresult Wake(const std::string&, const RuntimeState) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Suspend(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Resume(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult SetActive(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult SetInactive(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Terminate(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Kill(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult GetInfo(const std::string&, std::string&) override { return WPEFramework::Core::ERROR_NONE; }

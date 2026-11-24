@@ -373,6 +373,10 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     else if (action == APP_ACTION_LAUNCH)
                                     {
                                         launchInvoked = true;
+                                        if (Core::ERROR_NONE != setRuntimeSessionActive(appId, true))
+                                        {
+                                            LOGWARN("Failed to set runtime session active before launch for appId=%s", appId.c_str());
+                                        }
                                         status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfigPayload);
                                         LOGINFO("Application Launch from thread returns with status %d", status);
 
@@ -950,6 +954,39 @@ void AppManagerImplementation::releasePackageManagerObject()
         mPackageManagerInstallerObject->Release();
         mPackageManagerInstallerObject = nullptr;
     }
+}
+
+/* Sets the Rialto session of the app active/inactive through RuntimeManager. Must be called with the app's instance already known. */
+Core::hresult AppManagerImplementation::setRuntimeSessionActive(const string& appId, bool active)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+    const string appInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
+
+    if (nullptr == mCurrentservice)
+    {
+        LOGERR("mCurrentservice is null");
+    }
+    else if (appInstanceId.empty())
+    {
+        LOGINFO("No appInstanceId for appId=%s, skipping RuntimeManager %s", appId.c_str(), active ? "SetActive" : "SetInactive");
+        status = Core::ERROR_NONE;
+    }
+    else
+    {
+        Exchange::IRuntimeManager* runtimeManager = mCurrentservice->QueryInterfaceByCallsign<Exchange::IRuntimeManager>("org.rdk.RuntimeManager");
+        if (nullptr == runtimeManager)
+        {
+            LOGERR("Failed to get RuntimeManager object for appId=%s", appId.c_str());
+        }
+        else
+        {
+            status = active ? runtimeManager->SetActive(appInstanceId) : runtimeManager->SetInactive(appInstanceId);
+            LOGINFO("RuntimeManager %s for appId=%s appInstanceId=%s returned %d",
+                active ? "SetActive" : "SetInactive", appId.c_str(), appInstanceId.c_str(), static_cast<int>(status));
+            runtimeManager->Release();
+        }
+    }
+    return status;
 }
 
 Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
@@ -1707,6 +1744,10 @@ Core::hresult AppManagerImplementation::CloseApp(const string& appId)
         mAdminLock.Lock();
         if (nullptr != mLifecycleInterfaceConnector)
         {
+            if (Core::ERROR_NONE != setRuntimeSessionActive(appId, false))
+            {
+                LOGWARN("Failed to set runtime session inactive before closeApp for appId=%s", appId.c_str());
+            }
             status = mLifecycleInterfaceConnector->closeApp(appId);
         }
         else

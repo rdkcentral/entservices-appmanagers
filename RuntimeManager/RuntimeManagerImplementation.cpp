@@ -1233,6 +1233,50 @@ namespace WPEFramework
             return status;
         }
 
+        Core::hresult RuntimeManagerImplementation::SetActive(const string &appInstanceId)
+        {
+            Core::hresult status = Core::ERROR_NONE;
+#ifdef ENABLE_RIALTO
+            mRuntimeManagerImplLock.Lock();
+            auto it = mRuntimeAppInfo.find(appInstanceId);
+            if ((mRuntimeAppInfo.end() != it) && it->second.usesRialto && mRialtoConnector)
+            {
+                LOGINFO("Rialto session set active for appInstanceId=%s", appInstanceId.c_str());
+                if (!mRialtoConnector->resumeSession(appInstanceId))
+                {
+                    LOGWARN("Rialto set active failed for appInstanceId=%s", appInstanceId.c_str());
+                    status = Core::ERROR_GENERAL;
+                }
+            }
+            mRuntimeManagerImplLock.Unlock();
+#else
+            LOGINFO("Rialto not enabled, SetActive ignored for appInstanceId=%s", appInstanceId.c_str());
+#endif
+            return status;
+        }
+
+        Core::hresult RuntimeManagerImplementation::SetInactive(const string &appInstanceId)
+        {
+            Core::hresult status = Core::ERROR_NONE;
+#ifdef ENABLE_RIALTO
+            mRuntimeManagerImplLock.Lock();
+            auto it = mRuntimeAppInfo.find(appInstanceId);
+            if ((mRuntimeAppInfo.end() != it) && it->second.usesRialto && mRialtoConnector)
+            {
+                LOGINFO("Rialto session set inactive for appInstanceId=%s", appInstanceId.c_str());
+                if (!mRialtoConnector->suspendSession(appInstanceId))
+                {
+                    LOGWARN("Rialto set inactive failed for appInstanceId=%s", appInstanceId.c_str());
+                    status = Core::ERROR_GENERAL;
+                }
+            }
+            mRuntimeManagerImplLock.Unlock();
+#else
+            LOGINFO("Rialto not enabled, SetInactive ignored for appInstanceId=%s", appInstanceId.c_str());
+#endif
+            return status;
+        }
+
         Core::hresult RuntimeManagerImplementation::Terminate(const string &appInstanceId)
         {
             Core::hresult status = Core::ERROR_GENERAL;
