@@ -380,7 +380,7 @@ namespace Plugin {
         lifecycleLock.unlock();
 #ifdef DEFER_CACHE_INIT
         // Deferred initialization: thread only exists if StartCacheInitialization() was called
-        if (mDownloadThreadPtr->joinable()) {
+        if (mDownloadThreadPtr && mDownloadThreadPtr->joinable()) {
             mDownloadThreadPtr->join();
         }
 #else
@@ -408,6 +408,7 @@ namespace Plugin {
 
         mCurrentservice->Release();
         mCurrentservice = nullptr;
+        mDeinitializing = false;
 
         return result;
     }
@@ -464,7 +465,7 @@ namespace Plugin {
     {
         std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_NONE;
-        if (mCurrentservice == nullptr) {
+        if (mCurrentservice == nullptr || mDeinitializing) {
             return Core::ERROR_UNAVAILABLE;
         }
 
@@ -571,7 +572,7 @@ namespace Plugin {
             if (removeManagedDownload(fileLocator, downloadDir, mDownloadDirectoryFd)) {
                 LOGDBG("Managed download deleted");
             } else {
-                LOGERR("fileLocator rejected or delete failed");
+LOGWARN("fileLocator rejected or delete failed");
                 result = Core::ERROR_GENERAL;
             }
         }

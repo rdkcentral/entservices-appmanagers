@@ -516,7 +516,7 @@ namespace Plugin {
         }
         else
         {
-            LOGERR("DM: fileLocator rejected or delete failed");
+LOGWARN("DM: fileLocator rejected or delete failed");
         }
 
         return result;
