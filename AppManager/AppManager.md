@@ -249,6 +249,33 @@ notifications or cleanup.
 This replaces the previous AppCrashed payload containing `appInstanceId` and
 `crashReason` with the fields above.
 
+### AppLaunchError telemetry
+
+`ENTS_INFO_RDKAMAppLaunchError` reports an application launch failure by direct
+publication via `TelemetryMetrics.PublishEvent(..., false)`. It contains:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `appId` | string | Application ID |
+| `appVersion` | string | Requested package version, falling back to package metadata |
+| `initialState` | string | State before launch: `COLD`, `HIBERNATED`, `SUSPENDED`, or `PAUSED` |
+| `appType` | string | `INTERACTIVE_APP`, `SYSTEM_APP`, or `HOME_APP` |
+| `errorCode` | integer | Numeric `Exchange::IAppManager::AppErrorReason` |
+| `fireboltIntent` | string | Firebolt intent supplied with the launch request |
+
+`HOME_APP` is identified by the `home-app` token in the package runtime-config
+capabilities, matching RuntimeManager's capability check. The event is enabled
+by default and does not require `APP_MANAGER_OBSERVABILITY_VERBOSE`; the RFC
+check remains in TelemetryMetrics only. Preload failures are excluded because
+they do not represent a failure to reach the ACTIVE lifecycle state.
+
+`errorCode` uses the numeric `AppErrorReason` values: `APP_ERROR_UNKNOWN` (1),
+`APP_ERROR_STATE_TIMEOUT` (2), `APP_ERROR_ABORT` (3),
+`APP_ERROR_INVALID_PARAM` (4), `APP_ERROR_CREATE_DISPLAY` (5),
+`APP_ERROR_DOBBY_SPEC` (6), `APP_ERROR_NOT_INSTALLED` (7), and
+`APP_ERROR_PACKAGE_LOCK` (8). When package context is unavailable, the event
+is still sent with the unavailable string field(s) empty and a warning logged.
+
 ### AppCloseComplete telemetry
 
 `ENTS_INFO_RDKAMAppCloseComplete` reports the total time taken to close an app.
@@ -289,7 +316,7 @@ package-unlock failure during terminate cleanup is reported as `TERMINATE`.
 Other error codes are not reported. The event is submitted via
 `TelemetryMetrics.PublishEvent(..., false)`; it is enabled by default and
 independent of `APP_MANAGER_OBSERVABILITY_VERBOSE`. Publication failures are
-logged and do not affect close handling. Launch errors are unchanged.
+logged and do not affect close handling.
 
 ### Exchange::IAppManager Interface
 

@@ -57,6 +57,9 @@ public:
     uint32_t        getLastActiveIndex()            const;
     const std::string& getAppIntent()               const;
     const std::string& getRequestedLaunchVersion()  const;
+    Exchange::IAppManager::AppLifecycleState getLaunchInitialState() const;
+    const std::string& getLaunchTelemetryIntent() const;
+    const std::string& getLaunchTelemetryVersion() const;
 
     AppManagerTypes::CurrentAction getCurrentAction() const;
 
@@ -77,6 +80,8 @@ public:
     void setLastActiveIndex(uint32_t index);
     void setAppIntent(const std::string& intent);
     void setRequestedLaunchVersion(const std::string& version);
+    void setLaunchTelemetryContext(Exchange::IAppManager::AppLifecycleState initialState,
+        const std::string& intent, const std::string& version);
 
     void setCurrentAction(AppManagerTypes::CurrentAction action);
 
@@ -94,6 +99,9 @@ private:
     uint32_t   mLastActiveIndex;
     std::string mAppIntent;
     std::string mRequestedLaunchVersion;
+    Exchange::IAppManager::AppLifecycleState mLaunchInitialState;
+    std::string mLaunchTelemetryIntent;
+    std::string mLaunchTelemetryVersion;
     AppManagerTypes::CurrentAction mCurrentAction;
     time_t mCurrentActionTime;
 };

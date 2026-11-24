@@ -1177,6 +1177,7 @@ End:
                 Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
                 bool notifyPauseCV = false;
                 bool reportUnexpectedCrash = false;
+                bool reportLaunchFailure = false;
                 std::string crashedAppVersion;
                 AppInfoManager::getInstance().update(appId, [&](AppInfo& a) {
                     if (a.getAppInstanceId() == appInstanceId)
@@ -1184,6 +1185,9 @@ End:
                         reportUnexpectedCrash = ("unexpectedTermination" == navigationIntent) &&
                             (Exchange::ILifecycleManager::UNLOADED == newState) &&
                             (Exchange::IAppManager::APP_STATE_UNLOADED != a.getAppNewState());
+                        reportLaunchFailure = reportUnexpectedCrash &&
+                            (Exchange::ILifecycleManager::ACTIVE != oldState) &&
+                            (AppManagerImplementation::APP_ACTION_LAUNCH == a.getCurrentAction());
                         if (reportUnexpectedCrash) {
                             crashedAppVersion = a.getPackageInfo().version;
                         }
@@ -1246,6 +1250,10 @@ End:
                             LOGINFO("Unexpected container termination detected");
                             appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
                             if (reportUnexpectedCrash) {
+                                if (reportLaunchFailure) {
+                                    AppManagerTelemetryReporting::getInstance().reportAppLaunchErrorTelemetry(
+                                        appId, Exchange::IAppManager::APP_ERROR_ABORT);
+                                }
                                 AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, crashedAppVersion, oldState);
                             }
                         }
@@ -1298,6 +1306,12 @@ End:
                 if (!errorReason.empty())
                 {
                     errorCode = mapErrorReason(errorReason);
+                    AppInfo launchSnap;
+                    if (AppInfoManager::getInstance().get(appId, launchSnap) &&
+                        (AppManagerImplementation::APP_ACTION_LAUNCH == launchSnap.getCurrentAction()))
+                    {
+                        AppManagerTelemetryReporting::getInstance().reportAppLaunchErrorTelemetry(appId, errorCode);
+                    }
                     appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
                         currentAppState, errorCode);
                     LOGINFO("Notified error event for appId %s: currentAppState=%d errorCode %d", appId.c_str(), static_cast<int>(currentAppState), static_cast<int>(errorCode));

@@ -22,13 +22,80 @@
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 #include <interfaces/ITelemetryMetrics.h>
+#include <algorithm>
+#include <cctype>
 #include <climits>
+#include <sstream>
 #include <utility>
 
 namespace WPEFramework
 {
 namespace Plugin
 {
+    namespace
+    {
+        std::string initialLaunchStateName(Exchange::IAppManager::AppLifecycleState state)
+        {
+            switch (state) {
+                case Exchange::IAppManager::APP_STATE_UNLOADED:
+                    return "COLD";
+                case Exchange::IAppManager::APP_STATE_HIBERNATED:
+                    return "HIBERNATED";
+                case Exchange::IAppManager::APP_STATE_SUSPENDED:
+                    return "SUSPENDED";
+                case Exchange::IAppManager::APP_STATE_PAUSED:
+                    return "PAUSED";
+                default:
+                    return "";
+            }
+        }
+
+        bool hasCapability(const std::string& capabilities, const std::string& expectedCapability)
+        {
+            std::istringstream stream(capabilities);
+            std::string token;
+            while (std::getline(stream, token, ',')) {
+                const size_t parameterStart = token.find('=');
+                if (parameterStart != std::string::npos) {
+                    token.erase(parameterStart);
+                }
+                const auto notSpace = [](unsigned char ch) { return !std::isspace(ch); };
+                token.erase(token.begin(), std::find_if(token.begin(), token.end(), notSpace));
+                token.erase(std::find_if(token.rbegin(), token.rend(), notSpace).base(), token.end());
+                if (token == expectedCapability) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool isHomeApp(const std::string& configMetadata)
+        {
+            JsonObject runtimeConfig;
+            if (!runtimeConfig.FromString(configMetadata) || !runtimeConfig.HasLabel("capabilities")) {
+                return false;
+            }
+            const JsonValue capabilities = runtimeConfig["capabilities"];
+            return (JsonValue::type::STRING == capabilities.Content()) &&
+                hasCapability(capabilities.String(), "home-app");
+        }
+
+        Exchange::IAppManager::AppErrorReason mapLaunchError(
+            AppManagerImplementation::CurrentActionError errorCode)
+        {
+            switch (errorCode) {
+                case AppManagerImplementation::ERROR_INVALID_PARAMS:
+                    return Exchange::IAppManager::APP_ERROR_INVALID_PARAM;
+                case AppManagerImplementation::ERROR_PACKAGE_NOT_INSTALLED:
+                    return Exchange::IAppManager::APP_ERROR_NOT_INSTALLED;
+                case AppManagerImplementation::ERROR_PACKAGE_LOCK:
+                    return Exchange::IAppManager::APP_ERROR_PACKAGE_LOCK;
+                default:
+                    return Exchange::IAppManager::APP_ERROR_UNKNOWN;
+            }
+        }
+    }
+
     AppManagerTelemetryReporting::AppManagerTelemetryReporting()
     {
     }
@@ -226,11 +293,21 @@ namespace Plugin
 
         LOGINFO("Received data for appId %s current action %d app errorCode %d",appId.c_str(), currentAction, errorCode);
 
+        if (AppManagerImplementation::APP_ACTION_LAUNCH == currentAction) {
+            reportAppLaunchErrorTelemetry(appId, mapLaunchError(errorCode));
+            return;
+        }
+
         if ((AppManagerImplementation::APP_ACTION_CLOSE == currentAction) ||
             (AppManagerImplementation::APP_ACTION_TERMINATE == currentAction) ||
             (AppManagerImplementation::APP_ACTION_KILL == currentAction))
         {
             reportAppCloseErrorTelemetry(appId, currentAction, errorCode);
+            return;
+        }
+
+        if (AppManagerImplementation::APP_ACTION_PRELOAD == currentAction) {
+            LOGINFO("AppLaunchError telemetry skipped for preload action appId=%s", appId.c_str());
             return;
         }
 
@@ -245,10 +322,6 @@ namespace Plugin
 
         switch(currentAction)
         {
-            case AppManagerImplementation::APP_ACTION_LAUNCH:
-            case AppManagerImplementation::APP_ACTION_PRELOAD:
-                markerName = TELEMETRY_MARKER_LAUNCH_ERROR;
-            break;
             default:
                 LOGERR("currentAction is invalid");
             break;
@@ -264,6 +337,51 @@ namespace Plugin
                 getTelemetryClient().publish(appId, markerName);
             }
         }
+    }
+
+    void AppManagerTelemetryReporting::reportAppLaunchErrorTelemetry(
+        const std::string& appId, Exchange::IAppManager::AppErrorReason errorCode)
+    {
+        if (!Utils::isTelemetryMetricsEnabled()) {
+            return;
+        }
+        if (appId.empty()) {
+            LOGWARN("AppLaunchError telemetry skipped: appId is empty");
+            return;
+        }
+
+        AppInfo snapshot;
+        const bool found = AppInfoManager::getInstance().get(appId, snapshot);
+        const AppManagerTypes::PackageInfo packageInfo = found
+            ? snapshot.getPackageInfo() : AppManagerTypes::PackageInfo{};
+        const std::string appVersion = found && !snapshot.getLaunchTelemetryVersion().empty()
+            ? snapshot.getLaunchTelemetryVersion()
+            : (!packageInfo.version.empty() ? packageInfo.version
+                : (found ? snapshot.getRequestedLaunchVersion() : std::string{}));
+        const std::string initialState = found
+            ? initialLaunchStateName(snapshot.getLaunchInitialState()) : "COLD";
+        std::string appType;
+        if (isHomeApp(packageInfo.configMetadata)) {
+            appType = "HOME_APP";
+        } else if (AppManagerTypes::APPLICATION_TYPE_INTERACTIVE == packageInfo.type) {
+            appType = "INTERACTIVE_APP";
+        } else if (AppManagerTypes::APPLICATION_TYPE_SYSTEM == packageInfo.type) {
+            appType = "SYSTEM_APP";
+        }
+
+        if (appVersion.empty() || initialState.empty() || appType.empty()) {
+            LOGWARN("AppLaunchError telemetry has incomplete launch context for appId=%s (version=%d initialState=%d appType=%d)",
+                appId.c_str(), !appVersion.empty(), !initialState.empty(), !appType.empty());
+        }
+
+        JsonObject jsonParam;
+        jsonParam["appId"] = appId;
+        jsonParam["appVersion"] = appVersion;
+        jsonParam["initialState"] = initialState;
+        jsonParam["appType"] = appType;
+        jsonParam["errorCode"] = static_cast<uint32_t>(errorCode);
+        jsonParam["fireboltIntent"] = found ? snapshot.getLaunchTelemetryIntent() : std::string{};
+        publishEventDirect(appId, jsonParam, TELEMETRY_MARKER_LAUNCH_ERROR, false);
     }
 
     void AppManagerTelemetryReporting::recordLaunchTime(const std::string& appId, int launchTimeMs)

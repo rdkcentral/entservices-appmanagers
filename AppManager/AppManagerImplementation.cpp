@@ -227,6 +227,13 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                         time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
                         PackageInfo packageData;
                         packageData.version = appRequestParam->packageVersion;
+                        if (APP_ACTION_LAUNCH == action)
+                        {
+                            AppInfoManager::getInstance().upsert(appId, [&](AppInfo& appInfo) {
+                                appInfo.setLaunchTelemetryContext(appInfo.getAppNewState(),
+                                    appRequestParam->intent, packageData.version);
+                            });
+                        }
                         Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
                         bool deferredReplacementLockCandidate = false;
                         std::string deferredReplacementVersion;
@@ -1599,6 +1606,12 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     bool installed = false;
     PackageInfo packageData;
     mAdminLock.Lock();
+    const auto reportLaunchError = [&](Exchange::IAppManager::AppErrorReason errorCode) {
+        AppInfoManager::getInstance().upsert(appId, [&](AppInfo& appInfo) {
+            appInfo.setLaunchTelemetryContext(appInfo.getAppNewState(), intent, packageData.version);
+        });
+        appManagerTelemetryReporting.reportAppLaunchErrorTelemetry(appId, errorCode);
+    };
     if (appId.empty())
     {
         LOGERR("application Id is empty");
@@ -1606,6 +1619,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     }
     else if (nullptr == mLifecycleInterfaceConnector) {
         LOGERR("LifecycleInterfaceConnector is null");
+        reportLaunchError(Exchange::IAppManager::APP_ERROR_UNKNOWN);
         status = Core::ERROR_GENERAL;
     }
     else
@@ -1626,14 +1640,17 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     }
     else if (result == Core::ERROR_NONE && !installed) {
         LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
+        reportLaunchError(Exchange::IAppManager::APP_ERROR_NOT_INSTALLED);
         status = Core::ERROR_GENERAL;
     }
     else if (result != Core::ERROR_NONE ) {
         LOGERR("fetchAppPackageList returned error for appId %s", appId.c_str());
+        reportLaunchError(Exchange::IAppManager::APP_ERROR_UNKNOWN);
         status = Core::ERROR_GENERAL;
     }
     else if (packageData.version.empty()) {
         LOGERR("Installed package version is empty for app %s.", appId.c_str());
+        reportLaunchError(Exchange::IAppManager::APP_ERROR_UNKNOWN);
         status = Core::ERROR_GENERAL;
     }
     else if (nullptr != mLifecycleInterfaceConnector) {
@@ -1664,11 +1681,13 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
             else
             {
                 LOGERR("Failed to perform operation due to no memory");
+                reportLaunchError(Exchange::IAppManager::APP_ERROR_UNKNOWN);
             }
         }
         else
         {
             LOGERR("Failed to perform operation due to no memory");
+            reportLaunchError(Exchange::IAppManager::APP_ERROR_UNKNOWN);
         }
     }
     if(status == Core::ERROR_NONE)

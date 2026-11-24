@@ -5246,6 +5246,71 @@ TEST_P(AppCrashedSuppressionTest, IntentionalUnloadOrStaleInstanceDoesNotPublish
 
 INSTANTIATE_TEST_SUITE_P(IntentionalAndStale, AppCrashedSuppressionTest, ::testing::Bool());
 
+class AppLaunchErrorTest : public AppCrashedTelemetryTest {
+protected:
+    void Seed(Exchange::IAppManager::AppLifecycleState initialState, const string& intent,
+        AppManagerTypes::ApplicationType type, const string& configMetadata = "")
+    {
+        AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [&](AppInfo& app) {
+            app.setCurrentAction(Plugin::AppManagerImplementation::APP_ACTION_LAUNCH);
+            app.setLaunchTelemetryContext(initialState, intent, APPMANAGER_APP_VERSION);
+            app.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+            app.getPackageInfoMutable().type = type;
+            app.getPackageInfoMutable().configMetadata = configMetadata;
+        });
+    }
+
+    void ExpectLaunchError(const string& initialState, const string& type, int code, const string& intent)
+    {
+        EXPECT_CALL(*telemetry, PublishEvent(::testing::_, "ENTS_INFO_RDKAMAppLaunchError", false))
+            .WillOnce([initialState, type, code, intent](const string& payload, const string&, bool) {
+                JsonObject expected;
+                expected["appId"] = APPMANAGER_APP_ID;
+                expected["appVersion"] = APPMANAGER_APP_VERSION;
+                expected["initialState"] = initialState;
+                expected["appType"] = type;
+                expected["errorCode"] = code;
+                expected["fireboltIntent"] = intent;
+                string expectedPayload;
+                expected.ToString(expectedPayload);
+                EXPECT_EQ(expectedPayload, payload);
+                return Core::ERROR_NONE;
+            });
+    }
+};
+
+TEST_F(AppLaunchErrorTest, PackageLockFailurePublishesFullHomeAppPayloadByDefault)
+{
+    Seed(Exchange::IAppManager::APP_STATE_SUSPENDED, "resume-intent",
+        AppManagerTypes::APPLICATION_TYPE_SYSTEM,
+        R"({"capabilities":"runtime-html,home-app=enabled"})");
+    ExpectLaunchError("SUSPENDED", "HOME_APP",
+        Exchange::IAppManager::APP_ERROR_PACKAGE_LOCK, "resume-intent");
+    AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(APPMANAGER_APP_ID,
+        Plugin::AppManagerImplementation::APP_ACTION_LAUNCH,
+        Plugin::AppManagerImplementation::ERROR_PACKAGE_LOCK);
+}
+
+TEST_F(AppLaunchErrorTest, DisplayFailureUsesAppErrorReasonAndInteractiveType)
+{
+    Seed(Exchange::IAppManager::APP_STATE_PAUSED, "open-intent",
+        AppManagerTypes::APPLICATION_TYPE_INTERACTIVE);
+    ExpectLaunchError("PAUSED", "INTERACTIVE_APP",
+        Exchange::IAppManager::APP_ERROR_CREATE_DISPLAY, "open-intent");
+    AppManagerTelemetryReporting::getInstance().reportAppLaunchErrorTelemetry(APPMANAGER_APP_ID,
+        Exchange::IAppManager::APP_ERROR_CREATE_DISPLAY);
+}
+
+TEST_F(AppLaunchErrorTest, PreloadFailuresAreNotPublishedAsAppLaunchErrors)
+{
+    EXPECT_CALL(*telemetry, Record(::testing::_, ::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(*telemetry, Publish(::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(*telemetry, PublishEvent(::testing::_, ::testing::_, ::testing::_)).Times(0);
+    AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(APPMANAGER_APP_ID,
+        Plugin::AppManagerImplementation::APP_ACTION_PRELOAD,
+        Plugin::AppManagerImplementation::ERROR_SPAWN_APP);
+}
+
 class AppCloseErrorTest : public AppCrashedTelemetryTest {
 protected:
     void ExpectCloseError(const string& type, int code)

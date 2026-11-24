@@ -328,7 +328,7 @@ uint32_t Test_AM_TelErrorDataPreload()
     AppIM::getInstance().clear();
     auto& tel = AppTel::getInstance();
     tel.reportTelemetryErrorData("app-err-preload", AppAct::APP_ACTION_PRELOAD, AppAct::ERROR_INTERNAL);
-    L0Test::ExpectTrue(tr, true, "reportTelemetryErrorData PRELOAD hits LAUNCH_ERROR case");
+    L0Test::ExpectTrue(tr, true, "reportTelemetryErrorData excludes PRELOAD from AppLaunchError");
     AppIM::getInstance().clear();
     return tr.failures;
 }

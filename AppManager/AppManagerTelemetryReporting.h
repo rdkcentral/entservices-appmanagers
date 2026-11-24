@@ -38,6 +38,7 @@ class AppManagerTelemetryReporting : public Utils::TelemetryReportingBase
         void recordLaunchTime(const std::string& appId, int launchTimeMs);
         void reportTelemetryDataOnStateChange(const string& appId, const Exchange::ILifecycleManager::LifecycleState newState);
         void reportTelemetryErrorData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction, AppManagerImplementation::CurrentActionError errorCode);
+        void reportAppLaunchErrorTelemetry(const std::string& appId, Exchange::IAppManager::AppErrorReason errorCode);
         void reportAppCloseCompleteTelemetry(const std::string& appId, AppManagerImplementation::CurrentAction currentAction);
         void reportAppCrashedTelemetry(const std::string& appId, const std::string& appVersion,
             Exchange::ILifecycleManager::LifecycleState lifecycleState);
