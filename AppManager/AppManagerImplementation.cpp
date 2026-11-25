@@ -166,6 +166,7 @@ AppManagerImplementation::~AppManagerImplementation()
     // process-wide singleton that outlives this instance).
     AppInfoManager::getInstance().clear();
     SYSLOG(Logging::Shutdown, (_T("AppManagerImplementation: AppInfoManager cleared")));
+    _instance = nullptr;
 }
 
 /**

@@ -145,6 +145,7 @@ protected:
         AppInfoManager::getInstance().clear();
         drainWorkerPool();
         plugin->Deinitialize(mServiceMock);
+        drainWorkerPool();
         delete mServiceMock;
         mAppManagerImpl = nullptr;
     }
@@ -310,8 +311,10 @@ protected:
         dispatcher->Release();
 
         AppInfoManager::getInstance().clear();
-        drainWorkerPool();
         plugin->Deinitialize(mServiceMock);
+        drainWorkerPool();
+        for (int i = 0; i < 200 && Plugin::AppManagerImplementation::getInstance() != nullptr; ++i)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         delete mServiceMock;
         mAppManagerImpl = nullptr;
     }
