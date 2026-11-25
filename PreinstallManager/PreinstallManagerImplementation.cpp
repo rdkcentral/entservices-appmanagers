@@ -53,7 +53,7 @@ namespace WPEFramework
 
         if (mInstallThread.joinable())
         {
-            mInstallThread.join();
+           mInstallThread.join();
         }
 
         _instance = nullptr;
@@ -220,7 +220,7 @@ namespace WPEFramework
         std::string base2 = (pos2 == std::string::npos) ? v2 : v2.substr(0, pos2);
 
         auto parseVersion = [](const std::string& version, int& major, int& minor, int& patch, int& build) -> bool {
-            if (version.empty() || ('.' == version.back()))
+            if (version.empty() || version.front() == '.' || version.back() == '.')
             {
                 return false;
             }
@@ -360,9 +360,9 @@ namespace WPEFramework
         {
             LOGERR("Failed to create PackageManagerObject for install");
             mAdminLock.Lock();
+            sendOnPreinstallationCompleteEvent();
             mPreinstallState = State::COMPLETED;
             mAdminLock.Unlock();
-            sendOnPreinstallationCompleteEvent();
             return;
         }
 

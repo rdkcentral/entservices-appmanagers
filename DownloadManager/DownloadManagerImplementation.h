@@ -158,6 +158,8 @@ namespace Plugin {
         std::list<Exchange::IDownloadManager::INotification*> mDownloadManagerNotification;
         std::unique_ptr<DownloadManagerHttpClient> mHttpClient;
 
+        mutable std::mutex mLifecycleMutex;
+        bool mDeinitializing { false };
         mutable std::mutex mQueueMutex;
         std::condition_variable mDownloadThreadCV;
         std::unique_ptr<std::thread> mDownloadThreadPtr;
@@ -168,6 +170,7 @@ namespace Plugin {
         DownloadQueue   mPriorityDownloadQueue;
         DownloadQueue   mRegularDownloadQueue;
         std::string     mDownloadPath;
+        int             mDownloadDirectoryFd;
 
         PluginHost::IShell* mCurrentservice;
     };

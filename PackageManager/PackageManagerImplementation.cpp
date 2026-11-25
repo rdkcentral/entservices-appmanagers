@@ -28,6 +28,10 @@
 #include <mutex>
 #include <sys/statvfs.h>
 #include <utility>
+#include <fcntl.h>
+#include <limits.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 // Spec: entservices-appmanagers
@@ -67,6 +71,116 @@ namespace Plugin {
         return true;
     }
 
+    static bool prepareManagedDownloadDirectory(std::string& downloadDir, int& directoryFd)
+    {
+        if (downloadDir.empty() || downloadDir.front() != '/') {
+            return false;
+        }
+        while (downloadDir.size() > 1 && downloadDir.back() == '/') {
+            downloadDir.pop_back();
+        }
+        if (mkdir(downloadDir.c_str(), 0750) != 0 && errno != EEXIST) {
+            return false;
+        }
+
+        char resolved[PATH_MAX];
+        struct stat directoryStat;
+        if (realpath(downloadDir.c_str(), resolved) == nullptr
+            || lstat(resolved, &directoryStat) != 0
+            || !S_ISDIR(directoryStat.st_mode)) {
+            return false;
+        }
+        if (directoryStat.st_uid != geteuid()
+            || (directoryStat.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
+            return false;
+        }
+
+        if (std::string(resolved) == "/") {
+            return false;
+        }
+
+        const int openedDirectory = open(resolved, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+        struct stat openedStat;
+        if (openedDirectory < 0
+            || fstat(openedDirectory, &openedStat) != 0
+            || openedStat.st_dev != directoryStat.st_dev
+            || openedStat.st_ino != directoryStat.st_ino) {
+            if (openedDirectory >= 0) {
+                close(openedDirectory);
+            }
+            return false;
+        }
+
+        downloadDir = resolved;
+        directoryFd = openedDirectory;
+        return true;
+    }
+
+    static bool removeManagedDownload(const std::string& fileLocator, const std::string& downloadDir, int directoryFd)
+    {
+        if (downloadDir.empty() || downloadDir == "/" || fileLocator.empty() || fileLocator.front() != '/' || directoryFd < 0) {
+            return false;
+        }
+
+        if (fileLocator.find("/../") != std::string::npos
+            || fileLocator.find("/./") != std::string::npos
+            || fileLocator.find("//") != std::string::npos) {
+            return false;
+        }
+        const size_t separator = fileLocator.find_last_of('/');
+        if (separator == std::string::npos) {
+            return false;
+        }
+        const std::string parent = separator == 0 ? "/" : fileLocator.substr(0, separator);
+        char resolvedParent[PATH_MAX];
+        if (realpath(parent.c_str(), resolvedParent) == nullptr || downloadDir != resolvedParent) {
+            return false;
+        }
+
+        const std::string filename = fileLocator.substr(separator + 1);
+        if (filename.compare(0, 7, "package") != 0 || filename.size() == 7 || filename.find('/') != std::string::npos) {
+            return false;
+        }
+        for (size_t index = 7; index < filename.size(); ++index) {
+            if (filename[index] < '0' || filename[index] > '9') {
+                return false;
+            }
+        }
+
+        struct stat fileStat;
+        const bool valid = fstatat(directoryFd, filename.c_str(), &fileStat, AT_SYMLINK_NOFOLLOW) == 0
+            && S_ISREG(fileStat.st_mode)
+            && fileStat.st_uid == geteuid();
+        return valid && unlinkat(directoryFd, filename.c_str(), 0) == 0;
+    }
+
+    static bool writeReadyMarker()
+    {
+        const int marker = open(PACKAGE_MANAGER_MARKER_FILE, O_WRONLY | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0600);
+        if (marker < 0) {
+            return false;
+        }
+        struct stat markerStat;
+        const char value[] = "PackageManager initialized successfully\n";
+        const bool valid = fstat(marker, &markerStat) == 0
+            && S_ISREG(markerStat.st_mode)
+            && markerStat.st_uid == geteuid();
+        const bool written = valid
+            && ftruncate(marker, 0) == 0
+            && write(marker, value, sizeof(value) - 1) == static_cast<ssize_t>(sizeof(value) - 1);
+        close(marker);
+        return written;
+    }
+
+    static bool removeReadyMarker()
+    {
+        struct stat markerStat;
+        return lstat(PACKAGE_MANAGER_MARKER_FILE, &markerStat) == 0
+            && S_ISREG(markerStat.st_mode)
+            && markerStat.st_uid == geteuid()
+            && unlink(PACKAGE_MANAGER_MARKER_FILE) == 0;
+    }
+
     RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::PackageManagerTelemetryReporting, "packageManagerBootstrapTime")
 
     SERVICE_REGISTRATION(PackageManagerImplementation, 1, 0);
@@ -90,6 +204,10 @@ namespace Plugin {
     PackageManagerImplementation::~PackageManagerImplementation()
     {
         LOGINFO("dtor PackageManagerImplementation: %p", this);
+        if (mDownloadDirectoryFd >= 0) {
+            close(mDownloadDirectoryFd);
+            mDownloadDirectoryFd = -1;
+        }
 
         std::list<Exchange::IPackageInstaller::INotification*>::iterator index(mInstallNotifications.begin());
         {
@@ -100,7 +218,9 @@ namespace Plugin {
         }
         mInstallNotifications.clear();
 
-        releaseStorageManagerObject();
+        if (mStorageManagerObject != nullptr) {
+            releaseStorageManagerObject();
+        }
 
         std::list<Exchange::IPackageDownloader::INotification*>::iterator itDownloader(mDownloaderNotifications.begin());
         {
@@ -150,12 +270,15 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Initialize(PluginHost::IShell* service)
     {
+        std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_GENERAL;
+        bool serviceAcquired = false;
         LOGINFO("entry");
 
-        if (service != nullptr) {
+        if (service != nullptr && mCurrentservice == nullptr) {
             mCurrentservice = service;
             mCurrentservice->AddRef();
+            serviceAcquired = true;
             if (Core::ERROR_NONE != createStorageManagerObject()) {
                 LOGERR("Failed to create createStorageManagerObject");
             } else {
@@ -179,35 +302,47 @@ namespace Plugin {
 
             LOGINFO("downloadDir=%s", downloadDir.c_str());
 
-            //std::filesystem::create_directories(path);        // XXX: need C++17
-            int rc = mkdir(downloadDir.c_str(), 0777);
-            if (rc) {
-                if (errno != EEXIST) {
-                    LOGERR("Failed to create dir '%s' rc: %d errno=%d", downloadDir.c_str(), rc, errno);
-                }
+            // Validate and canonicalize the configured directory before starting the downloader
+            if (result != Core::ERROR_NONE || !prepareManagedDownloadDirectory(downloadDir, mDownloadDirectoryFd)) {
+                LOGERR("Download directory is invalid or insecure");
+                result = Core::ERROR_GENERAL;
             } else {
-                LOGDBG("created dir '%s'", downloadDir.c_str());
-            }
+                LOGDBG("Download directory ready at '%s'", downloadDir.c_str());
+                done = false;
 #ifndef DEFER_CACHE_INIT
-            // Original behavior: Start cache initialization immediately during Initialize
-            mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&PackageManagerImplementation::downloader, this, 1));
+                // Original behavior: Start cache initialization immediately during Initialize
+                mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&PackageManagerImplementation::downloader, this, 1));
 #endif
+            }
         } else {
-            LOGERR("service is null \n");
+            LOGERR("invalid service or already initialized\n");
         }
 
+        if (result != Core::ERROR_NONE && serviceAcquired) {
+            if (mDownloadDirectoryFd >= 0) {
+                close(mDownloadDirectoryFd);
+                mDownloadDirectoryFd = -1;
+            }
+            if (mStorageManagerObject != nullptr) {
+                releaseStorageManagerObject();
+            }
+            mCurrentservice->Release();
+            mCurrentservice = nullptr;
+            PackageManagerTelemetryReporting::getInstance().reset();
+        }
         LOGINFO("exit");
         return result;
     }
 
     Core::hresult PackageManagerImplementation::StartCacheInitialization()
     {
+        std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         LOGINFO("entry");
         Core::hresult result = Core::ERROR_GENERAL;
 
-        if (nullptr == mCurrentservice) {
+        if ((nullptr == mCurrentservice)|| mDeinitializing) {
             LOGERR("mCurrentservice is not initialized; call Initialize() first");
-            return result;
+            return Core::ERROR_UNAVAILABLE;
         }
 
 #ifdef DEFER_CACHE_INIT
@@ -232,31 +367,48 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Deinitialize(PluginHost::IShell* service)
     {
+        std::unique_lock<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO();
+        if ((mCurrentservice == nullptr) || mDeinitializing){
+            return result;
+        }
 
+        mDeinitializing = true;
         done = true;
         cv.notify_one();
+        lifecycleLock.unlock();
 #ifdef DEFER_CACHE_INIT
         // Deferred initialization: thread only exists if StartCacheInitialization() was called
-        if (mDownloadThreadPtr) {
+        if (mDownloadThreadPtr && mDownloadThreadPtr->joinable()) {
             mDownloadThreadPtr->join();
         }
 #else
-        // Original behavior: thread is always created in Initialize()
-        mDownloadThreadPtr->join();
+        // Original behavior: thread is created during successful Initialize()
+        if (mDownloadThreadPtr) {
+            mDownloadThreadPtr->join();
+        }
 #endif
+        lifecycleLock.lock();
+        mDownloadThreadPtr.reset();
 
         PackageManagerTelemetryReporting::getInstance().reset();
-         const std::string markerFile = PACKAGE_MANAGER_MARKER_FILE;
-    if (std::remove(markerFile.c_str()) == 0) {
-        LOGINFO("Deleted marker file: %s", markerFile.c_str());
-    } else {
-        LOGERR("Failed to delete marker file: %s (errno=%d)", markerFile.c_str(), errno);
-    }
+        {
+            std::lock_guard<std::mutex> lock(mMutex);
+            if (mDownloadDirectoryFd >= 0) {
+                close(mDownloadDirectoryFd);
+                mDownloadDirectoryFd = -1;
+            }
+        }
+        if (removeReadyMarker()) {
+            LOGINFO("Deleted PackageManager marker file");
+        } else {
+            LOGERR("Failed to delete PackageManager marker file (errno=%d)", errno);
+        }
 
         mCurrentservice->Release();
         mCurrentservice = nullptr;
+        mDeinitializing = false;
 
         return result;
     }
@@ -311,7 +463,11 @@ namespace Plugin {
         const Exchange::IPackageDownloader::Options &options,
         Exchange::IPackageDownloader::DownloadId &downloadId)
     {
+        std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_NONE;
+        if (mCurrentservice == nullptr || mDeinitializing) {
+            return Core::ERROR_UNAVAILABLE;
+        }
 
         if (!mCurrentservice->SubSystems()->IsActive(PluginHost::ISubSystem::INTERNET)) {
             return Core::ERROR_UNAVAILABLE;
@@ -405,16 +561,18 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Delete(const string &fileLocator)
     {
+        std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_NONE;
+        std::lock_guard<std::mutex> lock(mMutex);
 
         if ((mInprogressDownload.get() != nullptr) && (fileLocator.compare(mInprogressDownload->GetFileLocator()) == 0)) {
             LOGWARN("%s in in progress", fileLocator.c_str());
             result = Core::ERROR_GENERAL;
         } else {
-            if (remove(fileLocator.c_str()) == 0) {
-                LOGDBG("Deleted %s", fileLocator.c_str());
+            if (removeManagedDownload(fileLocator, downloadDir, mDownloadDirectoryFd)) {
+                LOGDBG("Managed download deleted");
             } else {
-                LOGERR("'%s' delete failed", fileLocator.c_str());
+LOGWARN("fileLocator rejected or delete failed");
                 result = Core::ERROR_GENERAL;
             }
         }
@@ -1303,15 +1461,11 @@ namespace Plugin {
         }
 
         cacheInitialized = true;
-         const std::string markerFile = PACKAGE_MANAGER_MARKER_FILE;
-            std::ofstream file(markerFile);
-            if (file.is_open()) {
-               file << "PackageManager initialized successfully\n";
-               file.close();
-               LOGINFO("Marker file created: %s", markerFile.c_str());
-            } else {
-               LOGERR("Failed to create marker file: %s", markerFile.c_str());
-            }
+        if (writeReadyMarker()) {
+            LOGINFO("PackageManager marker file created");
+        } else {
+            LOGERR("Failed to create PackageManager marker file");
+        }
 
 
         #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
@@ -1378,7 +1532,7 @@ namespace Plugin {
                     LOGDBG("Downloading id=%s url=%s file=%s rateLimit=%ld",
                         di->GetId().c_str(), di->GetUrl().c_str(), di->GetFileLocator().c_str(), di->GetRateLimit());
                     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-                    status = mHttpClient->downloadFile(di->GetUrl(), di->GetFileLocator(), di->GetRateLimit());
+                    status = mHttpClient->downloadFile(di->GetUrl(), di->GetFileLocator(), di->GetRateLimit(), mDownloadDirectoryFd);
                     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
                     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                     if (elapsed) {
@@ -1401,7 +1555,10 @@ namespace Plugin {
                     default: break; /* Do nothing */
                 }
                 NotifyDownloadStatus(di->GetId(), di->GetFileLocator(), reason);
-                mInprogressDownload.reset();
+                {
+                   std::lock_guard<std::mutex> lock(mMutex);
+                   mInprogressDownload.reset();
+                }
             }
         }
     }

@@ -35,7 +35,7 @@ class DownloadManagerHttpClient {
         DownloadManagerHttpClient();
         ~DownloadManagerHttpClient();
 
-        Status downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit = 0);
+        Status downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit = 0, int directoryFd = -1);
 
         void pause() {
             std::lock_guard<std::mutex> lock(mHttpClientMutex);
