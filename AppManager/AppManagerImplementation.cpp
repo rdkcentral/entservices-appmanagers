@@ -1636,7 +1636,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         LOGERR("Installed package version is empty for app %s.", appId.c_str());
         status = Core::ERROR_GENERAL;
     }
-    else if (isRuntimeMissing(appId, packageData.version, APP_ACTION_LAUNCH)) {
+    else if (isRuntimeMissing(appId, packageData.version)) {
         LOGERR("Runtime package required by app %s is not installed. Cannot launch.", appId.c_str());
         appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_NOT_INSTALLED);
         status = Core::ERROR_UNKNOWN_KEY;
@@ -1901,7 +1901,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         error = "Installed package version is empty";
         status = Core::ERROR_GENERAL;
     }
-    else if (isRuntimeMissing(appId, packageData.version, APP_ACTION_PRELOAD)) {
+    else if (isRuntimeMissing(appId, packageData.version)) {
         LOGERR("Runtime package required by app %s is not installed. Cannot preload.", appId.c_str());
         appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_PRELOAD, AppManagerImplementation::ERROR_PACKAGE_NOT_INSTALLED);
         error = "App runtime is not installed";
@@ -2226,8 +2226,8 @@ void AppManagerImplementation::checkInstallDetails(const std::string& appId, boo
     return;
 }
 
-/* Method to check if the runtime package required by the version that will be locked for a launch/preload is missing */
-bool AppManagerImplementation::isRuntimeMissing(const std::string& appId, const std::string& version, CurrentAction action)
+/* Method to check if the runtime package required by an installed app is missing */
+bool AppManagerImplementation::isRuntimeMissing(const std::string& appId, const std::string& version)
 {
     if (nullptr == mPackageManagerHandlerObject)
     {
@@ -2239,25 +2239,7 @@ bool AppManagerImplementation::isRuntimeMissing(const std::string& appId, const 
     std::string payload;
     std::string gatewayMetadataPath;
     bool locked = false;
-    if (Core::ERROR_UNKNOWN_KEY != mPackageManagerHandlerObject->GetLockedInfo(appId, version, unpackedPath, payload, gatewayMetadataPath, locked))
-    {
-        return false;
-    }
-
-    /* Only reached when the runtime is missing. Mirrors the reuse rules of packageLock: a loaded app keeps its
-       running version, so the requested version (and its runtime) is only locked when a suspended app is
-       launched with a different version. */
-    bool loaded = false;
-    if ((nullptr != mLifecycleInterfaceConnector) &&
-        (Core::ERROR_NONE == mLifecycleInterfaceConnector->isAppLoaded(appId, loaded)) && loaded)
-    {
-        const std::string runningVersion = AppInfoManager::getInstance().getPackageInfoVersion(appId);
-        const bool replacement = (APP_ACTION_LAUNCH == action) &&
-            (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == AppInfoManager::getInstance().getAppNewState(appId)) &&
-            (false == runningVersion.empty()) && (0 != runningVersion.compare(version));
-        return replacement;
-    }
-    return true;
+    return (Core::ERROR_UNKNOWN_KEY == mPackageManagerHandlerObject->GetLockedInfo(appId, version, unpackedPath, payload, gatewayMetadataPath, locked));
 }
 
 Core::hresult AppManagerImplementation::IsInstalled(const std::string& appId, bool& installed)

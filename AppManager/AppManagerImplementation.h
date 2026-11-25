@@ -287,7 +287,7 @@ namespace Plugin {
         Core::hresult fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
         void checkInstallDetails(const std::string& appId, bool& installed, std::string& version,
                      const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
-        bool isRuntimeMissing(const std::string& appId, const std::string& version, CurrentAction action);
+        bool isRuntimeMissing(const std::string& appId, const std::string& version);
         Core::hresult packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason, bool* lockAcquired = nullptr);
         Core::hresult packageUnLock(const string& appId);
         bool createOrUpdatePackageInfoByAppId(const string& appId, PackageInfo &packageData);
