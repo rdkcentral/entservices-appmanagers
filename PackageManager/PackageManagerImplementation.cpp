@@ -340,9 +340,9 @@ namespace Plugin {
         LOGINFO("entry");
         Core::hresult result = Core::ERROR_GENERAL;
 
-        if (nullptr == mCurrentservice) {
+        if ((nullptr == mCurrentservice)|| mDeinitializing) {
             LOGERR("mCurrentservice is not initialized; call Initialize() first");
-            return result;
+            return Core::ERROR_UNAVAILABLE;
         }
 
 #ifdef DEFER_CACHE_INIT
