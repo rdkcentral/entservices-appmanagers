@@ -33,6 +33,10 @@
 
 namespace WPEFramework
 {
+namespace PluginHost {
+class IShell;
+}
+
 namespace Plugin
 {
 
@@ -44,7 +48,13 @@ namespace Plugin
             DobbySpecGenerator(AIConfiguration& aiConfiguration);
             virtual ~DobbySpecGenerator();
 
-            bool generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::string& outputJsonString);
+            bool generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig,
+                          PluginHost::IShell* service, std::string& outputJsonString);
+            bool generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig,
+                          std::string& outputJsonString)
+            {
+                return generate(config, runtimeConfig, nullptr, outputJsonString);
+            }
 
             /**
              * Sets the path to a pre-generated GStreamer plugin registry to
@@ -61,7 +71,8 @@ namespace Plugin
         private:
             Json::Value createEnvVars(const ApplicationConfiguration& config,
                                       const RuntimeConfiguration& runtimeConfig,
-                                      const std::vector<std::pair<std::string, std::string>>& capabilities) const;
+                                      const std::vector<std::pair<std::string, std::string>>& capabilities,
+                                      PluginHost::IShell* service) const;
             Json::Value createMounts(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const;
             Json::Value createRdkPlugins(const ApplicationConfiguration& config,
                                          const RuntimeConfiguration& runtimeConfig,

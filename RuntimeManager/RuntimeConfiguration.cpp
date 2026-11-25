@@ -29,6 +29,7 @@ namespace Plugin {
 
 RuntimeConfiguration::RuntimeConfiguration()
     : dial(false)
+    , dialLaunch(false)
     , wanLanAccess(false)
     , thunder(false)
     , systemMemoryLimit(0)
@@ -39,6 +40,8 @@ RuntimeConfiguration::RuntimeConfiguration()
     , dataImageSize(0)
     , resourceManagerClientEnabled(false)
     , dialId()
+    , dialUsn()
+    , additionalDataUrl()
     , command()
     , appType()
     , appPath()
@@ -123,6 +126,7 @@ bool RuntimeConfigurationDecoder::Decode(const std::string& serialized, RuntimeC
     decoded.userId = defaultUserId;
     decoded.groupId = defaultGroupId;
     if (!GetBoolean(payload, "dial", decoded.dial, error)
+        || !GetBoolean(payload, "dialLaunch", decoded.dialLaunch, error)
         || !GetBoolean(payload, "wanLanAccess", decoded.wanLanAccess, error)
         || !GetBoolean(payload, "thunder", decoded.thunder, error)
         || !GetInt32(payload, "systemMemoryLimit", decoded.systemMemoryLimit, error)
@@ -133,6 +137,8 @@ bool RuntimeConfigurationDecoder::Decode(const std::string& serialized, RuntimeC
         || !GetUint32(payload, "dataImageSize", decoded.dataImageSize, error)
         || !GetBoolean(payload, "resourceManagerClientEnabled", decoded.resourceManagerClientEnabled, error)
         || !GetString(payload, "dialId", decoded.dialId, error)
+        || !GetString(payload, "dialUsn", decoded.dialUsn, error)
+        || !GetString(payload, "additionalDataUrl", decoded.additionalDataUrl, error)
         || !GetString(payload, "command", decoded.command, error)
         || !GetString(payload, "appType", decoded.appType, error)
         || !GetString(payload, "appPath", decoded.appPath, error)

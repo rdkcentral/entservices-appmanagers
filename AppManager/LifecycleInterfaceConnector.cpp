@@ -200,12 +200,103 @@ namespace WPEFramework
             }
 
             std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
+                LOGINFO("launch: received launch arguments bytes=%zu normalizedBytes=%zu",
+                    launchArgs.size(), normalizedLaunchArgs.size());
             if (normalizedLaunchArgs == "{}" || normalizedLaunchArgs == "{ }") {
                 normalizedLaunchArgs.clear();
             }
 
-            if (!payload.UpsertEnvironment(std::string("APPLICATION_LAUNCH_PARAMETERS=") + LifecycleInterfaceConnector::base64Encode(normalizedLaunchArgs), error)
-                || !payload.Serialize(runtimeConfigPayload, error))
+            if (!payload.UpsertEnvironment(std::string("APPLICATION_LAUNCH_PARAMETERS=") + LifecycleInterfaceConnector::base64Encode(normalizedLaunchArgs), error))
+            {
+                return false;
+            }
+
+            Json::Value launchArgsObject;
+            Json::CharReaderBuilder readerBuilder;
+            readerBuilder["collectComments"] = false;
+            std::string parseErrors;
+            std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
+            std::string additionalDataUrl;
+            bool dialLaunch = false;
+            if (reader->parse(normalizedLaunchArgs.data(),
+                              normalizedLaunchArgs.data() + normalizedLaunchArgs.size(),
+                              &launchArgsObject, &parseErrors)
+                && launchArgsObject.isObject())
+            {
+                if (launchArgsObject["dialusn"].isString())
+                {
+                    dialLaunch = true;
+                    payload.SetString("dialUsn", launchArgsObject["dialusn"].asString());
+                }
+                if (launchArgsObject["additionaldataurl"].isString())
+                {
+                    dialLaunch = true;
+                    additionalDataUrl = launchArgsObject["additionaldataurl"].asString();
+                    payload.SetString("additionalDataUrl", additionalDataUrl);
+                    LOGINFO("launch: extracted additionalDataUrl from JSON launch arguments bytes=%zu",
+                            additionalDataUrl.size());
+                }
+            }
+            else
+            {
+                // DIAL launch parameters can be query-string arguments rather
+                // than JSON. Extract the metadata keys without changing the
+                // original APPLICATION_LAUNCH_PARAMETERS value.
+                std::istringstream arguments(normalizedLaunchArgs);
+                std::string argument;
+                while (std::getline(arguments, argument, '&'))
+                {
+                    const size_t separator = argument.find('=');
+                    if (separator == std::string::npos)
+                        continue;
+
+                    std::string key = argument.substr(0, separator);
+                    if (!key.empty() && key[0] == '?')
+                        key.erase(0, 1);
+                    const std::string value = argument.substr(separator + 1);
+                    if (key == "dialusn")
+                    {
+                        dialLaunch = true;
+                        payload.SetString("dialUsn", value);
+                        LOGINFO("launch: extracted dialUsn from query launch arguments bytes=%zu", value.size());
+                    }
+                    else if (key == "additionaldataurl")
+                    {
+                        dialLaunch = true;
+                        std::string decodedValue;
+                        additionalDataUrl =
+                            ::Utils::LaunchArgs::decodePercentEncoded(value, decodedValue)
+                                ? decodedValue : value;
+                        payload.SetString("additionalDataUrl", additionalDataUrl);
+                        LOGINFO("launch: extracted additionalDataUrl='%s' from query launch arguments",
+                                additionalDataUrl.c_str());
+                    }
+                }
+            }
+
+            // Keep the URL in the generic environment list as well. This makes
+            // it available to Dobby even on builds where the optional DIAL
+            // configuration path is disabled.
+            if (!additionalDataUrl.empty())
+            {
+                if (!payload.UpsertEnvironment("ADDITIONAL_DATA_URL=" + additionalDataUrl, error))
+                {
+                    return false;
+                }
+                LOGINFO("launch: ADDITIONAL_DATA_URL added to runtime environment");
+            }
+
+            if (dialLaunch)
+            {
+                payload.SetBoolean("dialLaunch", true);
+                if (!payload.UpsertEnvironment("APPLICATION_LAUNCH_METHOD=Dial", error))
+                {
+                    return false;
+                }
+                LOGINFO("launch: APPLICATION_LAUNCH_METHOD=Dial added to runtime environment");
+            }
+
+            if (!payload.Serialize(runtimeConfigPayload, error))
             {
                 return false;
             }

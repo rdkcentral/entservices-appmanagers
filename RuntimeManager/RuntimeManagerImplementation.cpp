@@ -543,7 +543,7 @@ namespace WPEFramework
         DobbySpecGenerator generator(*mAIConfiguration);
         if (!mGstRegistrySourcePath.empty())
             generator.setGstreamerRegistryPath(mGstRegistrySourcePath);
-        return generator.generate(config, runtimeConfigObject, dobbySpec);
+        return generator.generate(config, runtimeConfigObject, mCurrentservice, dobbySpec);
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
 

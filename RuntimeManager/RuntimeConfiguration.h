@@ -30,6 +30,7 @@ struct RuntimeConfiguration {
     RuntimeConfiguration();
 
     bool dial;
+    bool dialLaunch;
     bool wanLanAccess;
     bool thunder;
     int32_t systemMemoryLimit;
@@ -41,6 +42,8 @@ struct RuntimeConfiguration {
 
     bool resourceManagerClientEnabled;
     std::string dialId;
+    std::string dialUsn;
+    std::string additionalDataUrl;
     std::string command;
     std::string appType;
     std::string appPath;

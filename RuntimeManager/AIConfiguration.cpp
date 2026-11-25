@@ -206,7 +206,10 @@ namespace Plugin
         mEnableUsbMassStorage = false; // apps.usbMassStorage.enable
         mIPv6Enabled = false; // apps.enableIPv6
         mIonHeapDefaultQuota = 256 * 1024 * 1024; // apps.limits.ion.defaultLimitBytes
-        mDialServerPort = 8009; //.dial.server.port;
+        // gDIAL listens on 56889. Keep this default aligned with the gDIAL
+        // service; an explicit dial.server.port configuration still overrides
+        // it below.
+        mDialServerPort = 56889; //.dial.server.port;
         mDialServerPathPrefix = ""; // dial.server.prefix
         mDialUsn = ""; //.dial.usn
         //mPreloads

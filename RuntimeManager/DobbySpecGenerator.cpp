@@ -19,6 +19,9 @@
 
 // Spec: entservices-appmanagers
 #include "DobbySpecGenerator.h"
+#ifdef RUNTIMEMANAGER_ENABLE_XCAST
+#include "XCastDataProvider.h"
+#endif
 #include "ApplicationConfiguration.h"
 #include "UtilsLogging.h"
 #include <sys/mount.h>
@@ -34,6 +37,7 @@
 #include <cctype>
 #include <sys/sysinfo.h>
 #include <cstring>
+#include <cstdio>
 //TODO SUPPORT THIS
 //#include <IPackage.h>
 #include <curl/curl.h>
@@ -227,7 +231,8 @@ Json::Value DobbySpecGenerator::getWorkingDir(const ApplicationConfiguration& co
     return Json::Value(workingDir);
 }
 
-bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::string& resultSpec)
+bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig,
+                                  PluginHost::IShell* service, std::string& resultSpec)
 {
     LOGINFO("DobbySpecGenerator::generate()");
     resultSpec = "";
@@ -372,7 +377,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     populateClassicPlugins(config, runtimeConfig, spec);
     spec["rdkPlugins"] = createRdkPlugins(config, runtimeConfig, parsedCapabilities);
     spec["mounts"] = createMounts(config, runtimeConfig);
-    spec["env"] = createEnvVars(config, runtimeConfig, parsedCapabilities);
+    spec["env"] = createEnvVars(config, runtimeConfig, parsedCapabilities, service);
 
 
     Json::FastWriter writer;
@@ -432,8 +437,12 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
 
 Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& config,
                                               const RuntimeConfiguration& runtimeConfig,
-                                              const std::vector<std::pair<std::string, std::string>>& capabilities) const
+                                              const std::vector<std::pair<std::string, std::string>>& capabilities,
+                                              PluginHost::IShell* service) const
 {
+#ifndef RUNTIMEMANAGER_ENABLE_XCAST
+    (void)service;
+#endif
     Json::Value env(Json::arrayValue);
     env.append(std::string("APPLICATION_NAME=") + config.mAppId);
     
@@ -481,17 +490,42 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        {
            dialId = getCapabilityValue(capabilities, "dial-app");
        }
-       env.append(std::string("APPLICATION_DIAL_NAME=") + dialId);
-       std::ostringstream dataUrlStream;
-       dataUrlStream << "http://127.0.0.1:"
-                     << mAIConfiguration->getDialServerPort() << '/'
-                     << mAIConfiguration->getDialServerPathPrefix() << '/'
-                     << dialId << '/'
-                     << "dial_data";
+       // A DIAL-capable application receives its DIAL identity and
+       // additional-data URL for every launch. The launch-specific values are
+       // controlled by the explicit dialLaunch flag passed in the runtime
+       // configuration; do not infer launch origin from persistent app
+       // capability data.
+       const bool dialLaunch = runtimeConfig.dialLaunch;
+       if (!dialId.empty())
+           env.append(std::string("APPLICATION_DIAL_NAME=") + dialId);
+       std::string additionalDataUrl = runtimeConfig.additionalDataUrl;
+#ifdef RUNTIMEMANAGER_ENABLE_XCAST
+       XCastAdditionalData xcastData;
+    if (XCastDataProvider::GetAdditionalDataURL(
+               service, dialId, runtimeConfig.dialUsn, xcastData))
+       {
+           if (!xcastData.dataUrl.empty())
+               additionalDataUrl = xcastData.dataUrl;
+       }
+#endif
+       if (!additionalDataUrl.empty())
+       {
+           env.append(std::string("ADDITIONAL_DATA_URL=") + additionalDataUrl);
+           LOGINFO("DIAL environment: ADDITIONAL_DATA_URL populated for appId='%s' url='%s' dialLaunch=%d",
+                   config.mAppId.c_str(), additionalDataUrl.c_str(), dialLaunch ? 1 : 0);
+       }
+       if (dialLaunch)
+           env.append("APPLICATION_LAUNCH_METHOD=Dial");
 
-       std::string dataUrl = encodeURL(dataUrlStream.str());
-       env.append(std::string("ADDITIONAL_DATA_URL=") + dataUrl);
-       env.append(std::string("DIAL_USN=") + mAIConfiguration->getDialUsn());
+       std::string dialUsn = runtimeConfig.dialUsn;
+       if (dialUsn.empty())
+           dialUsn = mAIConfiguration->getDialUsn();
+#ifdef RUNTIMEMANAGER_ENABLE_XCAST
+       if (dialLaunch && !xcastData.usn.empty())
+           dialUsn = xcastData.usn;
+#endif
+       if (dialLaunch && !dialUsn.empty())
+           env.append(std::string("DIAL_USN=") + dialUsn);
    }
 #endif
    #ifdef ENABLE_RIALTO
