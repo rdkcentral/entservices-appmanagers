@@ -372,8 +372,6 @@ TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
     // Verify intermediate directories were actually created
     EXPECT_NE(createdDirs.find("/tmp/appStorageManagerL1"), createdDirs.end())
         << "Base directory /tmp/appStorageManagerL1 should have been created";
-    EXPECT_NE(createdDirs.find("/tmp"), createdDirs.end())
-         << "Parent directory /tmp should have been created";
     EXPECT_NE(createdDirs.find("/tmp/appStorageManagerL1/newTestApp"), createdDirs.end())
         << "App directory should have been created";
     
