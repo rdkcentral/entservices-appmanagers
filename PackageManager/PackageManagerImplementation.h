@@ -77,6 +77,8 @@ class PackageManagerImplementation
             FailReason failReason = Exchange::IPackageInstaller::FailReason::NONE;
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
             string runtimeType;                             // blank for runtime package
+            string requiredRuntimeType;                     // runtime type taken from the package mime type, used only to detect a missing runtime
+            string providedRuntimeType;                     // for a runtime package, the runtime type it provides (e.g. "cobalt")
             string packageType;                              // OCI package type (e.g. "runtime", "application")
             std::pair<std::string, std::string> runtimeApp; // runtime package id & version
         };
@@ -224,6 +226,7 @@ class PackageManagerImplementation
         bool getRuntimeConfigString(const string &runtimeConfigPayload, const string &key, string &value);
         bool getRuntimeConfigUnsigned(const string &runtimeConfigPayload, const string &key, uint64_t &value);
         bool updateRuntimeConfigString(string &runtimeConfigPayload, const string &key, const string &value);
+        bool isRuntimeMissing(const string &packageId, State &state);
         Core::hresult LockRuntime(State &state, string &unpackedPath);
         Core::hresult LockPackage(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
             uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks);

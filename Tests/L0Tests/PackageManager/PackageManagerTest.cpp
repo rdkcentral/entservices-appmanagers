@@ -27,6 +27,7 @@ extern uint32_t Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDown
 extern uint32_t Test_PM_Impl_DeleteFilePaths();
 extern uint32_t Test_PM_Impl_InstallAndUninstallFlowWithNotifications();
 extern uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo();
+extern uint32_t Test_PM_Impl_MissingRuntimeBlocksLockedInfoAndLock();
 extern uint32_t Test_PM_Impl_DownloadAndStorageInfoPaths();
 extern uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths();
 extern uint32_t Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths();
@@ -81,6 +82,7 @@ int main()
         // Temporarily disabled: capabilities expectation drift in CI environment.
         // { "PM_Impl_LockUnlockAndGetLockedInfo", Test_PM_Impl_LockUnlockAndGetLockedInfo },
         { "PM_Impl_DownloadAndStorageInfoPaths", Test_PM_Impl_DownloadAndStorageInfoPaths },
+        { "PM_Impl_MissingRuntimeBlocksLockedInfoAndLock", Test_PM_Impl_MissingRuntimeBlocksLockedInfoAndLock },
         { "PM_Impl_InstallInputValidationAndUnknownPaths", Test_PM_Impl_InstallInputValidationAndUnknownPaths },
         { "PM_Impl_GetLockedInfoAndUnlockNegativePaths", Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths },
         { "PM_Impl_DownloadWithoutInternetReturnsUnavailable", Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable },

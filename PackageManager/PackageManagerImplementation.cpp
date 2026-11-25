@@ -69,6 +69,29 @@ namespace Plugin {
 
     RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::PackageManagerTelemetryReporting, "packageManagerBootstrapTime")
 
+    // libpackage without RALF leaves ConfigMetaData::runtimeType empty and only reports
+    // the runtime an app needs through its mime type ("application/<runtime>"), e.g.
+    // "application/cobalt" needs a "runtime/cobalt" package. "application/system" needs none.
+    static string getRequiredRuntimeType(const string &mimeType, const string &packageType)
+    {
+        static const string prefix = "application/";
+        if (("runtime" == packageType) || ("system" == packageType) || (mimeType.compare(0, prefix.size(), prefix) != 0)) {
+            return "";
+        }
+        const string type = mimeType.substr(prefix.size());
+        const bool valid = !type.empty() && std::all_of(type.begin(), type.end(), [](char c) { return (c >= 'a') && (c <= 'z'); });
+        return (valid && ("system" != type)) ? type : "";
+    }
+
+    static string getProvidedRuntimeType(const string &mimeType, const string &packageType)
+    {
+        static const string prefix = "runtime/";
+        if (("runtime" != packageType) || (mimeType.compare(0, prefix.size(), prefix) != 0)) {
+            return "";
+        }
+        return mimeType.substr(prefix.size());
+    }
+
     SERVICE_REGISTRATION(PackageManagerImplementation, 1, 0);
 
     #define CHECK_CACHE() { if ((!cacheInitialized) || (packageImpl.get() == nullptr)) { \
@@ -815,6 +838,12 @@ namespace Plugin {
         CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
+        auto stateIt = mState.find( { packageId, version } );
+        if ((stateIt != mState.end()) && isRuntimeMissing(packageId, stateIt->second)) {
+            LOGERR("Not locking '%s:%s', required runtime '%s' is not installed",
+                packageId.c_str(), version.c_str(), stateIt->second.runtimeType.c_str());
+            return Core::ERROR_UNKNOWN_KEY;
+        }
         packagemanager::ConfigMetaData config;      // XXX: cleanup
         packagemanager::NameValues locks;
         result = LockPackage(packageId, version, lockReason, lockId, unpackedPath, config, locks);
@@ -963,6 +992,44 @@ namespace Plugin {
         }
 
         return result;
+    }
+
+    // Caller must hold mtxState. Checks the live state of the runtime providers on every call, so a runtime
+    // that was uninstalled or replaced after the package's state was created is detected, like AI 1.0 does
+    // by querying its package database on every launch.
+    bool PackageManagerImplementation::isRuntimeMissing(const string &packageId, State &state)
+    {
+        const bool hasRuntimeType = !state.runtimeType.empty();
+        const string &requiredType = hasRuntimeType ? state.runtimeType : state.requiredRuntimeType;
+        if (requiredType.empty() || ("system" == requiredType)) {
+            return false;
+        }
+
+        const StateMap::value_type *provider = nullptr;
+        for (const auto &entry : mState) {
+            if (entry.second.providedRuntimeType != requiredType) {
+                continue;
+            }
+            if (entry.second.installState == InstallState::INSTALLED) {
+                provider = &entry;
+                break;
+            }
+            // a runtime whose uninstall is only pending because it is locked is still usable
+            if ((nullptr == provider) && (entry.second.installState == InstallState::UNINSTALL_BLOCKED)) {
+                provider = &entry;
+            }
+        }
+
+        if (nullptr == provider) {
+            LOGERR("failed to find runtime for package '%s' of type '%s'", packageId.c_str(), requiredType.c_str());
+            return true;
+        }
+
+        // Point an unlocked package at the installed provider; a locked one keeps the runtime it locked.
+        if (hasRuntimeType && (0 == state.mLockCount)) {
+            state.runtimeApp = provider->first;
+        }
+        return false;
     }
 
     bool PackageManagerImplementation::getRuntimeConfigString(const string &runtimeConfigPayload, const string &key, string &value)
@@ -1206,6 +1273,10 @@ namespace Plugin {
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
             auto &state = it->second;
+            // Only an unlocked package can lack its runtime: a locked (running) package had it when it was locked.
+            if ((0 == state.mLockCount) && isRuntimeMissing(packageId, state)) {
+                return Core::ERROR_UNKNOWN_KEY;
+            }
             unpackedPath = state.unpackedPath;
             if (!updateRuntimeConfigString(state.runtimeConfigPayload, "unpackedPath", state.unpackedPath)) {
                 result = Core::ERROR_GENERAL;
@@ -1299,6 +1370,8 @@ namespace Plugin {
             } else {
                 LOGDBG("Runtime not found for %s type: %s", key.first.c_str(), state.runtimeType.c_str());
             }
+            state.requiredRuntimeType = getRequiredRuntimeType(config.mimeType, state.packageType);
+            state.providedRuntimeType = getProvidedRuntimeType(config.mimeType, state.packageType);
             mState.insert( { key, state } );
         }
 
@@ -1461,6 +1534,8 @@ namespace Plugin {
                     const auto sep = config.mimeType.find('/');
                     state.packageType = (sep != std::string::npos) ? config.mimeType.substr(0, sep) : config.mimeType;
                 }
+                state.requiredRuntimeType = getRequiredRuntimeType(config.mimeType, state.packageType);
+                state.providedRuntimeType = getProvidedRuntimeType(config.mimeType, state.packageType);
                 std::map<std::string, std::pair<std::string, std::string>>::iterator itRuntime = runtimeMap.find(state.runtimeType);
                 if (itRuntime != runtimeMap.end()) {
                     state.runtimeApp = itRuntime->second;

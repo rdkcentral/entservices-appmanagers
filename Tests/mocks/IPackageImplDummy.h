@@ -144,8 +144,9 @@ namespace packagemanager
                 ? packagemanager::ApplicationType::SYSTEM : packagemanager::ApplicationType::INTERACTIVE;
             configMetadata.fkpsFiles = {"file1", "file2", "file3"};
             configMetadata.capabilities = "dial-app,wan-lan,thunder,fkps";
-            configMetadata.runtimeType = "";
-            configMetadata.mimeType = "application/vnd.rdk-app.dac.native";
+            configMetadata.runtimeType = (packageId == "RuntimeTypeApp") ? "cobalt" : "";
+            configMetadata.mimeType = (packageId == "CobaltRuntime") ? "runtime/cobalt"
+                : (((packageId == "RuntimeDependentApp") || (packageId == "RuntimeTypeApp")) ? "application/cobalt" : "application/vnd.rdk-app.dac.native");
                 configMetadata.md5Hash = "dummy-md5-" + packageId + "-" + version;
             return SUCCESS;
         }
