@@ -1108,7 +1108,7 @@ uint32_t Test_PM_Impl_MissingRuntimeBlocksLockedInfoAndLock()
     bool locked = false;
     L0Test::ExpectEqU32(tr,
                         fx.impl->GetLockedInfo(appId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked),
-                        ERROR_UNKNOWN_KEY,
+                        WPEFramework::Core::ERROR_UNKNOWN_KEY,
                         "GetLockedInfo() fails with ERROR_UNKNOWN_KEY when the runtime is not installed");
 
     uint32_t lockId = 0;
@@ -1116,27 +1116,49 @@ uint32_t Test_PM_Impl_MissingRuntimeBlocksLockedInfoAndLock()
     WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Lock(appId, version, WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH, lockId, unpackedPath, lockConfig, appMetadata),
-                        ERROR_UNKNOWN_KEY,
+                        WPEFramework::Core::ERROR_UNKNOWN_KEY,
                         "Lock() fails with ERROR_UNKNOWN_KEY when the runtime is not installed");
 
     L0Test::ExpectEqU32(tr,
                         fx.impl->Install("CobaltRuntime", "1.0.0", nullptr, "/tmp/fake_runtime.ipk", failReason),
-                        ERROR_NONE,
+                        WPEFramework::Core::ERROR_NONE,
                         "Install() of the 'cobalt' runtime succeeds");
     L0Test::ExpectEqU32(tr,
                         fx.impl->GetLockedInfo(appId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked),
-                        ERROR_NONE,
+                        WPEFramework::Core::ERROR_NONE,
                         "GetLockedInfo() succeeds once the runtime is installed");
 
     std::string errorReason;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Uninstall("CobaltRuntime", errorReason),
-                        ERROR_NONE,
+                        WPEFramework::Core::ERROR_NONE,
                         "Uninstall() of the 'cobalt' runtime succeeds");
     L0Test::ExpectEqU32(tr,
                         fx.impl->GetLockedInfo(appId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked),
-                        ERROR_UNKNOWN_KEY,
+                        WPEFramework::Core::ERROR_UNKNOWN_KEY,
                         "GetLockedInfo() fails with ERROR_UNKNOWN_KEY again once the runtime is uninstalled");
+
+    // An app that reports a runtimeType caches its runtime provider; that cache must not outlive the runtime.
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Install("CobaltRuntime", "1.0.0", nullptr, "/tmp/fake_runtime.ipk", failReason),
+                        WPEFramework::Core::ERROR_NONE,
+                        "Install() of the 'cobalt' runtime succeeds again");
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Install("RuntimeTypeApp", version, nullptr, "/tmp/fake_pkg.ipk", failReason),
+                        WPEFramework::Core::ERROR_NONE,
+                        "Install() of an app that reports runtimeType 'cobalt' succeeds");
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->GetLockedInfo("RuntimeTypeApp", version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked),
+                        WPEFramework::Core::ERROR_NONE,
+                        "GetLockedInfo() succeeds while the runtime is installed");
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Uninstall("CobaltRuntime", errorReason),
+                        WPEFramework::Core::ERROR_NONE,
+                        "Uninstall() of the 'cobalt' runtime succeeds again");
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->GetLockedInfo("RuntimeTypeApp", version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked),
+                        WPEFramework::Core::ERROR_UNKNOWN_KEY,
+                        "GetLockedInfo() fails with ERROR_UNKNOWN_KEY for an app with a cached runtime provider once it is uninstalled");
 
     return tr.failures;
 }
@@ -1146,7 +1168,7 @@ uint32_t Test_PM_Impl_DownloadAndStorageInfoPaths()
     L0Test::TestResult tr;
     ImplFixture fx;
 
-    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+    L0Test::ExpectEqU32(tr, fx.Initialize(), WPEFramework::Core::ERROR_NONE, "Initialize() succeeds");
 
     WPEFramework::Exchange::IPackageDownloader::Options options { false, 1, 0 };
     WPEFramework::Exchange::IPackageDownloader::DownloadId downloadId {};

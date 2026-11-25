@@ -994,40 +994,40 @@ namespace Plugin {
         return result;
     }
 
-    // Caller must hold mtxState. Re-resolves the runtime lazily because the runtime
-    // may have been installed after the package's state was created.
+    // Caller must hold mtxState. Checks the live state of the runtime providers on every call, so a runtime
+    // that was uninstalled or replaced after the package's state was created is detected, like AI 1.0 does
+    // by querying its package database on every launch.
     bool PackageManagerImplementation::isRuntimeMissing(const string &packageId, State &state)
     {
-        if (!state.runtimeType.empty()) {
-            if ("system" == state.runtimeType) {
-                return false;
-            }
-            if (state.runtimeApp.first.empty() || state.runtimeApp.second.empty()) {
-                auto it = runtimeMap.find(state.runtimeType);
-                if (it != runtimeMap.end()) {
-                    state.runtimeApp = it->second;
-                }
-            }
-            if (state.runtimeApp.first.empty() || state.runtimeApp.second.empty()) {
-                LOGERR("failed to find runtime for package '%s' of type '%s'", packageId.c_str(), state.runtimeType.c_str());
-                return true;
-            }
+        const bool hasRuntimeType = !state.runtimeType.empty();
+        const string &requiredType = hasRuntimeType ? state.runtimeType : state.requiredRuntimeType;
+        if (requiredType.empty() || ("system" == requiredType)) {
             return false;
         }
 
-        if (!state.requiredRuntimeType.empty()) {
-            // Look at the live package state, so an uninstalled runtime is detected like AI 1.0 does
-            // by querying its package database on every launch.
-            const bool runtimeInstalled = std::any_of(mState.begin(), mState.end(),
-                [&state](const StateMap::value_type &entry) {
-                    return (entry.second.providedRuntimeType == state.requiredRuntimeType)
-                        && ((entry.second.installState == InstallState::INSTALLED)
-                            || (entry.second.installState == InstallState::UNINSTALL_BLOCKED));
-                });
-            if (!runtimeInstalled) {
-                LOGERR("failed to find runtime for package '%s' of type '%s'", packageId.c_str(), state.requiredRuntimeType.c_str());
-                return true;
+        const StateMap::value_type *provider = nullptr;
+        for (const auto &entry : mState) {
+            if (entry.second.providedRuntimeType != requiredType) {
+                continue;
             }
+            if (entry.second.installState == InstallState::INSTALLED) {
+                provider = &entry;
+                break;
+            }
+            // a runtime whose uninstall is only pending because it is locked is still usable
+            if ((nullptr == provider) && (entry.second.installState == InstallState::UNINSTALL_BLOCKED)) {
+                provider = &entry;
+            }
+        }
+
+        if (nullptr == provider) {
+            LOGERR("failed to find runtime for package '%s' of type '%s'", packageId.c_str(), requiredType.c_str());
+            return true;
+        }
+
+        // Point an unlocked package at the installed provider; a locked one keeps the runtime it locked.
+        if (hasRuntimeType && (0 == state.mLockCount)) {
+            state.runtimeApp = provider->first;
         }
         return false;
     }
@@ -1536,12 +1536,6 @@ namespace Plugin {
                 }
                 state.requiredRuntimeType = getRequiredRuntimeType(config.mimeType, state.packageType);
                 state.providedRuntimeType = getProvidedRuntimeType(config.mimeType, state.packageType);
-                if (state.packageType == "runtime") {
-                    const auto sep = config.mimeType.find('/');
-                    if (sep != std::string::npos) {
-                        runtimeMap[config.mimeType.substr(sep + 1)] = { packageId, version };
-                    }
-                }
                 std::map<std::string, std::pair<std::string, std::string>>::iterator itRuntime = runtimeMap.find(state.runtimeType);
                 if (itRuntime != runtimeMap.end()) {
                     state.runtimeApp = itRuntime->second;
