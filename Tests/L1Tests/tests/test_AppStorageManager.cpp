@@ -313,7 +313,7 @@ TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
             if (lastSlash != std::string::npos && lastSlash > 0) {
                 std::string parent = pathStr.substr(0, lastSlash);
                 // Treat only /opt as pre-existing to test multi-level recursion
-                if (parent != "/opt" && createdDirs.find(parent) == createdDirs.end()) {
+                if (parent != "/tmp" && createdDirs.find(parent) == createdDirs.end()) {
                     errno = ENOENT;
                     return -1;
                 }
@@ -372,8 +372,8 @@ TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
     // Verify intermediate directories were actually created
     EXPECT_NE(createdDirs.find("/tmp/appStorageManagerL1"), createdDirs.end())
         << "Base directory /tmp/appStorageManagerL1 should have been created";
-    EXPECT_NE(createdDirs.find("/tmp/appStorageManagerL1"), createdDirs.end())
-        << "Base directory /tmp/appStorageManagerL1 should have been created";
+    EXPECT_NE(createdDirs.find("/tmp"), createdDirs.end())
+         << "Parent directory /tmp should have been created";
     EXPECT_NE(createdDirs.find("/tmp/appStorageManagerL1/newTestApp"), createdDirs.end())
         << "App directory should have been created";
     

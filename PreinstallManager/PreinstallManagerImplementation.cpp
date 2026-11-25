@@ -53,10 +53,7 @@ namespace WPEFramework
 
         if (mInstallThread.joinable())
         {
-            if (mInstallThread.get_id() == std::this_thread::get_id())
-                mInstallThread.detach();
-            else
-                mInstallThread.join();
+           mInstallThread.join();
         }
 
         _instance = nullptr;
@@ -177,15 +174,9 @@ namespace WPEFramework
      */
     void PreinstallManagerImplementation::sendOnPreinstallationCompleteEvent()
     {
-        mAdminLock.Lock();
-        const bool hasNotifications = !mPreinstallManagerNotifications.empty();
-        mAdminLock.Unlock();
-        if (hasNotifications)
-        {
-            LOGINFO("Dispatching OnPreinstallationComplete event");
-            JsonObject eventDetails; // OnPreinstallationComplete doesn't need any params
-            dispatchEvent(PREINSTALL_MANAGER_ONPREINSTALLATIONCOMPLETE, eventDetails);
-        }
+        LOGINFO("Dispatching OnPreinstallationComplete event");
+        JsonObject eventDetails; // OnPreinstallationComplete doesn't need any params
+        dispatchEvent(PREINSTALL_MANAGER_ONPREINSTALLATIONCOMPLETE, eventDetails);
     }
 
     Core::hresult PreinstallManagerImplementation::createPackageManagerObject(Exchange::IPackageInstaller*& packageInstaller)

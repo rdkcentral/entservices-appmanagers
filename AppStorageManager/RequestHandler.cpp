@@ -528,7 +528,9 @@ namespace WPEFramework
                     return result;
                 }
                 /* Check if the existing storage directory is accessible */
-                if (access(it->second->path.c_str(), F_OK) == 0)
+                struct stat st;
+                if ((0 == lstat(it->second->path.c_str(), &st)) && S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode) &&
+                (0 == access(it->second->path.c_str(), F_OK)))
                 {
                     /* Updating the usedKB based on the directory size */
                     it->second->usedKB = static_cast<uint32_t>(getDirectorySizeInBytes(it->second->path) / 1024);
@@ -697,7 +699,7 @@ namespace WPEFramework
             }
             else if (!isValidAppStorageDirectory(appId))
             {
-                LOGERR("Rejected invalid appId");
+                LOGWARN("Rejected invalid appId");
                 errorReason = "appId contains invalid characters";
             }
             else
