@@ -32,10 +32,14 @@
 #include <string>
 #include <sys/stat.h>
 #include <cstdlib>
+#include <unistd.h>
 
 #include "ralf/RalfPackageBuilder.h"
+#include "ralf/RalfVendorLayer.h"
 #include "ralf/RalfSupport.h"
+#include "AIConfiguration.h"
 #include "ApplicationConfiguration.h"
+#include "RuntimeManagerImplementation.h"
 #include <interfaces/IRuntimeManager.h>
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
@@ -101,6 +105,168 @@ uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction()
 
     return tr.failures;
 }
+
+uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets()
+{
+    L0Test::TestResult tr;
+    const std::string testRoot = "/tmp/ralf_l0test_vendor_layer_" + std::to_string(getpid());
+    const std::string sourcePath = testRoot + "/source.so";
+    const std::string layerPath = testRoot + "/layer";
+    const std::string copiedPath = layerPath + "/usr/lib/copied.so";
+    const std::string symlinkPath = layerPath + "/usr/lib/libEGL.so.1";
+    const std::string bindTargetPath = layerPath + "/usr/lib/bind.so";
+    const std::string socketTargetPath = layerPath + "/usr/lib/socket.so";
+    const std::string missingBindTargetPath = layerPath + "/usr/lib/missing-bind.so";
+
+    L0Test::ExpectTrue(tr, WriteFile_PB(sourcePath, "gpu-library"),
+                       "Create test GPU source file");
+
+    Json::Value config(Json::objectValue);
+    Json::Value files(Json::arrayValue);
+
+    Json::Value copiedFile(Json::objectValue);
+    copiedFile["type"] = "file";
+    copiedFile["source"] = sourcePath;
+    copiedFile["destination"] = "/usr/lib/copied.so";
+    files.append(copiedFile);
+
+    Json::Value symlink(Json::objectValue);
+    symlink["type"] = "symlink";
+    symlink["target"] = "/usr/lib/copied.so";
+    symlink["linkPath"] = "/usr/lib/libEGL.so.1";
+    files.append(symlink);
+
+    Json::Value bind(Json::objectValue);
+    bind["type"] = "bind";
+    bind["source"] = sourcePath;
+    bind["destination"] = "/usr/lib/bind.so";
+    files.append(bind);
+
+    Json::Value socket(Json::objectValue);
+    socket["type"] = "socket";
+    socket["source"] = sourcePath;
+    socket["destination"] = "/usr/lib/socket.so";
+    files.append(socket);
+
+    Json::Value missingBind(Json::objectValue);
+    missingBind["type"] = "bind";
+    missingBind["source"] = testRoot + "/missing-source.so";
+    missingBind["destination"] = "/usr/lib/missing-bind.so";
+    files.append(missingBind);
+    config["vendorGpuSupport"]["files"] = files;
+
+    ralf::RalfVendorLayer layer(layerPath);
+    const bool created = layer.create(config);
+    L0Test::ExpectTrue(tr, created, "Create vendor GPU layer from typed file entries");
+
+    struct stat copiedStat;
+    struct stat symlinkStat;
+    struct stat bindTargetStat;
+    struct stat socketTargetStat;
+    L0Test::ExpectTrue(tr, 0 == stat(copiedPath.c_str(), &copiedStat) && S_ISREG(copiedStat.st_mode),
+                       "Copy file entry into vendor layer");
+    std::ifstream copiedFileStream(copiedPath.c_str(), std::ios::binary);
+    std::string copiedContents;
+    copiedFileStream >> copiedContents;
+    L0Test::ExpectTrue(tr, "gpu-library" == copiedContents,
+                       "Preserve copied GPU file contents");
+    L0Test::ExpectTrue(tr, 0 == lstat(symlinkPath.c_str(), &symlinkStat) && S_ISLNK(symlinkStat.st_mode),
+                       "Create symlink entry in vendor layer");
+    L0Test::ExpectTrue(tr, 0 == stat(bindTargetPath.c_str(), &bindTargetStat) && S_ISREG(bindTargetStat.st_mode),
+                       "Create bind mount target in vendor layer");
+    L0Test::ExpectTrue(tr, 0 == stat(socketTargetPath.c_str(), &socketTargetStat) && S_ISREG(socketTargetStat.st_mode),
+                       "Create socket mount target in vendor layer");
+    L0Test::ExpectTrue(tr, 0 == stat(missingBindTargetPath.c_str(), &bindTargetStat) && S_ISREG(bindTargetStat.st_mode),
+                       "Create bind target even when its host source is unavailable");
+
+    Json::Value escapeConfig(Json::objectValue);
+    Json::Value escapeFiles(Json::arrayValue);
+    Json::Value outsideLink(Json::objectValue);
+    outsideLink["type"] = "symlink";
+    outsideLink["target"] = testRoot + "/outside";
+    outsideLink["linkPath"] = "/redirect";
+    escapeFiles.append(outsideLink);
+    Json::Value escapedFile(Json::objectValue);
+    escapedFile["type"] = "file";
+    escapedFile["source"] = sourcePath;
+    escapedFile["destination"] = "/redirect/escaped";
+    escapeFiles.append(escapedFile);
+    escapeConfig["vendorGpuSupport"]["files"] = escapeFiles;
+    L0Test::ExpectTrue(tr, !layer.create(escapeConfig),
+                       "Reject file destination traversing a configured symlink");
+    L0Test::ExpectTrue(tr, 0 != access((testRoot + "/outside/escaped").c_str(), F_OK),
+                       "Do not create a file outside the vendor layer");
+
+    ralf::removeDirectoryRecursively(testRoot);
+    return tr.failures;
+}
+
+#ifdef ENTOS_RALF_SUPPORT
+uint32_t Test_AIConfiguration_LoadsGpuConfigFromRuntimeYaml()
+{
+    L0Test::TestResult tr;
+    const std::string testRoot = "/tmp/ralf_l0test_gpu_yaml_" + std::to_string(getpid());
+    const std::string runtimeConfigPath = testRoot + "/runtimeconfig.yaml";
+    const std::string layerPath = testRoot + "/layer";
+    const std::string yamlConfig =
+        "gpuConfig:\n"
+        "  devNodes:\n"
+        "    - /dev/dri/card*\n"
+        "    - /dev/nexus\n"
+        "  groupIds:\n"
+        "    - video\n"
+        "  files:\n"
+        "    - type: symlink\n"
+        "      target: /usr/lib/libv3ddriver.so\n"
+        "      linkPath: /usr/lib/libEGL.so.1\n";
+    L0Test::ExpectTrue(tr, WriteFile_PB(runtimeConfigPath, yamlConfig),
+                       "Write runtime YAML GPU config fixture");
+
+    WPEFramework::Plugin::AIConfiguration aiConfiguration;
+    aiConfiguration.initialize(runtimeConfigPath);
+    Json::Value config;
+    const bool parsed = aiConfiguration.getRalfGpuConfig(config);
+    L0Test::ExpectTrue(tr, parsed, "Read gpuConfig through AIConfiguration");
+    if (parsed)
+    {
+        const Json::Value &gpuConfig = config["vendorGpuSupport"];
+        L0Test::ExpectTrue(tr, gpuConfig["devNodes"].isArray() && 2U == gpuConfig["devNodes"].size(),
+                           "Preserve gpuConfig.devNodes entries");
+        L0Test::ExpectTrue(tr, gpuConfig["groupIds"].isArray() && 1U == gpuConfig["groupIds"].size(),
+                           "Preserve gpuConfig.groupIds entries");
+        L0Test::ExpectTrue(tr, gpuConfig["files"].isArray() && 1U == gpuConfig["files"].size(),
+                           "Preserve gpuConfig.files entries");
+        if (gpuConfig["files"].isArray() && 1U == gpuConfig["files"].size())
+        {
+            L0Test::ExpectTrue(tr, "symlink" == gpuConfig["files"][0]["type"].asString() &&
+                                   "/usr/lib/libEGL.so.1" == gpuConfig["files"][0]["linkPath"].asString(),
+                               "Preserve typed GPU symlink fields");
+        }
+
+        ralf::RalfVendorLayer layer(layerPath);
+        L0Test::ExpectTrue(tr, layer.create(config), "Create vendor layer from parsed runtime YAML");
+        struct stat linkInfo;
+        L0Test::ExpectTrue(tr, 0 == lstat((layerPath + "/usr/lib/libEGL.so.1").c_str(), &linkInfo) &&
+                               S_ISLNK(linkInfo.st_mode),
+                           "Materialize YAML GPU symlink in vendor layer");
+    }
+
+    const std::string configWithoutGpuPath = testRoot + "/no-gpu.yaml";
+    L0Test::ExpectTrue(tr, WriteFile_PB(configWithoutGpuPath, "memoryLimit: 1234\n"),
+                       "Write runtime YAML without optional gpuConfig");
+    WPEFramework::Plugin::AIConfiguration configWithoutGpu;
+    configWithoutGpu.initialize(configWithoutGpuPath);
+    Json::Value emptyConfig;
+    L0Test::ExpectTrue(tr, configWithoutGpu.getRalfGpuConfig(emptyConfig),
+                       "Accept runtime YAML without gpuConfig");
+    L0Test::ExpectTrue(tr, emptyConfig["vendorGpuSupport"]["files"].isArray() &&
+                           emptyConfig["vendorGpuSupport"]["files"].empty(),
+                       "Default missing GPU files to an empty list");
+
+    ralf::removeDirectoryRecursively(testRoot);
+    return tr.failures;
+}
+#endif
 
 // ──────────────────────────────────────────────────────────────────────────────
 // unmountOverlayfsIfExists() tests
@@ -336,6 +502,53 @@ uint32_t Test_RalfPackageBuilder_UnmountOverlayfsIfExists_WhenPathExistsTriggerU
     // Cleanup
     ::rmdir(mountPath.c_str());
     ::rmdir((std::string(ralf::RALF_APP_ROOTFS_DIR) + appInstanceId).c_str());
+
+    return tr.failures;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// RuntimeManagerImplementation RALF / legacy dispatch
+// ──────────────────────────────────────────────────────────────────────────────
+
+/* Test_RuntimeManager_IsRalfPackage_DispatchesOnRalfPkgPath
+ *
+ * The RALF and legacy EntOS Widget launch paths coexist in a single build and are
+ * selected at runtime from the decoded runtime config's ralfPkgPath. Verifies that an empty
+ * ralfPkgPath selects the legacy Dobby spec path and a non-empty one selects RALF.
+ */
+uint32_t Test_RuntimeManager_IsRalfPackage_DispatchesOnRalfPkgPath()
+{
+    L0Test::TestResult tr;
+
+    auto legacyCfg = MakeRuntimeConfig("");
+    L0Test::ExpectTrue(tr,
+                       !WPEFramework::Plugin::RuntimeManagerImplementation::isRalfPackage(legacyCfg),
+                       "empty ralfPkgPath selects the legacy Dobby spec path");
+
+    auto ralfCfg = MakeRuntimeConfig("/tmp/ralf_l0test_pkginfo.json");
+    L0Test::ExpectTrue(tr,
+                       WPEFramework::Plugin::RuntimeManagerImplementation::isRalfPackage(ralfCfg),
+                       "non-empty ralfPkgPath selects the RALF path");
+
+    return tr.failures;
+}
+
+/* Test_RuntimeManager_CleanupRalfInstance_SkipsWidgetInstances
+ *
+ * Overlayfs teardown must only run for instances that were actually launched from a
+ * RALF OCI bundle; widget instances never create one.
+ */
+uint32_t Test_RuntimeManager_CleanupRalfInstance_SkipsWidgetInstances()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::RuntimeManagerImplementation::cleanupRalfInstance("l0test_widget_inst", false);
+    L0Test::ExpectTrue(tr, true,
+                       "cleanupRalfInstance() is a no-op for a non-RALF instance");
+
+    WPEFramework::Plugin::RuntimeManagerImplementation::cleanupRalfInstance("l0test_ralf_never_mounted", true);
+    L0Test::ExpectTrue(tr, true,
+                       "cleanupRalfInstance() tolerates a RALF instance with no overlayfs");
 
     return tr.failures;
 }

@@ -360,6 +360,16 @@ namespace WPEFramework
                 success = false;
                 return Core::ERROR_GENERAL;
             }
+            std::string ralfPkgPath;
+            bool ralfPkgPathPresent = false;
+            if (!payload.GetString("ralfPkgPath", ralfPkgPath, ralfPkgPathPresent, errorReason))
+            {
+                LOGERR("SpawnApp received invalid ralfPkgPath: %s", errorReason.c_str());
+                success = false;
+                return Core::ERROR_GENERAL;
+            }
+            LOGDBG("[ralf-debug] SpawnApp received appId='%s' ralfPkgPath='%s'",
+                   appId.c_str(), ralfPkgPathPresent ? ralfPkgPath.c_str() : "(not set)");
 
             Core::hresult status = Core::ERROR_NONE;
             bool firstLaunch = false;
@@ -997,5 +1007,4 @@ namespace WPEFramework
 
     } /* namespace Plugin */
 } /* namespace WPEFramework */
-
 

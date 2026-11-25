@@ -30,6 +30,65 @@ The **PackageManager** plugin provides comprehensive package management capabili
 - Does not run containers (handled by RuntimeManager)
 - Does not manage application-specific data (handled by AppStorageManager)
 
+### RALF package boundary
+
+The plugin delegates package verification, persistence, and package-content
+mounting to its linked `libPackage` implementation. A RALF-capable provider
+uses the same persistent repository slot as widgets, `<packages.storageDir>/<appId>/package.wgt`;
+the filename does not imply ZIP content. The provider detects the format from
+package bytes and returns its RALF package-root manifest in the
+`ralfPkgPath` property of the JSON runtime-config payload when the package is locked.
+
+RALF packages are registered in the same `PackageDatabase` as widgets after
+their signed metadata has been read. This makes installed identity, version,
+runtime discovery, metadata, digest, and DIAL membership use the shared package
+lookup. For a RALF lock, the provider resolves dependency IDs across that
+database and checks each declared version constraint before locking. A RALF
+dependency uses libralf's verified mount/extraction path; a ZIP dependency uses
+the existing verified widget extraction cache and remains pinned until the
+last RALF lock is released. Both become ordered rootfs layers in the same
+runtime manifest. ZIP dependencies receive a role/executable layer config
+derived from their verified widget metadata. RALF layers use their signed RDK
+auxiliary config, with missing package role, entry point, arguments, and
+permissions filled from signed RALF metadata. Cyclic and unresolvable
+dependencies fail the whole lock and release prior layers.
+App secrets and credentials-manager material are kept out of the generic
+`envVariables` array in the JSON runtime-config payload; the package provider writes them into a
+restricted per-lock metadata file for RuntimeManager to consume.
+
+The shared persistent filename is a single active slot, not two independent
+installations. Both ZIP-to-RALF and RALF-to-ZIP upgrades verify and stage the
+new bytes before committing an atomic rename, then replace the shared database
+record without deleting the package directory or its settings and data.
+Installed-package lookups then use only the new format. A previously locked
+RALF image keeps its old mount; a locked ZIP app/runtime keeps its verified
+extraction pinned until final unlock. RALF locks also pin ZIP dependency
+layers independently of the active package record. As in legacy appserviced, a verified replacement with the same
+ID **and version** is also allowed without comparing old and new formats.
+Existing locks retain their original mounted or extracted content until unlock;
+later locks after release use the newly installed format. Update detection for
+running apps compares version strings only: a same-version replacement does
+not itself trigger a restart, even if the package format or bytes changed.
+Widget-only launch still follows the original database and Dobby-spec path;
+this mixed-layer bridge does not convert a widget into a RALF application.
+The provider combines ZIP and RALF DIAL descriptors from `PackageDatabase`
+for both the `dial` and unfiltered installed-configuration views. RALF package
+MD5 values are calculated from the committed `package.wgt` artifact and flow
+through the existing `ListPackages` digest field.
+
+`PackageManagerImplementation` forwards that field without changing the
+existing lock/unlock API. An empty `ralfPkgPath` continues to identify the
+legacy widget path; a non-empty value is consumed by a RuntimeManager built
+with `RALF_PACKAGE_SUPPORT=ON`. RuntimeManager cleans up only its per-instance
+overlay, while package-root mount lifetime remains owned by the normal
+PackageManager lock/unlock lifecycle. Thus enabling RALF launch support does
+not change widget storage names or lock semantics.
+
+`USE_LIBPACKAGE_RALF` is not the RALF format-support switch. It enables the
+generic `libPackage` backend's extra runtime-companion lock behavior. Keep it
+disabled for the Sky `libPackage` backend, which resolves that dependency as
+part of its own lock operation.
+
 ---
 
 ## 2. Architectural Overview

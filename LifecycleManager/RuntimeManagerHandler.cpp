@@ -103,6 +103,16 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
         LOGERR("Invalid runtime configuration payload: %s", errorReason.c_str());
         return false;
     }
+    std::string ralfPkgPath;
+    bool ralfPkgPathPresent = false;
+    if (!payload.GetString("ralfPkgPath", ralfPkgPath, ralfPkgPathPresent, errorReason))
+    {
+        LOGERR("Invalid ralfPkgPath in runtime configuration: %s", errorReason.c_str());
+        return false;
+    }
+    LOGDBG("[ralf-debug] RuntimeManagerHandler::run appId='%s' instance='%s' ralfPkgPath='%s'",
+           appId.c_str(), appInstanceId.c_str(),
+           ralfPkgPathPresent ? ralfPkgPath.c_str() : "(not set)");
     payload.SetString("dialId", appId);
 
     uint32_t userId = 0, groupId = 0;

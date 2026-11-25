@@ -32,6 +32,7 @@
 #include <cstdio>  //for ::remove
 
 #include <dirent.h>
+#include <fcntl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -45,7 +46,6 @@
 
 #include <pwd.h> //For getting user id and group id of ralf user
 #include <algorithm>
-
 namespace
 {
     struct RootfsPathRequirement
@@ -128,13 +128,76 @@ namespace
         }
     }
 
-    bool ensureDirectoryExistsInRootfs(const std::string& rootfsMountPath,
-                                       const std::string& containerPath,
-                                       const int uid,
-                                       const int gid)
+    int openRootfsDirectory(const std::string& rootfsMountPath,
+                            const std::string& containerPath)
     {
-        const std::string targetPath = rootfsMountPath + containerPath;
-        return ralf::create_directories(targetPath, uid, gid);
+        if (rootfsMountPath.empty() || containerPath.empty() || '/' != containerPath[0] ||
+            std::string::npos != containerPath.find('\0'))
+        {
+            return -1;
+        }
+
+        int currentFd = ::open(rootfsMountPath.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        if (currentFd < 0)
+        {
+            return -1;
+        }
+
+        size_t componentStart = 0;
+        while (componentStart < containerPath.size())
+        {
+            while (componentStart < containerPath.size() && '/' == containerPath[componentStart])
+            {
+                ++componentStart;
+            }
+            if (componentStart == containerPath.size())
+            {
+                break;
+            }
+
+            const size_t componentEnd = containerPath.find('/', componentStart);
+            const std::string component = containerPath.substr(componentStart, componentEnd - componentStart);
+            if ("." == component || ".." == component)
+            {
+                ::close(currentFd);
+                return -1;
+            }
+
+            int nextFd = ::openat(currentFd, component.c_str(),
+                                  O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+            if (nextFd < 0 && ENOENT == errno)
+            {
+                if (0 != ::mkdirat(currentFd, component.c_str(), 0777) && EEXIST != errno)
+                {
+                    ::close(currentFd);
+                    return -1;
+                }
+                nextFd = ::openat(currentFd, component.c_str(),
+                                  O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+            }
+            if (nextFd < 0)
+            {
+                ::close(currentFd);
+                return -1;
+            }
+
+            ::close(currentFd);
+            currentFd = nextFd;
+            componentStart = (std::string::npos == componentEnd) ? containerPath.size() : componentEnd + 1;
+        }
+
+        return currentFd;
+    }
+
+    bool ensureDirectoryExistsInRootfs(const std::string& rootfsMountPath,
+                                       const std::string& containerPath)
+    {
+        const int directoryFd = openRootfsDirectory(rootfsMountPath, containerPath);
+        if (directoryFd < 0)
+        {
+            return false;
+        }
+        return 0 == ::close(directoryFd);
     }
 
     bool ensureFileExistsInRootfs(const std::string& rootfsMountPath,
@@ -143,45 +206,75 @@ namespace
                                   const int gid)
     {
         const size_t lastSlash = containerPath.find_last_of('/');
-        if (std::string::npos == lastSlash)
+        if (containerPath.empty() || std::string::npos == lastSlash ||
+            lastSlash + 1 == containerPath.size() || std::string::npos != containerPath.find('\0'))
         {
             LOGERR("Invalid container file path: %s", containerPath.c_str());
             return false;
         }
 
-        const std::string parentPath = containerPath.substr(0, lastSlash);
-        if (!parentPath.empty() && !ensureDirectoryExistsInRootfs(rootfsMountPath, parentPath, uid, gid))
+        const std::string parentPath = (0 == lastSlash) ? "/" : containerPath.substr(0, lastSlash);
+        const std::string fileName = containerPath.substr(lastSlash + 1);
+        if ("." == fileName || ".." == fileName)
+        {
+            LOGERR("Invalid container file path: %s", containerPath.c_str());
+            return false;
+        }
+
+        const int parentFd = openRootfsDirectory(rootfsMountPath, parentPath);
+        if (parentFd < 0)
         {
             LOGERR("Failed to create parent directory in merged rootfs: %s", parentPath.c_str());
             return false;
         }
 
-        const std::string filePath = rootfsMountPath + containerPath;
-
-        struct stat buffer;
-        const bool isNewFile = (stat(filePath.c_str(), &buffer) != 0);
-
-        std::ofstream outputFile(filePath, std::ios::app);
-        if (!outputFile.is_open())
+        struct stat existingStat;
+        const bool isNewFile = (0 != ::fstatat(parentFd, fileName.c_str(), &existingStat, AT_SYMLINK_NOFOLLOW));
+        if (isNewFile && ENOENT != errno)
         {
-            LOGERR("Failed to create file in merged rootfs: %s", filePath.c_str());
+            LOGERR("Failed to inspect merged-rootfs file target: %s", containerPath.c_str());
+            ::close(parentFd);
             return false;
         }
-        outputFile.close();
 
-        if (isNewFile && (uid != 0 || gid != 0))
+        const int fileFd = ::openat(parentFd, fileName.c_str(),
+                                    O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK, 0666);
+        if (fileFd < 0)
         {
-            const uid_t targetUid = (uid == 0) ? -1 : static_cast<uid_t>(uid);
-            const gid_t targetGid = (gid == 0) ? -1 : static_cast<gid_t>(gid);
+            LOGERR("Failed to create file in merged rootfs: %s: %s", containerPath.c_str(), strerror(errno));
+            ::close(parentFd);
+            return false;
+        }
 
-            if (chown(filePath.c_str(), targetUid, targetGid) != 0)
+        struct stat fileStat;
+        bool status = (0 == ::fstat(fileFd, &fileStat) && S_ISREG(fileStat.st_mode));
+        if (!status)
+        {
+            LOGERR("Merged-rootfs file target is not a regular file: %s", containerPath.c_str());
+        }
+
+        if (status && isNewFile && (uid != 0 || gid != 0))
+        {
+            const uid_t targetUid = (uid == 0) ? static_cast<uid_t>(-1) : static_cast<uid_t>(uid);
+            const gid_t targetGid = (gid == 0) ? static_cast<gid_t>(-1) : static_cast<gid_t>(gid);
+
+            if (::fchown(fileFd, targetUid, targetGid) != 0)
             {
-                LOGERR("Failed to chown file %s to %d:%d: %s", filePath.c_str(), uid, gid, strerror(errno));
-                return false;
+                LOGERR("Failed to chown merged-rootfs file %s to %d:%d: %s",
+                       containerPath.c_str(), uid, gid, strerror(errno));
+                status = false;
             }
         }
 
-        return true;
+        if (0 != ::close(fileFd))
+        {
+            status = false;
+        }
+        if (0 != ::close(parentFd))
+        {
+            status = false;
+        }
+        return status;
     }
 
     bool getPathTypeFromHostSource(const std::string& hostPath, bool& isDirectory)
@@ -318,21 +411,201 @@ namespace ralf
         return true;
     }
 
+    bool getClassicRalfLaunchInfo(const std::string &manifestPath, std::string &appPath,
+                                  std::string &runtimePath, std::string &command)
+    {
+        std::vector<std::string> commandArgs;
+        std::string applicationSecret;
+        std::string credentialsCertificate;
+        std::string credentialsPrivateKey;
+        return getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command,
+                                        commandArgs, applicationSecret,
+                                        credentialsCertificate, credentialsPrivateKey);
+    }
+
+    bool getClassicRalfLaunchInfo(const std::string &manifestPath, std::string &appPath,
+                                  std::string &runtimePath, std::string &command,
+                                  std::vector<std::string> &commandArgs, std::string &applicationSecret,
+                                  std::string &credentialsCertificate, std::string &credentialsPrivateKey)
+    {
+        commandArgs.clear();
+        applicationSecret.clear();
+        credentialsCertificate.clear();
+        credentialsPrivateKey.clear();
+        std::vector<RalfPkgInfoPair> packages;
+        Json::Value appConfig;
+        if (!parseRalPkgInfo(manifestPath, packages) || packages.empty() || 2 < packages.size() ||
+            !JsonFromFile(packages.back().first, appConfig) ||
+            !appConfig[PACKAGE_TYPE].isString() ||
+            PKG_TYPE_APPLICATION != appConfig[PACKAGE_TYPE].asString() ||
+            !appConfig[ENTRY_POINT].isString() || appConfig[ENTRY_POINT].asString().empty())
+        {
+            return false;
+        }
+
+        std::vector<std::string> parsedCommandArgs;
+        if (appConfig.isMember(ENTRY_ARGS))
+        {
+            const Json::Value &args = appConfig[ENTRY_ARGS];
+            if (!args.isNull() && !args.isArray())
+            {
+                LOGERR("Classic RALF entryArgs must be an array");
+                return false;
+            }
+            for (const Json::Value &arg : args)
+            {
+                if (!arg.isString())
+                {
+                    LOGERR("Classic RALF entryArgs must contain only strings");
+                    return false;
+                }
+                parsedCommandArgs.emplace_back(arg.asString());
+            }
+        }
+
+        std::string parsedApplicationSecret;
+        std::string parsedCredentialsCertificate;
+        std::string parsedCredentialsPrivateKey;
+        for (size_t index = 0; index < packages.size(); ++index)
+        {
+            Json::Value packageConfig;
+            if (index + 1 == packages.size())
+            {
+                packageConfig = appConfig;
+            }
+            else if (!JsonFromFile(packages[index].first, packageConfig))
+            {
+                return false;
+            }
+            if (!packageConfig.isMember("runtimeSecrets"))
+            {
+                continue;
+            }
+
+            const Json::Value &secrets = packageConfig["runtimeSecrets"];
+            if (!secrets.isObject())
+            {
+                LOGERR("Classic RALF runtimeSecrets must be an object");
+                return false;
+            }
+            if (secrets.isMember("applicationSecret"))
+            {
+                const Json::Value &secret = secrets["applicationSecret"];
+                if (!secret.isString() || secret.asString().empty())
+                {
+                    LOGERR("Classic RALF applicationSecret must be a non-empty string");
+                    return false;
+                }
+                parsedApplicationSecret = secret.asString();
+            }
+            if (secrets.isMember("credentialsManager"))
+            {
+                const Json::Value &credentials = secrets["credentialsManager"];
+                if (!credentials.isObject() || !credentials["certificate"].isString() ||
+                    credentials["certificate"].asString().empty() ||
+                    !credentials["privateKey"].isString() || credentials["privateKey"].asString().empty())
+                {
+                    LOGERR("Classic RALF credentialsManager requires a certificate and private key");
+                    return false;
+                }
+                parsedCredentialsCertificate = credentials["certificate"].asString();
+                parsedCredentialsPrivateKey = credentials["privateKey"].asString();
+            }
+        }
+
+        std::string runtimeMountPath;
+        std::string executable;
+        if (2 == packages.size())
+        {
+            Json::Value runtimeConfig;
+            if (!JsonFromFile(packages.front().first, runtimeConfig) ||
+                !runtimeConfig[PACKAGE_TYPE].isString() ||
+                PKG_TYPE_RUNTIME != runtimeConfig[PACKAGE_TYPE].asString() ||
+                (runtimeConfig.isMember(ENTRY_POINT) && !runtimeConfig[ENTRY_POINT].isString()))
+            {
+                return false;
+            }
+            executable = runtimeConfig[ENTRY_POINT].isString() ? runtimeConfig[ENTRY_POINT].asString() : "";
+            if (!executable.empty())
+            {
+                runtimeMountPath = packages.front().second;
+            }
+            else
+            {
+                executable = appConfig[ENTRY_POINT].asString();
+            }
+        }
+        else
+        {
+            executable = appConfig[ENTRY_POINT].asString();
+        }
+
+        if (executable.empty() || '/' == executable.front() ||
+            "." == executable || ".." == executable ||
+            0 == executable.find("../") || std::string::npos != executable.find("/../") ||
+            std::string::npos != executable.find("/./") ||
+            (3 <= executable.size() && "/.." == executable.substr(executable.size() - 3)))
+        {
+            LOGERR("Invalid classic RALF executable path: %s", executable.c_str());
+            return false;
+        }
+
+        appPath = packages.back().second;
+        runtimePath = runtimeMountPath;
+        command = executable;
+        commandArgs = std::move(parsedCommandArgs);
+        applicationSecret = std::move(parsedApplicationSecret);
+        credentialsCertificate = std::move(parsedCredentialsCertificate);
+        credentialsPrivateKey = std::move(parsedCredentialsPrivateKey);
+        return true;
+    }
+
     bool parseRalPkgInfo(const std::string &configFilePath, std::vector<RalfPkgInfoPair> &packages)
     {
         Json::Value root;
-        JsonFromFile(configFilePath, root);
-        if (!root.isMember("packages"))
+        if (!JsonFromFile(configFilePath, root))
         {
-            LOGERR("Ralf package config JSON does not contain 'packages' field\n");
+            LOGERR("Failed to load Ralf package config JSON: %s", configFilePath.c_str());
             return false;
         }
-        for (Json::Value::ArrayIndex i = 0; i < root["packages"].size(); ++i)
+
+        if (!root.isObject() || !root.isMember("packages") || !root["packages"].isArray())
         {
-            std::string configData = root["packages"][i]["pkgMetaDataPath"].asString();
-            std::string mountPath = root["packages"][i]["pkgMountPath"].asString();
-            packages.push_back(std::make_pair(configData, mountPath));
+            LOGERR("Ralf package config JSON does not contain a valid 'packages' array");
+            return false;
         }
+
+        const Json::Value& packageEntries = root["packages"];
+        if (0 == packageEntries.size())
+        {
+            LOGERR("Ralf package config JSON contains no package layers");
+            return false;
+        }
+
+        std::vector<RalfPkgInfoPair> parsedPackages;
+        parsedPackages.reserve(packageEntries.size());
+        for (Json::Value::ArrayIndex i = 0; i < packageEntries.size(); ++i)
+        {
+            const Json::Value& entry = packageEntries[i];
+            if (!entry.isObject() || !entry.isMember("pkgMetaDataPath") || !entry["pkgMetaDataPath"].isString() ||
+                !entry.isMember("pkgMountPath") || !entry["pkgMountPath"].isString())
+            {
+                LOGERR("Ralf package config JSON contains an invalid package entry at index %u", i);
+                return false;
+            }
+
+            const std::string configData = entry["pkgMetaDataPath"].asString();
+            const std::string mountPath = entry["pkgMountPath"].asString();
+            if (configData.empty() || mountPath.empty())
+            {
+                LOGERR("Ralf package config JSON contains an empty metadata or mount path at index %u", i);
+                return false;
+            }
+
+            parsedPackages.push_back(std::make_pair(configData, mountPath));
+        }
+
+        packages.insert(packages.end(), parsedPackages.begin(), parsedPackages.end());
         return true;
     }
 
@@ -378,16 +651,30 @@ namespace ralf
         return status;
     }
 
-    bool generateOCIRootfs(const std::string appInstanceId, const std::string &pkgmountPaths, const int uid, const int gid, std::string &ociRootfsPath)
+    bool generateOCIRootfs(const std::string appInstanceId, const std::string &pkgmountPaths, std::string &ociRootfsPath)
     {
         // Let us create a directory for app as RALF_APP_ROOTFS_DIR/appInstanceId
         std::string baseDir = RALF_APP_ROOTFS_DIR + appInstanceId;
         std::string appRootfsDir = baseDir + "/rootfs";
         std::string workSubDir = baseDir + "/work";
         std::string upperSubDir = baseDir + "/upper";
-        create_directories(appRootfsDir, uid, gid);
-        create_directories(workSubDir, uid, gid);
-        create_directories(upperSubDir, uid, gid);
+        if (!create_directories(appRootfsDir) ||
+            !create_directories(workSubDir) ||
+            !create_directories(upperSubDir))
+        {
+            LOGERR("Failed to create RALF bundle directories for appInstanceId: %s", appInstanceId.c_str());
+            return false;
+        }
+        const std::string bundleDirectories[] = {baseDir, appRootfsDir, upperSubDir, workSubDir};
+        for (const std::string &directory : bundleDirectories)
+        {
+            if (0 != chmod(directory.c_str(), 0755))
+            {
+                LOGERR("Failed to set RALF bundle directory mode to 0755 for %s: %s",
+                       directory.c_str(), strerror(errno));
+                return false;
+            }
+        }
 
         // Now we can mount the overlay filesystem
         std::string options = "lowerdir=" + pkgmountPaths + ",upperdir=" + upperSubDir + ",workdir=" + workSubDir;
@@ -591,6 +878,27 @@ namespace ralf
         collectConditionalRequirements(ociConfigRootNode, requirements);
         collectNonBindMountDestinations(ociConfigRootNode, nonBindMountDestinations);
 
+        std::stable_sort(nonBindMountDestinations.begin(), nonBindMountDestinations.end(),
+                         [](const std::string& lhs, const std::string& rhs)
+                         {
+                             return containerPathDepth(lhs) < containerPathDepth(rhs);
+                         });
+
+        for (const auto& destinationPath : nonBindMountDestinations)
+        {
+            if (!ensureDirectoryExistsInRootfs(rootfsMountPath, destinationPath))
+            {
+                LOGERR("Failed to prepare merged-rootfs mount directory: %s", destinationPath.c_str());
+                return false;
+            }
+        }
+
+        if (!ensureDirectoryExistsInRootfs(rootfsMountPath, "/home"))
+        {
+            LOGERR("Failed to prepare legacy standard rootfs directory: /home");
+            return false;
+        }
+
         std::stable_sort(requirements.begin(), requirements.end(),
                          [](const RootfsPathRequirement& lhs, const RootfsPathRequirement& rhs)
                          {
@@ -623,7 +931,7 @@ namespace ralf
             }
             else
             {
-                status = ensureDirectoryExistsInRootfs(rootfsMountPath, requirement.containerPath, uid, gid);
+                status = ensureDirectoryExistsInRootfs(rootfsMountPath, requirement.containerPath);
             }
 
             if (!status)
@@ -636,7 +944,8 @@ namespace ralf
         return true;
     }
 
-    bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath, bool readOnly)
+    bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath,
+                                 bool readOnly, bool recursive, bool noSuid, bool noDev)
     {
         Json::Value mountEntry;
         mountEntry[SOURCE] = hostPath;
@@ -644,7 +953,11 @@ namespace ralf
         mountEntry[TYPE] = "bind";
 
         Json::Value mountOptions(Json::arrayValue);
-        mountOptions.append("rbind");
+        mountOptions.append(recursive ? "rbind" : "bind");
+        if (noSuid)
+            mountOptions.append("nosuid");
+        if (noDev)
+            mountOptions.append("nodev");
         if (readOnly)
             mountOptions.append("ro");
         else
