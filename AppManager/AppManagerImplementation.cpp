@@ -1285,12 +1285,38 @@ Core::hresult AppManagerImplementation::SetInactiveTargetState(const string& app
 bool AppManagerImplementation::createOrUpdatePackageInfoByAppId(const string& appId, PackageInfo &packageData)
 {
     bool result = false;
-    if( packageData.version.empty() || packageData.unpackedPath.empty())
+
+    /* unpackedPath is the private data image path, which is legitimately empty
+       for apps that don't request any storage (dataImageSize == 0) */
+    uint64_t dataImageSize = 0;
+    if (!packageData.configMetadata.empty())
     {
-        LOGWARN("AppId[%s] unpacked path is empty! or version is empty ", appId.c_str());
+        Json::Value root;
+        Json::Reader reader;
+        if (reader.parse(packageData.configMetadata, root) && root.isObject()
+            && root.isMember("dataImageSize") && root["dataImageSize"].isUInt64())
+        {
+            dataImageSize = root["dataImageSize"].asUInt64();
+        }
+    }
+    const bool storageRequired = (dataImageSize > 0);
+
+    if (packageData.version.empty())
+    {
+        LOGWARN("AppId[%s] version is empty!", appId.c_str());
+    }
+    else if (storageRequired && packageData.unpackedPath.empty())
+    {
+        LOGWARN("AppId[%s] requires storage (dataImageSize=%llu) but unpacked path is empty!",
+                appId.c_str(), static_cast<unsigned long long>(dataImageSize));
     }
     else
     {
+        if (packageData.unpackedPath.empty())
+        {
+            LOGWARN("AppId[%s] has no storage requested, continuing with empty unpacked path", appId.c_str());
+        }
+
         AppManagerTypes::ApplicationType packageType = AppManagerTypes::APPLICATION_TYPE_UNKNOWN;
         if (!packageData.configMetadata.empty())
         {

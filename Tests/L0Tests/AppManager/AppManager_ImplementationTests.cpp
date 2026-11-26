@@ -3774,16 +3774,18 @@ uint32_t Test_AM_PackageLockCreateOrUpdateFails()
     installer->installedPackages.push_back(pkg);
 
     auto* handler = new L0Test::MockPackageHandler();
-    // Lock returns ERROR_NONE but does NOT set unpackedPath (stays "").
-    // createOrUpdatePackageInfoByAppId checks unpackedPath.empty() → returns false.
+    // Lock returns ERROR_NONE but does NOT set unpackedPath (stays "") for an app
+    // that requires storage (dataImageSize > 0).
+    // createOrUpdatePackageInfoByAppId rejects it → returns false.
     handler->lockHandler = [](const std::string&,
         const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t& lockId,
         std::string& /*unpackedPath*/,
-        std::string&,
+        std::string& configMetadata,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*&) -> WPEFramework::Core::hresult {
         lockId = 42;
+        configMetadata = R"({"dataImageSize":1024})";
         // unpackedPath intentionally left empty → createOrUpdatePackageInfoByAppId returns false
         return WPEFramework::Core::ERROR_NONE;
     };
@@ -3804,7 +3806,58 @@ uint32_t Test_AM_PackageLockCreateOrUpdateFails()
         WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
 
     L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
-        "packageLock() returns ERROR_GENERAL when Lock() succeeds but unpackedPath empty (L764 Branch 0)");
+        "packageLock() returns ERROR_GENERAL when Lock() succeeds but unpackedPath empty for storage app (L764 Branch 0)");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// packageLock: app with no storage requested (dataImageSize == 0) legitimately
+// has an empty unpackedPath → packageLock must still succeed.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_PackageLockNoStorageEmptyUnpackedPath()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::MockPackageInstaller();
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.nostorage.test";
+    pkg.version   = "3.0.0";
+    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    installer->installedPackages.push_back(pkg);
+
+    auto* handler = new L0Test::MockPackageHandler();
+    handler->lockHandler = [](const std::string&,
+        const std::string&,
+        const WPEFramework::Exchange::IPackageHandler::LockReason&,
+        uint32_t& lockId,
+        std::string& /*unpackedPath*/,
+        std::string& configMetadata,
+        WPEFramework::Exchange::IPackageHandler::ILockIterator*&) -> WPEFramework::Core::hresult {
+        lockId = 43;
+        configMetadata = R"({"dataImageSize":0})";
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    delete static_cast<L0Test::MockPackageHandler*>(cfg.packageHandler);
+    cfg.packageHandler = handler;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
+    const auto status = impl->packageLock(
+        "app.nostorage.test", packageData,
+        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+        "packageLock() succeeds when app has no storage and unpackedPath is empty");
 
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
