@@ -114,10 +114,11 @@ namespace Plugin
             std::list<std::string> mSvpFiles;
             std::list<std::string> mDefaultAllowedLogLevels;
             int mRialtoOverride;
-            bool mHibernationEnabled;
+            bool mHibernationEnabled{};
             std::string mHibernateCompression;
             std::string mHibernateFlashStoragePath;
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 

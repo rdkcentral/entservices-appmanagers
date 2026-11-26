@@ -512,6 +512,9 @@ TEST_F(RuntimeManagerTest, HibernateMethods)
     string appInstanceId("youTube");
 
     EXPECT_EQ(true, createResources(true, "zstd"));
+    WPEFramework::Plugin::AIConfiguration config;
+    config.initialize();
+    const std::string& destination = config.getHibernateFlashStoragePath();
 
     EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(1)
@@ -535,18 +538,24 @@ TEST_F(RuntimeManagerTest, HibernateMethods)
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, RuntimeConfigurationPayload(runtimeConfig)));
 
-    EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID,
-                                                       "dest=/media/apps/memcr,compress=zstd",
-                                                       ::testing::_, ::testing::_))
-        .Times(::testing::AnyNumber())
-        .WillOnce(::testing::Invoke(
-            [&](const string&, const string&, bool& success, string& errorReason) {
-                success = true;
-                errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
-          }));
+    if (destination.empty()) {
+        EXPECT_CALL(*mociContainerMock, HibernateContainer(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+            .Times(0);
+        EXPECT_EQ(Core::ERROR_UNAVAILABLE, interface->Hibernate(appInstanceId));
+    } else {
+        EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID,
+                                                           "dest=" + destination + ",compress=zstd",
+                                                           ::testing::_, ::testing::_))
+            .Times(::testing::AnyNumber())
+            .WillOnce(::testing::Invoke(
+                [&](const string&, const string&, bool& success, string& errorReason) {
+                    success = true;
+                    errorReason = "No Error";
+                    return WPEFramework::Core::ERROR_NONE;
+              }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Hibernate(appInstanceId));
+        EXPECT_EQ(Core::ERROR_NONE, interface->Hibernate(appInstanceId));
+    }
     releaseResources();
 }
 
@@ -2226,4 +2235,5 @@ TEST(DobbySpecGeneratorRialtoTest, RialtoPrefixedSocketPathUsedInSpec)
         << "Bare app temp path /tmp/amazonPrime must NOT appear in spec";
 }
 #endif // ENABLE_RIALTO
+
 
