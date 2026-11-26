@@ -23,6 +23,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <deque>
+#include <fstream>
 #include <mutex>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
@@ -206,6 +207,10 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
     if (nullptr != mService)
     {
         mService->AddRef();
+
+        std::ifstream enableVirtualDisplayFile("/tmp/enableVirtualDisplay");
+        mEnableVirtualDisplay = enableVirtualDisplayFile.good();
+        LOGINFO("RDKWindowManager Virtual display enabled for clients: %s", mEnableVirtualDisplay ? "true" : "false");
 
         char* waylandDisplay = getenv("WAYLAND_DISPLAY");
         if (NULL != waylandDisplay)
@@ -733,9 +738,14 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
 
     LOGINFO("CreateDisplay params: clientId:%s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%d, virtualWidth:%u, virtualHeight:%u, ownerId:%u, groupId:%u, topmost:%d, focus:%d",
             clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
+    bool effectiveVirtualDisplay = virtualDisplay;
+    if (true == mEnableVirtualDisplay)
+    {
+        effectiveVirtualDisplay = true;
+    }
     time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
     result = createDisplay(clientId, displayName, displayWidth, displayHeight,
-                           virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus, capabilities);
+                   effectiveVirtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus, capabilities);
 
     if (false == result)
     {
