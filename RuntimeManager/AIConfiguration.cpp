@@ -65,9 +65,6 @@ namespace Plugin
         , mExtraMounts()
         , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
         , mRialtoOverride(-1)
-        , mHibernationEnabled(false)
-        , mHibernateCompression("lz4")
-        , mHibernateFlashStoragePath("/media/apps/memcr")
     {
         // All members initialized in initialization list above
     }
@@ -719,7 +716,7 @@ namespace Plugin
                 if (compression == "lz4" || compression == "zstd")
                     mHibernateCompression = compression;
                 else
-                    LOGWARN("Unsupported hibernate.defaultCompression='%s'; using %s", compression.c_str(), mHibernateCompression.c_str());
+                    LOGWARN("Unsupported hibernate.defaultCompression='%s'; compression will be omitted", compression.c_str());
             }
             if (hibernate["flashStoragePath"].isString())
                 mHibernateFlashStoragePath = hibernate["flashStoragePath"].asString();
@@ -786,4 +783,5 @@ namespace Plugin
     }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 

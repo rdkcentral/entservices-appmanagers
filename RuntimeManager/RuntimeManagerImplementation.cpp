@@ -998,8 +998,12 @@ namespace WPEFramework
             }
             const std::string& destination = mAIConfiguration->getHibernateFlashStoragePath();
             const std::string& compression = mAIConfiguration->getHibernateCompression();
-            if (!destination.empty())
-                options = "dest=" + destination;
+            if (destination.empty())
+            {
+                LOGWARN("Hibernate rejected: apps.hibernate.flashStoragePath is not configured in /etc/rdk/rdkappmanagers.json");
+                return Core::ERROR_UNAVAILABLE;
+            }
+            options = "dest=" + destination;
             if (!compression.empty())
                 options += (options.empty() ? "" : ",") + std::string("compress=") + compression;
 
@@ -1624,5 +1628,6 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
 

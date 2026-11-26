@@ -459,6 +459,26 @@ end()
 ans(configuration)
 ```
 
+RuntimeManager accepts optional `enable` and `defaultCompression` overrides in
+its plugin JSON configuration:
+
+```json
+{
+  "hibernate": {
+    "enable": true,
+    "defaultCompression": "lz4"
+  }
+}
+```
+
+`defaultCompression` supports `lz4` and `zstd`. When either override is omitted, the value loaded from
+`/etc/rdk/rdkappmanagers.json` is retained. RuntimeManager has no built-in
+compression or flash-destination fallback. If hibernation is enabled but
+`apps.hibernate.flashStoragePath` is missing or empty, the Hibernate request is
+rejected. The flash destination is read only from that shared file, so
+AppManager's flash-space check and RuntimeManager's OCI destination use the
+same path.
+
 ### CMake Build Options
 
 | Option | Description | Default |
@@ -734,3 +754,4 @@ TEST(RuntimeManagerTest, ContainerFailureRecovery) {
 2. Implement custom container isolation features
 3. Optimize container startup time
 4. Add new runtime states for advanced lifecycle management
+
