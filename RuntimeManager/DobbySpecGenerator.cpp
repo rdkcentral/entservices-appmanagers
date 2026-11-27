@@ -715,7 +715,7 @@ void DobbySpecGenerator::fillMissingJson(Json::Value& base, const Json::Value& d
             {
                 // Preserve explicit runtime values: a preload's Suspend launch method
                 // must not be followed by the sysconfig default Local value.
-                if (key == "env" && item.isString())
+                /*if (key == "env" && item.isString())
                 {
                     const std::string value = item.asString();
                     const auto separator = value.find('=');
@@ -737,6 +737,17 @@ void DobbySpecGenerator::fillMissingJson(Json::Value& base, const Json::Value& d
                             continue;
                         }
                     }
+                }*/
+		if ((key == "mounts") && item.isObject())
+                {
+                    const bool alreadyMounted = std::any_of(base[key].begin(), base[key].end(),
+                        [&item](const Json::Value& existing) {
+                            return existing.isObject() &&
+                                   (existing["source"] == item["source"]) &&
+                                   (existing["destination"] == item["destination"]);
+                        });
+                    if (alreadyMounted)
+                        continue;
                 }
                 base[key].append(item);
             }
@@ -1440,7 +1451,7 @@ Json::Value DobbySpecGenerator::createResourceManagerMount(const ApplicationConf
 
     struct stat details;
     Json::Value resmgrMount;
-    int fd = open(resmgrMountSource.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+  /*  int fd = open(resmgrMountSource.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
     if (fd >= 0)
     {
         if (fstat(fd, &details) == 0)
@@ -1469,6 +1480,29 @@ Json::Value DobbySpecGenerator::createResourceManagerMount(const ApplicationConf
 	else
     {
         LOGERR("failed to open '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
+    }
+
+    return resmgrMount;*/
+    if ((0 == lstat(resmgrMountSource.c_str(), &details)) && (false == S_ISLNK(details.st_mode)))
+    {
+        resmgrMount = createBindMount(resmgrMountSource, resmgrMountPoint, mntOptions);
+
+        // check the group owner matches the app
+        if ((details.st_gid != config.mGroupId) &&
+            (0 != lchown(resmgrMountSource.c_str(), -1, config.mGroupId)))
+        {
+            LOGERR("failed to change group owner of '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
+        }
+
+        // and that the group perms are set to 0770
+        if (0 != chmod(resmgrMountSource.c_str(), 0770))
+        {
+            LOGERR("failed to set file permissions to 0770 for '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
+        }
+    }
+    else
+    {
+        LOGWARN("'%s' not available, skipping resource manager mount", resmgrMountSource.c_str());
     }
 
     return resmgrMount;
