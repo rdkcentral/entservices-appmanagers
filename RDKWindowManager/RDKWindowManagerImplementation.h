@@ -220,6 +220,7 @@ namespace Plugin {
         std::list<Exchange::IRDKWindowManager::INotification*> mRDKWindowManagerNotification;
         PluginHost::IShell* mService{};
         std::shared_ptr<RdkWindowManager::RdkWindowManagerEventListener> mEventListener;
+        bool mEnableVirtualDisplay = false;
 
         friend class Job;
     };
