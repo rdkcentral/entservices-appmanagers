@@ -31,6 +31,7 @@
 #include <plugins/plugins.h>
 #include <mutex>
 #include <map>
+#include <set>
 #include <thread>
 
 namespace WPEFramework
@@ -50,8 +51,12 @@ namespace WPEFramework
                     Configuration()
                         : Core::JSON::Container()
                         , appPreinstallDirectory()
+                        , configFileName()
+                        , enabledFactoryReset()
                     {
                         Add(_T("appPreinstallDirectory"), &appPreinstallDirectory);
+                        Add(_T("configFileName"), &configFileName);
+                        Add(_T("enabledFactoryReset"), &enabledFactoryReset);
                     }
                     ~Configuration() = default;
 
@@ -62,6 +67,8 @@ namespace WPEFramework
 
                 public:
                     Core::JSON::String appPreinstallDirectory;
+                    Core::JSON::String configFileName;
+                    Core::JSON::String enabledFactoryReset;
             };
 
         public:
@@ -158,11 +165,15 @@ namespace WPEFramework
             bool isValidSemVer(const std::string &version);
             bool isNewerVersion(const std::string &v1, const std::string &v2);
             bool readPreinstallDirectory(Exchange::IPackageInstaller* packageInstaller, std::list<PackageInfo> &packages);
+            bool readPreinstalledUpdateExclusionList(std::set<std::string> &exclusionList);
             string getFailReason(FailReason reason);
 
         private:
             mutable Core::CriticalSection mAdminLock;
             std::string mAppPreinstallDirectory;
+            std::string mConfigFileName;
+            std::string mEnabledFactoryReset;
+            uint32_t mStartPreinstallCount = 0;
             std::list<Exchange::IPreinstallManager::INotification*> mPreinstallManagerNotifications;
             PluginHost::IShell *mCurrentservice;
             State mPreinstallState;
