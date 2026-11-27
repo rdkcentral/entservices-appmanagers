@@ -1285,35 +1285,37 @@ Core::hresult AppManagerImplementation::SetInactiveTargetState(const string& app
 bool AppManagerImplementation::createOrUpdatePackageInfoByAppId(const string& appId, PackageInfo &packageData)
 {
     bool result = false;
-    if( packageData.version.empty() || packageData.unpackedPath.empty())
+    Json::Value config;
+    Json::Reader reader;
+    const bool configParsed = !packageData.configMetadata.empty()
+        && reader.parse(packageData.configMetadata, config)
+        && config.isObject();
+
+    if (packageData.version.empty())
     {
-        LOGWARN("AppId[%s] unpacked path is empty! or version is empty ", appId.c_str());
+        LOGWARN("AppId[%s] version is empty", appId.c_str());
+    }
+    else if (!configParsed)
+    {
+        LOGWARN("Unable to parse package config metadata for appId=%s", appId.c_str());
+    }
+    else if (!config["appPath"].isString() || config["appPath"].asString().empty())
+    {
+        LOGWARN("AppId[%s] app path is missing or empty in config metadata", appId.c_str());
     }
     else
     {
         AppManagerTypes::ApplicationType packageType = AppManagerTypes::APPLICATION_TYPE_UNKNOWN;
-        if (!packageData.configMetadata.empty())
+        if (config["appType"].isString())
         {
-            Json::Value config;
-            Json::Reader reader;
-            if (reader.parse(packageData.configMetadata, config) && config.isObject())
+            const std::string appType = config["appType"].asString();
+            if ("SYSTEM" == appType)
             {
-                if (config["appType"].isString())
-                {
-                    const std::string appType = config["appType"].asString();
-                    if ("SYSTEM" == appType)
-                    {
-                        packageType = AppManagerTypes::APPLICATION_TYPE_SYSTEM;
-                    }
-                    else if ("INTERACTIVE" == appType)
-                    {
-                        packageType = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
-                    }
-                }
+                packageType = AppManagerTypes::APPLICATION_TYPE_SYSTEM;
             }
-            else
+            else if ("INTERACTIVE" == appType)
             {
-                LOGWARN("Unable to parse package config metadata for appId=%s", appId.c_str());
+                packageType = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
             }
         }
 

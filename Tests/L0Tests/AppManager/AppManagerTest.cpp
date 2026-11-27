@@ -171,6 +171,7 @@ extern uint32_t Test_AM_CloseAppSuccessPath();
 extern uint32_t Test_AM_GetAppPropertyNullStoreRecreates();
 extern uint32_t Test_AM_RegisterNotificationAlreadyRegistered();
 extern uint32_t Test_AM_PackageLockCreateOrUpdateFails();
+extern uint32_t Test_AM_PackageLockNoStorageEmptyUnpackedPath();
 extern uint32_t Test_AM_PackageLockNullHandlerNonEmptyVersion();
 extern uint32_t Test_AM_PackageLockNullLifecycleConnector();
 extern uint32_t Test_AM_LICLaunchLoadedNotSuspended();
@@ -376,6 +377,7 @@ int main()
         { "AM_GetAppPropertyNullStoreRecreates", Test_AM_GetAppPropertyNullStoreRecreates },
         { "AM_RegisterNotificationAlreadyRegistered", Test_AM_RegisterNotificationAlreadyRegistered },
         { "AM_PackageLockCreateOrUpdateFails", Test_AM_PackageLockCreateOrUpdateFails },
+        { "AM_PackageLockNoStorageEmptyUnpackedPath", Test_AM_PackageLockNoStorageEmptyUnpackedPath },
         { "AM_PackageLockNullHandlerNonEmptyVersion", Test_AM_PackageLockNullHandlerNonEmptyVersion },
         { "AM_PackageLockNullLifecycleConnector", Test_AM_PackageLockNullLifecycleConnector },
         { "AM_LICLaunchLoadedNotSuspended", Test_AM_LICLaunchLoadedNotSuspended },
