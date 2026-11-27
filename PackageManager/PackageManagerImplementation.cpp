@@ -1021,7 +1021,7 @@ namespace Plugin {
         payload.SetUnsigned("groupId", config.groupId ? config.groupId : groupId);
         payload.SetUnsigned("dataImageSize", config.dataImageSize);
         payload.SetStringArray("fkpsFiles", std::vector<string>(config.fkpsFiles.begin(), config.fkpsFiles.end()));
-        payload.SetString("dataImagePath",config.dataImagePath);
+        payload.SetString("extractedPath",config.runtimePath);
         string capabilities = config.capabilities;
         // Preserve legacy runtimePackage->runtime()=="runtime/html" intent without schema changes.
         if ("html" == config.runtimeType)
