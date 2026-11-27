@@ -935,6 +935,27 @@ Core::hresult AppManagerImplementation::createPackageManagerObject()
         mPackageManagerInstallerObject->AddRef();
         mPackageManagerInstallerObject->Register(&mPackageManagerNotification);
         status = Core::ERROR_NONE;
+
+        /* PackageManager may be built with deferred cache initialization, in which case ListPackages
+         * fails until someone starts it. Starting it again when it is already running is harmless. */
+        Exchange::IPackageCacheInitializer* cacheInitializer = mCurrentservice->QueryInterfaceByCallsign<Exchange::IPackageCacheInitializer>("org.rdk.AppPackageManager");
+        if (nullptr == cacheInitializer)
+        {
+            LOGWARN("IPackageCacheInitializer is not available, the package cache will not be started by AppManager");
+        }
+        else
+        {
+            const Core::hresult cacheStatus = cacheInitializer->StartCacheInitialization();
+            if (Core::ERROR_NONE == cacheStatus)
+            {
+                LOGINFO("Requested PackageManager to start its package cache initialization");
+            }
+            else
+            {
+                LOGWARN("PackageManager could not start its package cache initialization, status %d", static_cast<int>(cacheStatus));
+            }
+            cacheInitializer->Release();
+        }
     }
     return status;
 }
@@ -2147,9 +2168,11 @@ Core::hresult AppManagerImplementation::fetchAppPackageList(std::vector<WPEFrame
     {
         Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
 
-        if (mPackageManagerInstallerObject->ListPackages(packages) != Core::ERROR_NONE || packages == nullptr)
+        const Core::hresult listStatus = mPackageManagerInstallerObject->ListPackages(packages);
+        if (listStatus != Core::ERROR_NONE || packages == nullptr)
         {
-            LOGERR("ListPackage is returning Error or Packages is nullptr");
+            LOGERR("Failed to get the installed package list from PackageManager: ListPackages returned status %d, package iterator is %s",
+                static_cast<int>(listStatus), (nullptr == packages) ? "null" : "valid");
             goto End;
         }
 
