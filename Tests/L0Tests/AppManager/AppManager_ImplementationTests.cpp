@@ -1491,9 +1491,9 @@ uint32_t Test_AM_CreateOrUpdatePackageInfoValidData()
     AppManagerTestFixture fixture(true, true);
     WPEFramework::Plugin::AppManagerTypes::PackageInfo pkg;
     pkg.version     = "2.0.0";
-    pkg.unpackedPath = "/opt/test/app";
+    pkg.unpackedPath.clear();
     pkg.appMetadata  = "{}";
-    pkg.configMetadata = R"({"appType":"SYSTEM"})";
+    pkg.configMetadata = R"({"appType":"SYSTEM","appPath":"/opt/test/app"})";
     bool result = fixture.impl->createOrUpdatePackageInfoByAppId("com.test.validapp", pkg);
     L0Test::ExpectTrue(fixture.tr, result,
         "createOrUpdatePackageInfoByAppId returns true for valid version and path");
@@ -3758,9 +3758,8 @@ uint32_t Test_AM_RegisterNotificationAlreadyRegistered()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// packageLock: Lock() returns ERROR_NONE but leaves unpackedPath empty →
-// createOrUpdatePackageInfoByAppId returns false → L764 Branch 0 (!result) taken
-// → status set to ERROR_GENERAL.
+// packageLock: Lock() returns ERROR_NONE but config metadata has no appPath →
+// createOrUpdatePackageInfoByAppId returns false and packageLock reports an error.
 // ─────────────────────────────────────────────────────────────────────────────
 uint32_t Test_AM_PackageLockCreateOrUpdateFails()
 {
@@ -3774,9 +3773,7 @@ uint32_t Test_AM_PackageLockCreateOrUpdateFails()
     installer->installedPackages.push_back(pkg);
 
     auto* handler = new L0Test::MockPackageHandler();
-    // Lock returns ERROR_NONE but does NOT set unpackedPath (stays "") for an app
-    // that requires storage (dataImageSize > 0).
-    // createOrUpdatePackageInfoByAppId rejects it → returns false.
+    // Missing appPath in config metadata causes createOrUpdatePackageInfoByAppId to reject the package.
     handler->lockHandler = [](const std::string&,
         const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
@@ -3806,7 +3803,7 @@ uint32_t Test_AM_PackageLockCreateOrUpdateFails()
         WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
 
     L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
-        "packageLock() returns ERROR_GENERAL when Lock() succeeds but unpackedPath empty for storage app (L764 Branch 0)");
+        "packageLock() returns ERROR_GENERAL when Lock() succeeds but config metadata has no appPath");
 
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
@@ -3837,7 +3834,7 @@ uint32_t Test_AM_PackageLockNoStorageEmptyUnpackedPath()
         std::string& configMetadata,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*&) -> WPEFramework::Core::hresult {
         lockId = 43;
-        configMetadata = R"({"dataImageSize":0})";
+        configMetadata = R"({"dataImageSize":0,"appPath":"/opt/app.nostorage.test"})";
         return WPEFramework::Core::ERROR_NONE;
     };
 
