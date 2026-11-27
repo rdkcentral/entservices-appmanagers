@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <condition_variable>
@@ -70,12 +71,14 @@ namespace Plugin {
         class DownloadInfo {
             const unsigned MIN_RETRIES = 2;
             public:
-                DownloadInfo(const string& url, const string& id, bool priority, uint8_t retries, long limit)
+                DownloadInfo(const string& url, const string& id, bool priority, uint8_t retries, long limit,
+                    std::chrono::steady_clock::time_point requestReceivedAt = std::chrono::steady_clock::now())
                 : id(id)
                 , url(url)
                 , priority(priority)
                 , retries(retries ? retries : MIN_RETRIES)
                 , rateLimit(limit)
+                , requestReceivedAt(requestReceivedAt)
                 , isCancelled(false)
                 {
                 }
@@ -86,6 +89,7 @@ namespace Plugin {
                 uint8_t getRetries() { return retries; }
                 void    setRateLimit(uint32_t limit) { rateLimit.store(limit, std::memory_order_release); }
                 uint32_t getRateLimit() { return rateLimit.load(std::memory_order_acquire); }
+                std::chrono::steady_clock::time_point getRequestReceivedAt() { return requestReceivedAt; }
                 string  getFileLocator() { return fileLocator; }
                 void    setFileLocator(string &locator) { fileLocator = locator; }
                 void    cancel() { isCancelled.store(true, std::memory_order_release); }
@@ -97,6 +101,7 @@ namespace Plugin {
                 bool    priority;
                 uint8_t retries;
                 std::atomic<uint32_t> rateLimit;
+                std::chrono::steady_clock::time_point requestReceivedAt;
                 string  fileLocator;
                 std::atomic<bool> isCancelled;
         };

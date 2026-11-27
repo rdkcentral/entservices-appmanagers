@@ -127,6 +127,7 @@ extern uint32_t Test_Telemetry_RecordDownloadTimeWhenDisabledIsNoop();
 extern uint32_t Test_Telemetry_RecordDownloadErrorWhenDisabledIsNoop();
 extern uint32_t Test_Telemetry_RecordDownloadTimeWithValidParamsDoesNotCrash();
 extern uint32_t Test_Telemetry_RecordDownloadErrorWithValidParamsDoesNotCrash();
+extern uint32_t Test_Telemetry_DownloadErrorClassification();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RUN_TEST macro — mirrors the pattern in RuntimeManagerTest.cpp
@@ -260,6 +261,7 @@ int main()
     RUN_TEST(Test_Telemetry_RecordDownloadErrorWhenDisabledIsNoop);
     RUN_TEST(Test_Telemetry_RecordDownloadTimeWithValidParamsDoesNotCrash);
     RUN_TEST(Test_Telemetry_RecordDownloadErrorWithValidParamsDoesNotCrash);
+    RUN_TEST(Test_Telemetry_DownloadErrorClassification);
 
     std::cout << std::endl;
     L0Test::PrintTotals(std::cout, "DownloadManager_L0Test", totalFailures);

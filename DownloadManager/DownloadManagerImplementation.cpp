@@ -18,8 +18,12 @@
 **/
 
 #include <chrono>
+#include <cerrno>
+#include <cstring>
+#include <sys/stat.h>
 
 #include "DownloadManagerImplementation.h"
+#include "DownloadManagerDownloadError.h"
 #include "UtilsAppManagerTelemetry.h"
 
 #define DOWNLOADER_DOWNLOAD_ID_START        (2000)
@@ -207,6 +211,7 @@ namespace Plugin {
         const Exchange::IDownloadManager::Options &options,
         string &downloadId)
     {
+        const auto requestReceivedAt = std::chrono::steady_clock::now();
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -227,7 +232,7 @@ namespace Plugin {
         {
             std::lock_guard<std::mutex> lock(mQueueMutex);
             std::string downloadIdStr = std::to_string(++mDownloadId);
-            DownloadInfoPtr newDownload = std::make_shared<DownloadInfo>(url, downloadIdStr, options.priority, options.retries, options.rateLimit);
+            DownloadInfoPtr newDownload = std::make_shared<DownloadInfo>(url, downloadIdStr, options.priority, options.retries, options.rateLimit, requestReceivedAt);
             if (newDownload != nullptr)
             {
                 std::string filename = "";
@@ -484,6 +489,8 @@ namespace Plugin {
                     downloadRequest->getRateLimit());
 
             time_t downloadStartTime = DownloadManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+            uint32_t totalRetries = 0;
+            auto firstAttemptAt = downloadRequest->getRequestReceivedAt();
 
             for (int i = 0; i < downloadRequest->getRetries(); ++i)
             {
@@ -500,6 +507,11 @@ namespace Plugin {
                         LOGINFO("DM: Download cancelled: id=%s !", downloadRequest->getId().c_str());
                         break;
                     }
+                    ++totalRetries;
+                }
+                else
+                {
+                    firstAttemptAt = std::chrono::steady_clock::now();
                 }
 
                 LOGDBG("DM: Attempting download (%d/%d): id=%s url=%s file=%s rateLimit=%u",
@@ -516,6 +528,10 @@ namespace Plugin {
                 auto end = std::chrono::steady_clock::now();
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 long httpCode = mHttpClient->getStatusCode();
+                if ((DownloadManagerHttpClient::Status::DiskError != status) && (httpCode >= 400))
+                {
+                    status = DownloadManagerHttpClient::Status::HttpError;
+                }
                 if (status == DownloadManagerHttpClient::Status::Success)
                 {
                     LOGINFO("DM: Download succeeded (took %lldms): id=%s url=%s file=%s retries=%d rateLimit=%u http_code=%ld",
@@ -544,17 +560,21 @@ namespace Plugin {
             }
 
             DownloadReason reason = static_cast<DownloadReason>(DOWNLOAD_REASON_NONE);
+            const auto downloadCompletedAt = std::chrono::steady_clock::now();
             int64_t totalDownloadTime = DownloadManagerTelemetryReporting::getInstance().getCurrentTimestampMs() - downloadStartTime;
+            bool downloadFailed = false;
             switch (status)
             {
                 case DownloadManagerHttpClient::Status::DiskError:
                     reason = DownloadReason::DISK_PERSISTENCE_FAILURE;
+                    downloadFailed = true;
                     LOGERR("DM: Download failed due to disk error: id=%s", downloadRequest->getId().c_str());
                     DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry(downloadRequest->getId(), static_cast<int>(DownloadReason::DISK_PERSISTENCE_FAILURE));
                     break;
 
                 case DownloadManagerHttpClient::Status::HttpError:
                     reason = DownloadReason::DOWNLOAD_FAILURE;
+                    downloadFailed = true;
                     LOGERR("DM: Download failed due to HTTP error: id=%s", downloadRequest->getId().c_str());
                     DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry(downloadRequest->getId(), static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
                     break;
@@ -564,7 +584,51 @@ namespace Plugin {
                     break; /* Do nothing */
             }
 
+            bool downloadCompleteTelemetryReady = false;
+            uint64_t packageSizeBytes = 0;
+            uint64_t timeInQueueMs = 0;
+            uint64_t totalTimeMs = 0;
+            if (!downloadFailed && !downloadRequest->cancelled())
+            {
+                struct stat fileStat;
+                const std::string locator = downloadRequest->getFileLocator();
+                const bool sizeAvailable = (0 == stat(locator.c_str(), &fileStat)) && (fileStat.st_size >= 0);
+                const auto packageSize = sizeAvailable ? fileStat.st_size : 0;
+                if (!sizeAvailable)
+                {
+                    LOGERR("DM: AppPackageDownloadComplete telemetry skipped: cannot get package size for id=%s (%s)",
+                           downloadRequest->getId().c_str(), strerror(errno));
+                }
+                else
+                {
+                    packageSizeBytes = static_cast<uint64_t>(packageSize);
+                    timeInQueueMs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                        firstAttemptAt - downloadRequest->getRequestReceivedAt()).count());
+                    totalTimeMs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                        downloadCompletedAt - downloadRequest->getRequestReceivedAt()).count());
+                    downloadCompleteTelemetryReady = true;
+                }
+            }
+
             notifyDownloadStatus(downloadRequest->getId(), downloadRequest->getFileLocator(), reason);
+            if (downloadCompleteTelemetryReady)
+            {
+                DownloadManagerTelemetryReporting::getInstance().publishAppPackageDownloadCompleteTelemetry(
+                    downloadRequest->getId(),
+                    packageSizeBytes,
+                    downloadRequest->getPriority(),
+                    static_cast<uint64_t>(downloadRequest->getRateLimit()),
+                    totalRetries,
+                    timeInQueueMs,
+                    totalTimeMs);
+            }
+            if (downloadFailed)
+            {
+                DownloadManagerTelemetryReporting::getInstance().publishAppPackageDownloadErrorTelemetry(
+                    downloadRequest->getId(),
+                    DownloadManagerTelemetry::downloadErrorTelemetry(downloadRequest->getUrl(), status,
+                        mHttpClient->getCurlCode(), mHttpClient->getStatusCode()));
+            }
             {
                 std::lock_guard<std::mutex> lock(mQueueMutex);
                 mCurrentDownload.reset();

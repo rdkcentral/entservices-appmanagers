@@ -216,6 +216,21 @@ int nextRetryDuration(int n) {
 
 The exact scheduling and retry limits remain implementation details.
 
+### Package Download Telemetry
+
+DownloadManager publishes two events directly through `ITelemetryMetrics::PublishEvent` after a download reaches a terminal state. Both use the generated download ID as `metricContext`; source URLs and CURL codes are never sent.
+
+| Marker | Trigger | Enablement | Fields |
+|--------|---------|------------|--------|
+| `ENTS_INFO_RDKAMAppPackageDownloadComplete` | Download finished with no error | Only with `APP_MANAGER_OBSERVABILITY_VERBOSE` | `metricContext`, `packageSize` (bytes), `priority`, `rateLimit`, `totalRetries`, `timeInQueue` (ms), `totalDownloadTime` (ms) |
+| `ENTS_INFO_RDKAMAppPackageDownloadError` | Download failed after retries (404 stops early) | Always | `metricContext`, `errorTelemetry` |
+
+`timeInQueue` runs from `Download()` entry to the first transfer attempt. `totalDownloadTime` runs from `Download()` entry to completion, including retries. `totalRetries` counts retries actually made. `rateLimit` is reported as passed to CURL (bytes/s). An HTTP status of 400 or higher is treated as a failed attempt, so error pages are no longer reported as a successful download. Requests rejected before a download ID exists (no internet, empty URL) publish no marker.
+
+`errorTelemetry` values: `DISK_WRITE_ERROR`, `URL_INVALID`, `NETWORK_DNS_FAILURE`, `NETWORK_TIMEOUT`, `NETWORK_CONNECTION_REFUSED`, `NETWORK_SSL_ERROR`, `NETWORK_AUTH_ERROR` (HTTP 401/403), `NETWORK_SERVER_ERROR` (5xx), `NETWORK_RATE_LIMITED` (429), `NETWORK_NOT_FOUND` (404), `NETWORK_CONTENT_ERROR` and the fallback `NETWORK_ERROR`.
+
+The legacy `DownloadTime` and `DownloadError` markers are unchanged.
+
 ---
 
 ## 7. Diagrams & Visual Aids

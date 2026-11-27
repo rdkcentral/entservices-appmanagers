@@ -36,8 +36,19 @@ public:
     void reset();
     void recordDownloadTimeTelemetry(const std::string& downloadId, int64_t downloadTimeMs);
     void recordDownloadErrorTelemetry(const std::string& downloadId, int errorCode);
+    void publishAppPackageDownloadErrorTelemetry(const std::string& metricContext,
+        const std::string& errorTelemetry);
+    void publishAppPackageDownloadCompleteTelemetry(const std::string& metricContext,
+        uint64_t packageSize,
+        bool priority,
+        uint64_t rateLimit,
+        uint32_t totalRetries,
+        uint64_t timeInQueue,
+        uint64_t totalDownloadTime);
 
 private:
+    void publishEvent(const char* markerName, const std::string& telemetryMetrics,
+        bool verboseOnly, const std::string& metricContext);
     DownloadManagerTelemetryReporting();
     ~DownloadManagerTelemetryReporting();
 };

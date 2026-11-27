@@ -34,7 +34,6 @@
 
 // Spec: entservices-appmanagers
 #include "PackageManagerImplementation.h"
-#include "PackageManagerDownloadError.h"
 #include "PackageManagerTelemetryReporting.h"
 #include "RuntimeConfigPayload.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -313,7 +312,6 @@ namespace Plugin {
         const Exchange::IPackageDownloader::Options &options,
         Exchange::IPackageDownloader::DownloadId &downloadId)
     {
-        const auto requestReceivedAt = std::chrono::steady_clock::now();
         Core::hresult result = Core::ERROR_NONE;
 
         if (!mCurrentservice->SubSystems()->IsActive(PluginHost::ISubSystem::INTERNET)) {
@@ -322,8 +320,7 @@ namespace Plugin {
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        DownloadInfoPtr di = DownloadInfoPtr(new DownloadInfo(
-            url, std::to_string(++mNextDownloadId), options.priority, options.retries, options.rateLimit, requestReceivedAt));
+        DownloadInfoPtr di = DownloadInfoPtr(new DownloadInfo(url, std::to_string(++mNextDownloadId), options.retries, options.rateLimit));
         std::string filename = "";
         if ("/" == downloadDir) {
             filename = downloadDir + "package" + di->GetId();
@@ -1419,8 +1416,6 @@ namespace Plugin {
             } else {
                 HttpClient::Status status = HttpClient::Status::Success;
                 int waitTime = 1;
-                uint32_t totalRetries = 0;
-                auto downloadStartTime = di->GetRequestReceivedAt();
                 for (int i = 0; i < di->GetRetries(); i++) {
                     if (i) {
                         waitTime = nextRetryDuration(waitTime);
@@ -1430,13 +1425,9 @@ namespace Plugin {
                         if (di->Cancelled()) {
                             break;
                         }
-                        ++totalRetries;
                     }
                     LOGDBG("Downloading id=%s url=%s file=%s rateLimit=%ld",
                         di->GetId().c_str(), di->GetUrl().c_str(), di->GetFileLocator().c_str(), di->GetRateLimit());
-                    if (0 == i) {
-                        downloadStartTime = std::chrono::steady_clock::now();
-                    }
                     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                     status = mHttpClient->downloadFile(di->GetUrl(), di->GetFileLocator(), di->GetRateLimit());
                     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -1446,60 +1437,21 @@ namespace Plugin {
                             mHttpClient->getStatusCode(),
                             elapsed);*/
                     }
-                    const long httpCode = mHttpClient->getStatusCode();
-                    if ((HttpClient::Status::DiskError != status) && (httpCode >= 400)) {
-                        status = HttpClient::Status::HttpError;
-                    }
-                    if (status == HttpClient::Status::Success || httpCode == 404) {
+                    if ( status == HttpClient::Status::Success || mHttpClient->getStatusCode() == 404) {  // XXX: other status codes
                         break;
                     }
                 }
 
-                const auto downloadCompletedAt = std::chrono::steady_clock::now();
+                if (mHttpClient->getStatusCode() == 404) {
+                    status = HttpClient::Status::HttpError;
+                }
                 DownloadReason reason = DownloadReason::NONE;
-                bool downloadCompleteTelemetryReady = false;
-                uint64_t packageSizeBytes = 0;
-                uint64_t timeInQueueMs = 0;
-                uint64_t totalDownloadTimeMs = 0;
                 switch (status) {
                     case HttpClient::Status::DiskError: reason = DownloadReason::DISK_PERSISTENCE_FAILURE; break;
                     case HttpClient::Status::HttpError: reason = DownloadReason::DOWNLOAD_FAILURE; break;
                     default: break; /* Do nothing */
                 }
-
-                if (DownloadReason::NONE == reason) {
-                    std::error_code fileSizeError;
-                    const auto packageSize = std::filesystem::file_size(di->GetFileLocator(), fileSizeError);
-                    if (fileSizeError) {
-                        LOGERR("AppPackageDownloadComplete telemetry skipped: cannot get package size for downloadId=%s (%s)",
-                            di->GetId().c_str(), fileSizeError.message().c_str());
-                    } else {
-                        packageSizeBytes = static_cast<uint64_t>(packageSize);
-                        timeInQueueMs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
-                            downloadStartTime - di->GetRequestReceivedAt()).count());
-                        totalDownloadTimeMs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
-                            downloadCompletedAt - di->GetRequestReceivedAt()).count());
-                        downloadCompleteTelemetryReady = true;
-                    }
-                }
-
                 NotifyDownloadStatus(di->GetId(), di->GetFileLocator(), reason);
-                if (downloadCompleteTelemetryReady) {
-                    PackageManagerTelemetryReporting::getInstance().publishAppPackageDownloadCompleteTelemetry(
-                        di->GetId(),
-                        packageSizeBytes,
-                        di->GetPriority(),
-                        static_cast<uint64_t>(di->GetRateLimit()),
-                        totalRetries,
-                        timeInQueueMs,
-                        totalDownloadTimeMs);
-                }
-                if (DownloadReason::NONE != reason) {
-                    const std::string errorTelemetry = PackageManagerTelemetry::downloadErrorTelemetry(
-                        di->GetUrl(), status, mHttpClient->getCurlCode(), mHttpClient->getStatusCode());
-                    PackageManagerTelemetryReporting::getInstance().publishAppPackageDownloadErrorTelemetry(
-                        di->GetId(), errorTelemetry);
-                }
                 mInprogressDownload.reset();
             }
         }

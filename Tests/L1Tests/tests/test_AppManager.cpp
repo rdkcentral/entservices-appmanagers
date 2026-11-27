@@ -5214,6 +5214,99 @@ TEST_P(AppCrashedCompletionTest, UnexpectedCrashCapturesVersionBeforeCleanupAndP
 INSTANTIATE_TEST_SUITE_P(PublishSuccessAndFailure, AppCrashedCompletionTest,
     ::testing::Values(Core::ERROR_NONE, Core::ERROR_GENERAL));
 
+class AppCrashCleanupTest : public AppCrashedTelemetryTest,
+    public ::testing::WithParamInterface<Exchange::ILifecycleManager::LifecycleState> {
+};
+
+TEST_P(AppCrashCleanupTest, CleanupRetainsCrashStateWithoutReportingCompletedLaunchAsAbort)
+{
+    const auto crashState = GetParam();
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [&](AppInfo& app) {
+        app.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        app.setAppNewState(Exchange::IAppManager::APP_STATE_ACTIVE);
+        app.setLaunchTelemetryContext(Exchange::IAppManager::APP_STATE_UNLOADED, "intent", APPMANAGER_APP_VERSION);
+        app.setLaunchReachedActive(true);
+        app.setCurrentAction(AppManagerImplementation::APP_ACTION_LAUNCH);
+        app.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+    });
+    EXPECT_CALL(*telemetry, PublishEvent(::testing::_, "ENTS_INFO_RDKAMAppLaunchError", false)).Times(0);
+    ExpectCrashPayload(crashState == Exchange::ILifecycleManager::ACTIVE ? "ACTIVE" : "INACTIVE");
+
+    ASSERT_NE(nullptr, mLifecycleManagerStateNotification_cb);
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expected;
+    expected.appId = APPMANAGER_APP_ID;
+    expected.appInstanceId = APPMANAGER_APP_INSTANCE;
+    if (crashState == Exchange::ILifecycleManager::ACTIVE) {
+        expected.oldState = Exchange::IAppManager::APP_STATE_ACTIVE;
+        expected.newState = Exchange::IAppManager::APP_STATE_PAUSED;
+        expected.errorReason = Exchange::IAppManager::APP_ERROR_NONE;
+        notification.SetExpectedEvent(expected);
+        mAppManagerImpl->Register(&notification);
+        mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+            APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE, Exchange::ILifecycleManager::ACTIVE,
+            Exchange::ILifecycleManager::PAUSED, "unexpectedTermination");
+        ASSERT_TRUE(notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged) &
+            AppManager_onAppLifecycleStateChanged);
+        mAppManagerImpl->Unregister(&notification);
+    }
+    expected.oldState = Exchange::IAppManager::APP_STATE_TERMINATING;
+    expected.newState = Exchange::IAppManager::APP_STATE_UNLOADED;
+    expected.errorReason = Exchange::IAppManager::APP_ERROR_ABORT;
+    notification.SetExpectedEvent(expected);
+    mAppManagerImpl->Register(&notification);
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        crashState == Exchange::ILifecycleManager::ACTIVE ? Exchange::ILifecycleManager::PAUSED : crashState,
+        Exchange::ILifecycleManager::TERMINATING, "unexpectedTermination");
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE, Exchange::ILifecycleManager::TERMINATING,
+        Exchange::ILifecycleManager::UNLOADED, "unexpectedTermination");
+    EXPECT_TRUE(notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded) & AppManager_onAppUnloaded);
+    mAppManagerImpl->Unregister(&notification);
+}
+
+INSTANTIATE_TEST_SUITE_P(ForegroundAndBackground, AppCrashCleanupTest,
+    ::testing::Values(Exchange::ILifecycleManager::ACTIVE, Exchange::ILifecycleManager::PAUSED,
+        Exchange::ILifecycleManager::SUSPENDED, Exchange::ILifecycleManager::HIBERNATED));
+
+TEST_F(AppCrashedTelemetryTest, StartupCleanupReportsLaunchAbortButNotAppCrash)
+{
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& app) {
+        app.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        app.setAppNewState(Exchange::IAppManager::APP_STATE_INITIALIZING);
+        app.setLaunchTelemetryContext(Exchange::IAppManager::APP_STATE_UNLOADED, "intent", APPMANAGER_APP_VERSION);
+        app.setCurrentAction(AppManagerImplementation::APP_ACTION_LAUNCH);
+        app.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+    });
+    EXPECT_CALL(*telemetry, PublishEvent(::testing::_, "ENTS_INFO_RDKAMAppCrashed", false)).Times(0);
+    EXPECT_CALL(*telemetry, PublishEvent(::testing::_, "ENTS_INFO_RDKAMAppLaunchError", false))
+        .WillOnce([](const string& payload, const string&, bool) {
+            JsonObject event;
+            EXPECT_TRUE(event.FromString(payload));
+            EXPECT_EQ(Exchange::IAppManager::APP_ERROR_ABORT, event["errorCode"].Number());
+            return Core::ERROR_NONE;
+        });
+    ASSERT_NE(nullptr, mLifecycleManagerStateNotification_cb);
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expected;
+    expected.appId = APPMANAGER_APP_ID;
+    expected.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expected.oldState = Exchange::IAppManager::APP_STATE_TERMINATING;
+    expected.newState = Exchange::IAppManager::APP_STATE_UNLOADED;
+    expected.errorReason = Exchange::IAppManager::APP_ERROR_ABORT;
+    notification.SetExpectedEvent(expected);
+    mAppManagerImpl->Register(&notification);
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE, Exchange::ILifecycleManager::INITIALIZING,
+        Exchange::ILifecycleManager::TERMINATING, "unexpectedTermination");
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE, Exchange::ILifecycleManager::TERMINATING,
+        Exchange::ILifecycleManager::UNLOADED, "unexpectedTermination");
+    EXPECT_TRUE(notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded) & AppManager_onAppUnloaded);
+    mAppManagerImpl->Unregister(&notification);
+}
+
 class AppCrashedSuppressionTest : public AppCrashedTelemetryTest, public ::testing::WithParamInterface<bool> {
 };
 

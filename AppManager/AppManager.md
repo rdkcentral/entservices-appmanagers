@@ -236,6 +236,10 @@ troubleshooting. It contains exactly these event fields:
 
 Reporting is triggered by an `UNLOADED` lifecycle notification carrying
 `unexpectedTermination`. It uses the state before unloading, not `UNLOADED`.
+LifecycleManager marks unexpected-termination cleanup transitions from the
+start of cleanup. AppManager retains the first transition's old state for that
+app instance, so ACTIVE-to-PAUSED-to-TERMINATING-to-UNLOADED cleanup reports ACTIVE
+rather than losing the crash to the final TERMINATING state.
 Startup failures, intentional termination, duplicate notifications, and
 notifications for a stale app instance do not publish this marker.
 
@@ -275,6 +279,9 @@ they do not represent a failure to reach the ACTIVE lifecycle state.
 `APP_ERROR_DOBBY_SPEC` (6), `APP_ERROR_NOT_INSTALLED` (7), and
 `APP_ERROR_PACKAGE_LOCK` (8). When package context is unavailable, the event
 is still sent with the unavailable string field(s) empty and a warning logged.
+Unexpected termination produces a launch-abort marker only if the current
+launch has not reached ACTIVE. A retained launch action after a successful
+launch does not turn a subsequent crash into a launch failure.
 
 ### AppLaunchComplete telemetry
 

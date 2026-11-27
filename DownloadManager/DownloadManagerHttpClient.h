@@ -68,6 +68,10 @@ class DownloadManagerHttpClient {
            std::lock_guard<std::mutex> lock(mHttpClientMutex);
            return httpCode;
         }
+        CURLcode getCurlCode() {
+           std::lock_guard<std::mutex> lock(mHttpClientMutex);
+           return curlCode;
+        }
 
     private:
         static size_t progressCb(void *ptr, double dltotal, double dlnow, double ultotal, double ulnow);
@@ -77,6 +81,7 @@ class DownloadManagerHttpClient {
         std::mutex mHttpClientMutex;
         CURL    *curl;
         long    httpCode = 0;
+        CURLcode curlCode = CURLE_FAILED_INIT;
         bool    bCancel = false;
         uint8_t progress = 0;
 };

@@ -250,7 +250,8 @@ namespace WPEFramework
                      }
                      const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
                      const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
-                     const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
+                     // Mark cleanup transitions too, so consumers can capture the state before cleanup.
+                     const string effectiveNavigationIntent = isUnexpectedTermination ? "unexpectedTermination" : navigationIntent;
                      obj["navigationIntent"] = effectiveNavigationIntent;
                      if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
                          context->setUnexpectedTermination(false);

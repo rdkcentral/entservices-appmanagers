@@ -1113,7 +1113,9 @@ End:
 
         void LifecycleInterfaceConnector::OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState oldState, const Exchange::ILifecycleManager::LifecycleState newState, const string& navigationIntent)
         {
-            LOGINFO("OnAppLifecycleStateChanged event triggered for appId=%s appInstanceId=%s oldState=%d newState=%d", appId.c_str(), appInstanceId.c_str(), static_cast<int>(oldState), static_cast<int>(newState));
+            LOGINFO("OnAppLifecycleStateChanged event triggered for appId=%s appInstanceId=%s oldState=%d newState=%d unexpectedTermination=%d",
+                appId.c_str(), appInstanceId.c_str(), static_cast<int>(oldState), static_cast<int>(newState),
+                "unexpectedTermination" == navigationIntent);
             {
                 std::lock_guard<std::mutex> lock(mLifecycleQueueMutex);
                 mLifecycleTasks.push({appId, appInstanceId, oldState, newState, navigationIntent});
@@ -1185,17 +1187,24 @@ End:
                 bool reportUnexpectedCrash = false;
                 bool reportLaunchFailure = false;
                 std::string crashedAppVersion;
+                auto crashedAppState = oldState;
                 AppInfoManager::getInstance().update(appId, [&](AppInfo& a) {
                     if (a.getAppInstanceId() == appInstanceId)
                     {
+                        if (("unexpectedTermination" == navigationIntent) &&
+                            (Exchange::ILifecycleManager::UNLOADED == a.getUnexpectedTerminationState())) {
+                            a.setUnexpectedTerminationState(oldState);
+                        }
                         reportUnexpectedCrash = ("unexpectedTermination" == navigationIntent) &&
                             (Exchange::ILifecycleManager::UNLOADED == newState) &&
                             (Exchange::IAppManager::APP_STATE_UNLOADED != a.getAppNewState());
                         reportLaunchFailure = reportUnexpectedCrash &&
                             (Exchange::ILifecycleManager::ACTIVE != oldState) &&
+                            !a.hasLaunchReachedActive() &&
                             (AppManagerImplementation::APP_ACTION_LAUNCH == a.getCurrentAction());
                         if (reportUnexpectedCrash) {
                             crashedAppVersion = a.getPackageInfo().version;
+                            crashedAppState = a.getUnexpectedTerminationState();
                         }
                         a.setAppOldState(oldAppState);
                         a.setAppNewState(newAppState);
@@ -1217,6 +1226,7 @@ End:
 
                         if (Exchange::ILifecycleManager::LifecycleState::ACTIVE == newState)
                         {
+                            a.setLaunchReachedActive(true);
                             gAppsActiveCounter++;
                             a.setLastActiveIndex(gAppsActiveCounter);
                         }
@@ -1260,7 +1270,7 @@ End:
                                     AppManagerTelemetryReporting::getInstance().reportAppLaunchErrorTelemetry(
                                         appId, Exchange::IAppManager::APP_ERROR_ABORT);
                                 }
-                                AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, crashedAppVersion, oldState);
+                                AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, crashedAppVersion, crashedAppState);
                             }
                         }
                         mAppCurrentActionList.erase(appId);

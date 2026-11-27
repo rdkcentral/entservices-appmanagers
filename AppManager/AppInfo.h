@@ -60,6 +60,8 @@ public:
     Exchange::IAppManager::AppLifecycleState getLaunchInitialState() const;
     const std::string& getLaunchTelemetryIntent() const;
     const std::string& getLaunchTelemetryVersion() const;
+    bool hasLaunchReachedActive() const;
+    Exchange::ILifecycleManager::LifecycleState getUnexpectedTerminationState() const;
 
     AppManagerTypes::CurrentAction getCurrentAction() const;
 
@@ -82,6 +84,8 @@ public:
     void setRequestedLaunchVersion(const std::string& version);
     void setLaunchTelemetryContext(Exchange::IAppManager::AppLifecycleState initialState,
         const std::string& intent, const std::string& version);
+    void setLaunchReachedActive(bool reached);
+    void setUnexpectedTerminationState(Exchange::ILifecycleManager::LifecycleState state);
 
     void setCurrentAction(AppManagerTypes::CurrentAction action);
 
@@ -102,6 +106,8 @@ private:
     Exchange::IAppManager::AppLifecycleState mLaunchInitialState;
     std::string mLaunchTelemetryIntent;
     std::string mLaunchTelemetryVersion;
+    bool mLaunchReachedActive;
+    Exchange::ILifecycleManager::LifecycleState mUnexpectedTerminationState;
     AppManagerTypes::CurrentAction mCurrentAction;
     time_t mCurrentActionTime;
 };

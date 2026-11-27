@@ -34,6 +34,7 @@
 #include <string>
 
 #include "DownloadManagerTelemetryReporting.h"
+#include "DownloadManagerDownloadError.h"
 #include "ServiceMock.h"
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
@@ -188,6 +189,34 @@ uint32_t Test_Telemetry_RecordDownloadErrorWithValidParamsDoesNotCrash()
         "recordDownloadErrorTelemetry() with valid params does not crash");
 
     WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
+
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AppPackageDownloadError classification
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_Telemetry_DownloadErrorClassification()
+{
+    using WPEFramework::Plugin::DownloadManagerTelemetry::downloadErrorTelemetry;
+    using Status = DownloadManagerHttpClient::Status;
+    L0Test::TestResult tr;
+
+    L0Test::ExpectEqStr(tr, downloadErrorTelemetry("", Status::HttpError, CURLE_OK, 0), "URL_INVALID",
+        "empty URL maps to URL_INVALID");
+    L0Test::ExpectEqStr(tr, downloadErrorTelemetry("http://h/f", Status::DiskError, CURLE_WRITE_ERROR, 0), "DISK_WRITE_ERROR",
+        "disk failure maps to DISK_WRITE_ERROR");
+    L0Test::ExpectEqStr(tr, downloadErrorTelemetry("http://h/f", Status::HttpError, CURLE_OK, 404), "NETWORK_NOT_FOUND",
+        "HTTP 404 maps to NETWORK_NOT_FOUND");
+    L0Test::ExpectEqStr(tr, downloadErrorTelemetry("http://h/f", Status::HttpError, CURLE_OK, 503), "NETWORK_SERVER_ERROR",
+        "HTTP 5xx maps to NETWORK_SERVER_ERROR");
+    L0Test::ExpectEqStr(tr, downloadErrorTelemetry("http://h/f", Status::HttpError, CURLE_COULDNT_RESOLVE_HOST, 0), "NETWORK_DNS_FAILURE",
+        "DNS failure maps to NETWORK_DNS_FAILURE");
+    L0Test::ExpectEqStr(tr, downloadErrorTelemetry("http://h/f", Status::HttpError, CURLE_OPERATION_TIMEDOUT, 0), "NETWORK_TIMEOUT",
+        "timeout maps to NETWORK_TIMEOUT");
+    L0Test::ExpectEqStr(tr, downloadErrorTelemetry("http://h/f", Status::HttpError, CURLE_RECV_ERROR, 0), "NETWORK_ERROR",
+        "uncategorized CURL error maps to NETWORK_ERROR");
 
     return tr.failures;
 }

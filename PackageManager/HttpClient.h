@@ -54,9 +54,6 @@ class HttpClient {
         long getStatusCode() {
             return httpCode;
         }
-        CURLcode getCurlCode() const {
-            return curlCode;
-        }
 
     private:
         static size_t progressCb(void *ptr, double dltotal, double dlnow, double ultotal, double ulnow);
@@ -65,7 +62,6 @@ class HttpClient {
     private:
         CURL *curl;
         long httpCode = 0;
-        CURLcode curlCode = CURLE_FAILED_INIT;
         bool bCancel = false;
         int progress = 0;
 };

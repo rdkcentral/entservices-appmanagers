@@ -19,21 +19,22 @@
 
 #pragma once
 
-#include "HttpClient.h"
+#include <string>
+#include "DownloadManagerHttpClient.h"
 
 namespace WPEFramework {
 namespace Plugin {
-namespace PackageManagerTelemetry {
+namespace DownloadManagerTelemetry {
 
 inline const char* downloadErrorTelemetry(const std::string& url,
-    HttpClient::Status status,
+    DownloadManagerHttpClient::Status status,
     CURLcode curlCode,
     long httpCode)
 {
     if (url.empty() || (CURLE_URL_MALFORMAT == curlCode) || (CURLE_UNSUPPORTED_PROTOCOL == curlCode)) {
         return "URL_INVALID";
     }
-    if (HttpClient::Status::DiskError == status) {
+    if (DownloadManagerHttpClient::Status::DiskError == status) {
         return "DISK_WRITE_ERROR";
     }
 
@@ -75,6 +76,6 @@ inline const char* downloadErrorTelemetry(const std::string& url,
     }
 }
 
-} // namespace PackageManagerTelemetry
+} // namespace DownloadManagerTelemetry
 } // namespace Plugin
 } // namespace WPEFramework

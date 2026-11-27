@@ -53,17 +53,19 @@ DownloadManagerHttpClient::~DownloadManagerHttpClient()
 
 DownloadManagerHttpClient::Status DownloadManagerHttpClient::downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit)
 {
-    Status status = Status::Success;
-    CURLcode cc;
+    Status status = Status::HttpError;
+    CURLcode cc = CURLE_FAILED_INIT;
     FILE *fp;
 
     std::unique_lock<std::mutex> lock(mHttpClientMutex);
     bCancel = false;
     progress = 0;
     httpCode = 0;
+    curlCode = CURLE_FAILED_INIT;
 
     if (curl)
     {
+        status = Status::Success;
         (void) curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         LOGDBG("curl rateLimit set to %u", rateLimit);
         CURLcode rateLimit_ret = curl_easy_setopt(curl, CURLOPT_MAX_RECV_SPEED_LARGE, (curl_off_t)rateLimit);
@@ -87,6 +89,7 @@ DownloadManagerHttpClient::Status DownloadManagerHttpClient::downloadFile(const 
             /* Re-lock mutex after curl call */
             lock.lock();
             curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &httpCode);
+            curlCode = cc;
             if (cc == CURLE_OK)
             {
                 if (httpCode == 404) {
@@ -112,6 +115,10 @@ DownloadManagerHttpClient::Status DownloadManagerHttpClient::downloadFile(const 
             LOGERR("Failed to open %s", fileName.c_str());
             status = Status::DiskError;
         }
+    }
+    else
+    {
+        LOGERR("Download failed: CURL handle is unavailable");
     }
 
     return status;

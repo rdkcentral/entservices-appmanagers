@@ -37,6 +37,8 @@ AppInfo::AppInfo()
     , mLaunchInitialState(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED)
     , mLaunchTelemetryIntent("")
     , mLaunchTelemetryVersion("")
+    , mLaunchReachedActive(false)
+    , mUnexpectedTerminationState(Exchange::ILifecycleManager::UNLOADED)
     , mCurrentAction(AppManagerTypes::APP_ACTION_NONE)
     , mCurrentActionTime(0)
 {}
@@ -61,6 +63,8 @@ const std::string& AppInfo::getRequestedLaunchVersion() const { return mRequeste
 Exchange::IAppManager::AppLifecycleState AppInfo::getLaunchInitialState() const { return mLaunchInitialState; }
 const std::string& AppInfo::getLaunchTelemetryIntent() const { return mLaunchTelemetryIntent; }
 const std::string& AppInfo::getLaunchTelemetryVersion() const { return mLaunchTelemetryVersion; }
+bool AppInfo::hasLaunchReachedActive() const { return mLaunchReachedActive; }
+Exchange::ILifecycleManager::LifecycleState AppInfo::getUnexpectedTerminationState() const { return mUnexpectedTerminationState; }
 
 AppManagerTypes::CurrentAction AppInfo::getCurrentAction() const { return mCurrentAction; }
 
@@ -68,7 +72,14 @@ time_t AppInfo::getCurrentActionTime() const { return mCurrentActionTime; }
 
 /* ----- Setters ----- */
 
-void AppInfo::setAppInstanceId(const std::string& id)   { mAppInstanceId   = id; }
+void AppInfo::setAppInstanceId(const std::string& id)
+{
+    if (mAppInstanceId != id) {
+        mUnexpectedTerminationState = Exchange::ILifecycleManager::UNLOADED;
+        mLaunchReachedActive = false;
+    }
+    mAppInstanceId = id;
+}
 void AppInfo::setActiveSessionId(const std::string& id) { mActiveSessionId = id; }
 
 void AppInfo::setPackageInfo(const AppManagerTypes::PackageInfo& info) { mPackageInfo = info; }
@@ -88,7 +99,10 @@ void AppInfo::setLaunchTelemetryContext(Exchange::IAppManager::AppLifecycleState
     mLaunchInitialState = initialState;
     mLaunchTelemetryIntent = intent;
     mLaunchTelemetryVersion = version;
+    mLaunchReachedActive = false;
 }
+void AppInfo::setLaunchReachedActive(bool reached) { mLaunchReachedActive = reached; }
+void AppInfo::setUnexpectedTerminationState(Exchange::ILifecycleManager::LifecycleState state) { mUnexpectedTerminationState = state; }
 
 void AppInfo::setCurrentAction(AppManagerTypes::CurrentAction action) { mCurrentAction = action; }
 
