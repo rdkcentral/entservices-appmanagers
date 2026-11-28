@@ -23,26 +23,29 @@
 #include "RalfSupport.h"
 #include "OCISpecConstants.h"
 #include "NetworkConfigurationHelper.h"
+#include <cerrno>
+#include <cstring>
+#include <cstdlib>
+#include <fcntl.h>
 #include <fstream>
+#include <glob.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #define PERSIST_STORAGE_PATH "/data"
 
 namespace ralf
 {
-    bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject)
+    bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config,
+                                                       const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject,
+                                                       const Json::Value &graphicsConfigNode)
     {
         Json::Value ociConfigRootNode;
 
         if (!JsonFromFile(RALF_OCI_BASE_SPEC_FILE, ociConfigRootNode))
         {
             LOGERR("Failed to load base OCI config template");
-            return false;
-        }
-        // Load graphics config and integrate into OCI config
-        Json::Value graphicsConfigNode;
-        if (!JsonFromFile(RALF_GRAPHICS_LAYER_CONFIG, graphicsConfigNode))
-        {
-            LOGERR("Failed to load Ralf graphics config JSON from file: %s", RALF_GRAPHICS_LAYER_CONFIG.c_str());
             return false;
         }
         // Apply graphics configuration
@@ -52,6 +55,9 @@ namespace ralf
             return false;
         }
         // Now apply each Ralf package configuration
+    #ifdef ENTOS_RALF_SUPPORT
+        std::vector<Json::Value> packageConfigs;
+    #endif
         for (const auto &ralfPkgInfo : mRalfPackages)
         {
             Json::Value ralfPackageConfigNode;
@@ -70,7 +76,26 @@ namespace ralf
                 LOGERR("Failed to apply Ralf package permissions to OCI config for file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
+            if (!addPackageSecretsToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
+            {
+                LOGERR("Failed to apply RALF package secrets to OCI config for file: %s", ralfPkgInfo.first.c_str());
+                return false;
+            }
+#ifdef ENTOS_RALF_SUPPORT
+            packageConfigs.push_back(std::move(ralfPackageConfigNode));
+#endif
         }
+        if (!addRuntimeEnvironmentToOCIConfig(ociConfigRootNode, runtimeConfigObject.envVariables))
+        {
+            LOGERR("Failed to apply RALF runtime environment to OCI config");
+            return false;
+        }
+#ifdef ENTOS_RALF_SUPPORT
+        if (!setLegacyProcessArgs(ociConfigRootNode, packageConfigs))
+        {
+            return false;
+        }
+#endif
 
         if (generateHooksForOCIConfig(ociConfigRootNode) == false)
         {
@@ -168,13 +193,21 @@ namespace ralf
         // Mount persistent storage path
         std::string appStoragePath = appConfig.mAppStorageInfo.path;
         addAppStorageToOCIConfig(ociConfigRootNode, appStoragePath);
+        addPrivateDataToOCIConfig(ociConfigRootNode, runtimeConfigObject.unpackedPath);
 
-        // Finally add rialto path to the environment variables
-        std::string rialtoSocketPath = "/tmp/rlto-" + appConfig.mAppInstanceId;
-        addToEnvironment(ociConfigRootNode, "RIALTO_SOCKET_PATH", rialtoSocketPath);
-        LOGDBG("Added RIALTO_SOCKET environment variable with value %s\n", rialtoSocketPath.c_str());
-        addBindMountToOCIConfig(ociConfigRootNode, rialtoSocketPath, rialtoSocketPath);
-        LOGDBG("Mounted rialto socket path %s to container path %s\n", rialtoSocketPath.c_str(), rialtoSocketPath.c_str());
+        // Same per-launch token the classic DobbySpecGenerator gives widgets; ASAppManager derives its AS token from it.
+        addToEnvironment(ociConfigRootNode, "APPLICATION_TOKEN", appConfig.mAppInstanceId);
+
+        if (!appConfig.mRialtoSocketPath.empty())
+        {
+            addToEnvironment(ociConfigRootNode, "RIALTO_SOCKET_PATH", appConfig.mRialtoSocketPath);
+            LOGDBG("Added RIALTO_SOCKET_PATH environment variable with value %s\n",
+                   appConfig.mRialtoSocketPath.c_str());
+            addBindMountToOCIConfig(ociConfigRootNode, appConfig.mRialtoSocketPath,
+                                    appConfig.mRialtoSocketPath);
+            LOGDBG("Mounted rialto socket path %s to container path %s\n",
+                   appConfig.mRialtoSocketPath.c_str(), appConfig.mRialtoSocketPath.c_str());
+        }
         return status;
     }
 
@@ -189,6 +222,28 @@ namespace ralf
         LOGDBG("Added application storage mount from %s to %s and set PERSIST_STORAGE_PATH environment variable\n", appStoragePath.c_str(), containerStoragePath.c_str());
         status = true;
         return status;
+    }
+
+    void RalfOCIConfigGenerator::addPrivateDataToOCIConfig(Json::Value &ociConfigRootNode, const std::string &dataImagePath)
+    {
+        struct stat imageInfo;
+        if (dataImagePath.empty() || 0 != stat(dataImagePath.c_str(), &imageInfo) || !S_ISREG(imageInfo.st_mode))
+        {
+            return;
+        }
+
+        Json::Value loop(Json::objectValue);
+        loop[SOURCE] = dataImagePath;
+        loop[DESTINATION] = "/home/private";
+        loop["fstype"] = "ext4";
+        loop["flags"] = static_cast<Json::UInt>(MS_NOSUID | MS_NODEV | MS_NOEXEC);
+        loop["imgmanagement"] = false;
+
+        Json::Value &storage = ociConfigRootNode[RDKPLUGINS]["storage"];
+        storage["required"] = false;
+        storage["dependsOn"] = Json::Value(Json::arrayValue);
+        storage[DATA]["loopback"].append(loop);
+        LOGDBG("Added private data loop mount from %s to /home/private\n", dataImagePath.c_str());
     }
     bool RalfOCIConfigGenerator::generateHooksForOCIConfig(Json::Value &ociConfigRootNode)
     {
@@ -235,35 +290,154 @@ namespace ralf
         return true;
     }
 
-    bool RalfOCIConfigGenerator::saveOCIConfigToFile(const Json::Value &ociConfigRootNode, int uid, int gid)
+    bool RalfOCIConfigGenerator::saveOCIConfigToFile(const Json::Value &ociConfigRootNode, int, int)
     {
-        bool status = false;
-        std::string ociConfigJson;
+        bool containsSecrets = false;
+        const Json::Value &environment = ociConfigRootNode[PROCESS][ENV];
+        if (environment.isArray())
+        {
+            for (const auto &entry : environment)
+            {
+                if (entry.isString() && entry.asString().rfind("APPLICATION_SECRET=", 0) == 0)
+                {
+                    containsSecrets = true;
+                    break;
+                }
+            }
+        }
+        const Json::Value &credentials =
+            ociConfigRootNode[RDKPLUGINS]["credentialsmanager"]["data"];
+        containsSecrets = containsSecrets ||
+                          (credentials.isObject() &&
+                           (credentials.isMember("certificate") || credentials.isMember("privateKey")));
+
         Json::StreamWriterBuilder writer;
-        ociConfigJson = Json::writeString(writer, ociConfigRootNode);
+        const std::string ociConfigJson = Json::writeString(writer, ociConfigRootNode);
 
         LOGDBG("Generated OCI config JSON: Writing to file  %s\n", mConfigFilePath.c_str());
-        // Write to file
-        std::ofstream outFile(mConfigFilePath.c_str());
-        if (outFile)
+        const mode_t mode = containsSecrets ? 0600 : 0644;
+        const int fd = ::open(mConfigFilePath.c_str(),
+                              O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | O_NOFOLLOW,
+                              mode);
+        if (fd < 0)
         {
-            outFile << ociConfigJson;
-            outFile.close();
-            // Change ownership to uid:gid
-            if (chown(mConfigFilePath.c_str(), uid, gid) != 0)
+            LOGERR("Failed to open OCI config output file %s: %s",
+                   mConfigFilePath.c_str(), strerror(errno));
+            return false;
+        }
+        if (::fchmod(fd, mode) != 0)
+        {
+            LOGERR("Failed to set OCI config file mode for %s: %s",
+                   mConfigFilePath.c_str(), strerror(errno));
+            ::close(fd);
+            ::unlink(mConfigFilePath.c_str());
+            return false;
+        }
+
+        size_t written = 0;
+        while (written < ociConfigJson.size())
+        {
+            const ssize_t count = ::write(fd, ociConfigJson.data() + written,
+                                          ociConfigJson.size() - written);
+            if (count < 0 && errno == EINTR)
+                continue;
+            if (count <= 0)
             {
-                LOGERR("Failed to change ownership of OCI config file %s to %d:%d\n", mConfigFilePath.c_str(), uid, gid);
+                LOGERR("Failed to write OCI config output file %s: %s",
+                       mConfigFilePath.c_str(), strerror(errno));
+                ::close(fd);
+                ::unlink(mConfigFilePath.c_str());
+                return false;
+            }
+            written += static_cast<size_t>(count);
+        }
+        if (::close(fd) != 0)
+        {
+            LOGERR("Failed to close OCI config output file %s: %s",
+                   mConfigFilePath.c_str(), strerror(errno));
+            ::unlink(mConfigFilePath.c_str());
+            return false;
+        }
+#ifdef RDK_APPMANAGERS_DEBUG
+        Json::Value debugConfig = ociConfigRootNode;
+        Json::Value &debugEnvironment = debugConfig[PROCESS][ENV];
+        if (debugEnvironment.isArray())
+        {
+            for (Json::Value &entry : debugEnvironment)
+            {
+                if (!entry.isString())
+                {
+                    continue;
+                }
+
+                const std::string value = entry.asString();
+                const std::string secretPrefix = "APPLICATION_SECRET=";
+                if (value.rfind(secretPrefix, 0) == 0)
+                {
+                    entry = secretPrefix + "<redacted>";
+                }
+            }
+        }
+
+        Json::Value &debugCredentials = debugConfig[RDKPLUGINS]["credentialsmanager"]["data"];
+        if (debugCredentials.isObject())
+        {
+            if (debugCredentials.isMember("certificate"))
+            {
+                debugCredentials["certificate"] = "<redacted>";
+            }
+            if (debugCredentials.isMember("privateKey"))
+            {
+                debugCredentials["privateKey"] = "<redacted>";
+            }
+        }
+
+        if (containsSecrets)
+        {
+            LOGWARN("Redacting application secrets from debug dump of OCI config");
+        }
+        Json::StreamWriterBuilder debugWriter;
+        const std::string debugConfigJson = Json::writeString(debugWriter, debugConfig);
+        const std::string debugSpecPath = "/tmp/generatedRalfSpec.json";
+        const int debugFd = ::open(debugSpecPath.c_str(),
+                                   O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | O_NOFOLLOW, 0600);
+        if (0 <= debugFd)
+        {
+            bool writeSucceeded = (0 == ::fchmod(debugFd, 0600));
+            if (!writeSucceeded)
+            {
+                LOGWARN("Failed to set permissions on redacted RALF spec %s: %s",
+                        debugSpecPath.c_str(), strerror(errno));
+            }
+            size_t written = 0;
+            while (writeSucceeded && written < debugConfigJson.size())
+            {
+                const ssize_t count = ::write(debugFd, debugConfigJson.data() + written,
+                                              debugConfigJson.size() - written);
+                if (count < 0 && EINTR == errno)
+                    continue;
+                if (count <= 0)
+                    break;
+                written += static_cast<size_t>(count);
+            }
+            writeSucceeded = writeSucceeded && written == debugConfigJson.size();
+            const bool closeSucceeded = 0 == ::close(debugFd);
+            if (!writeSucceeded || !closeSucceeded)
+            {
+                LOGWARN("Failed to write generated RALF OCI spec to %s", debugSpecPath.c_str());
+                ::unlink(debugSpecPath.c_str());
             }
             else
             {
-                status = true;
+                LOGINFO("Wrote redacted RALF OCI spec to %s", debugSpecPath.c_str());
             }
         }
         else
         {
-            LOGERR("Failed to open OCI config output file: %s", mConfigFilePath.c_str());
+            LOGWARN("Failed to securely create generated RALF OCI spec dump: %s", strerror(errno));
         }
-        return status;
+#endif
+        return true;
     }
 
     bool RalfOCIConfigGenerator::applyGraphicsConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsConfigNode)
@@ -320,6 +494,23 @@ namespace ralf
                 for (Json::Value::ArrayIndex i = 0; i < files.size(); ++i)
                 {
                     const Json::Value &fileEntry = files[i];
+#ifdef ENTOS_RALF_SUPPORT
+                    if (fileEntry.isMember(TYPE) && fileEntry[TYPE].isString() &&
+                        ("bind" == fileEntry[TYPE].asString() || "socket" == fileEntry[TYPE].asString()) &&
+                        fileEntry.isMember(SOURCE) && fileEntry[SOURCE].isString() &&
+                        fileEntry.isMember(DESTINATION) && fileEntry[DESTINATION].isString())
+                    {
+                        addBindMountToOCIConfig(ociConfigRootNode, fileEntry[SOURCE].asString(),
+                                                fileEntry[DESTINATION].asString(), true, false, true, true);
+                        LOGDBG("Added read-only graphics bind mount from %s to %s\n",
+                               fileEntry[SOURCE].asCString(), fileEntry[DESTINATION].asCString());
+                    }
+                    else if (!fileEntry.isMember(TYPE) || !fileEntry[TYPE].isString() ||
+                             ("symlink" != fileEntry[TYPE].asString() && "file" != fileEntry[TYPE].asString()))
+                    {
+                        LOGWARN("Skipping invalid or unsupported vendor GPU file entry at index %u\n", i);
+                    }
+#else
                     if (fileEntry.isMember(SOURCE) && fileEntry.isMember(DESTINATION))
                     {
                         std::string sourcePath = fileEntry[SOURCE].asString();
@@ -331,6 +522,7 @@ namespace ralf
                     {
                         LOGWARN("Invalid file entry in graphics config, missing source or destination\n");
                     }
+#endif
                 }
             }
             else
@@ -347,10 +539,41 @@ namespace ralf
 
     bool RalfOCIConfigGenerator::addDeviceNodeEntriesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsDevNode)
     {
-        bool status = graphicsDevNode.size() > 0 ? true : false; // If no entries, return true.
+        if (!graphicsDevNode.isArray())
+        {
+            LOGERR("vendorGpuSupport/devNodes must be an array");
+            return false;
+        }
+        bool status = true;
+        std::vector<std::string> deviceNodePaths;
         for (Json::Value::ArrayIndex i = 0; i < graphicsDevNode.size(); ++i)
         {
-            std::string devNodePath = graphicsDevNode[i].asString();
+            const std::string devNodePattern = graphicsDevNode[i].asString();
+#ifdef ENTOS_RALF_SUPPORT
+            glob_t matches = {};
+            const int globStatus = glob(devNodePattern.c_str(), GLOB_NOSORT, nullptr, &matches);
+            if (0 == globStatus)
+            {
+                for (size_t match = 0; match < matches.gl_pathc; ++match)
+                {
+                    if (nullptr != matches.gl_pathv[match])
+                    {
+                        deviceNodePaths.emplace_back(matches.gl_pathv[match]);
+                    }
+                }
+            }
+            else if (GLOB_NOMATCH != globStatus)
+            {
+                LOGWARN("Failed to expand graphics device pattern: %s\n", devNodePattern.c_str());
+            }
+            globfree(&matches);
+#else
+            deviceNodePaths.push_back(devNodePattern);
+#endif
+        }
+
+        for (const std::string &devNodePath : deviceNodePaths)
+        {
             unsigned int majorNum = 0, minorNum = 0;
             char devType = '\0';
             if (getDevNodeMajorMinor(devNodePath, majorNum, minorNum, devType))
@@ -407,17 +630,27 @@ namespace ralf
         {
             // args is a array of strings. So append each string to args array
             const Json::Value &entryArgs = ralfPackageConfigNode[ENTRY_ARGS];
-            if (entryArgs.isArray())
+            if (entryArgs.isNull())
+            {
+                LOGDBG("No RALF entryArgs supplied\n");
+            }
+            else if (entryArgs.isArray())
             {
                 for (const auto &arg : entryArgs)
                 {
+                    if (!arg.isString())
+                    {
+                        LOGERR("entryArgs must contain only strings");
+                        return false;
+                    }
                     ociConfigRootNode[PROCESS][ARGS].append(arg);
                 }
                 LOGDBG("Applied entryArgs to OCI config\n");
             }
             else
             {
-                LOGWARN("entryArgs is not an array in Ralf package config\n");
+                LOGERR("entryArgs is not an array in Ralf package config");
+                return false;
             }
         }
         else
@@ -426,6 +659,57 @@ namespace ralf
         }
         return status;
     }
+    bool RalfOCIConfigGenerator::setLegacyProcessArgs(Json::Value &ociConfigRootNode, const std::vector<Json::Value> &packageConfigs)
+    {
+        if (packageConfigs.size() < 2 ||
+            !packageConfigs.front()[PACKAGE_TYPE].isString() ||
+            PKG_TYPE_BASE != packageConfigs.front()[PACKAGE_TYPE].asString() ||
+            !packageConfigs.front()[ENTRY_POINT].isString() ||
+            packageConfigs.front()[ENTRY_POINT].asString().empty())
+        {
+            LOGERR("RALF launch requires a base package with an init entryPoint; check the runtime's base dependency");
+            return false;
+        }
+
+        const Json::Value &app = packageConfigs.back();
+        Json::Value args(Json::arrayValue);
+        args.append(packageConfigs.front()[ENTRY_POINT]);
+        for (size_t index = 1; index < packageConfigs.size(); ++index)
+        {
+            const Json::Value &entryPoint = packageConfigs[index][ENTRY_POINT];
+            if (entryPoint.isString() && !entryPoint.asString().empty())
+            {
+                args.append(entryPoint);
+            }
+        }
+        // #legacy - the app entry point is optional when a runtime provides the executable.
+        if (args.size() < 2)
+        {
+            LOGERR("RALF launch has no runtime or application entryPoint after the base init");
+            return false;
+        }
+        const Json::Value &appArgs = app[ENTRY_ARGS];
+        if (app.isMember(ENTRY_ARGS) && !appArgs.isNull() && !appArgs.isArray())
+        {
+            LOGERR("RALF application entryArgs must be an array");
+            return false;
+        }
+        if (appArgs.isArray())
+        {
+            for (const auto &arg : appArgs)
+            {
+                if (!arg.isString())
+                {
+                    LOGERR("RALF application entryArgs must contain only strings");
+                    return false;
+                }
+                args.append(arg);
+            }
+        }
+        ociConfigRootNode[PROCESS][ARGS] = std::move(args);
+        return true;
+    }
+
     bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject)
     {
         if (!addEntryPointToOCIConfig(ociConfigRootNode, manifestRootNode))
@@ -662,6 +946,89 @@ namespace ralf
         return false;
     }
 
+    bool RalfOCIConfigGenerator::addRuntimeEnvironmentToOCIConfig(Json::Value &ociConfigRootNode,
+                                                                   const std::vector<std::string> &envVariables)
+    {
+        for (const auto &value : envVariables)
+        {
+            const auto separator = value.find('=');
+            if (std::string::npos == separator || 0 == separator)
+            {
+                LOGERR("Invalid RALF runtime environment variable");
+                return false;
+            }
+            const std::string key = value.substr(0, separator);
+            if ("APPLICATION_SECRET" == key)
+            {
+                const Json::Value &environment = ociConfigRootNode[PROCESS][ENV];
+                const std::string prefix = key + "=";
+                bool secretAlreadySet = false;
+                if (environment.isArray())
+                {
+                    for (const auto &entry : environment)
+                    {
+                        if (entry.isString() && 0 == entry.asString().rfind(prefix, 0))
+                        {
+                            secretAlreadySet = true;
+                            break;
+                        }
+                    }
+                }
+                if (secretAlreadySet)
+                {
+                    continue;
+                }
+            }
+            addToEnvironment(ociConfigRootNode, key, value.substr(separator + 1));
+        }
+
+        return true;
+    }
+
+    bool RalfOCIConfigGenerator::addPackageSecretsToOCIConfig(Json::Value &ociConfigRootNode,
+                                                               const Json::Value &packageConfig)
+    {
+            if (!packageConfig.isMember("runtimeSecrets"))
+                return true;
+
+            const Json::Value &secrets = packageConfig["runtimeSecrets"];
+            if (!secrets.isObject())
+            {
+                LOGERR("RALF runtimeSecrets must be an object");
+                return false;
+    }
+
+            if (secrets.isMember("applicationSecret"))
+            {
+                const Json::Value &applicationSecret = secrets["applicationSecret"];
+                if (!applicationSecret.isString() || applicationSecret.asString().empty())
+                {
+                    LOGERR("RALF applicationSecret must be a non-empty string");
+                    return false;
+                }
+                addToEnvironment(ociConfigRootNode, "APPLICATION_SECRET", applicationSecret.asString());
+            }
+
+            if (secrets.isMember("credentialsManager"))
+            {
+                const Json::Value &credentials = secrets["credentialsManager"];
+                if (!credentials.isObject() ||
+                    !credentials["certificate"].isString() ||
+                    credentials["certificate"].asString().empty() ||
+                    !credentials["privateKey"].isString() ||
+                    credentials["privateKey"].asString().empty())
+                {
+                    LOGERR("RALF credentialsManager metadata must include a certificate and private key");
+                    return false;
+                }
+                ociConfigRootNode[RDKPLUGINS]["credentialsmanager"]["data"]["certificate"] =
+                    credentials["certificate"].asString();
+                ociConfigRootNode[RDKPLUGINS]["credentialsmanager"]["data"]["privateKey"] =
+                    credentials["privateKey"].asString();
+            }
+            return true;
+        }
+
     bool RalfOCIConfigGenerator::addConfigOverridesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode)
     {
         bool status = false;
@@ -893,14 +1260,14 @@ namespace ralf
 
         if (firstMatchIndex < 0)
         {
-            LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+            LOGDBG("Added environment variable '%s' to OCI config\n", key.c_str());
             envNode.append(std::move(envVar));
             return;
         }
 
         if (!duplicateFound)
         {
-            LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+            LOGDBG("Updated environment variable '%s' in OCI config\n", key.c_str());
             envNode[static_cast<Json::ArrayIndex>(firstMatchIndex)] = std::move(envVar);
             return;
         }
@@ -930,11 +1297,11 @@ namespace ralf
             }
             else
             {
-                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existingStr.c_str());
+                LOGWARN("Removed duplicate environment variable '%s' from OCI config\n", key.c_str());
             }
         }
 
         processNode[ENV] = std::move(deduped);
-        LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+        LOGDBG("Updated environment variable '%s' in OCI config\n", key.c_str());
     }
 } // namespace ralf

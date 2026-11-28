@@ -23,6 +23,8 @@
 #include "UtilsLogging.h"
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <cerrno>
+#include <cstdlib>
 #include <fcntl.h>
 #include <unistd.h>
 #include <iostream>
@@ -273,6 +275,10 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     }
     command.append(runtimeConfig.command);
     args.append(command);
+    for (const std::string& argument : runtimeConfig.commandArgs)
+    {
+        args.append(argument);
+    }
     spec["args"] = std::move(args);
     spec["cwd"] = getWorkingDir(config, runtimeConfig);
     if (shouldEnableGpu(config))
@@ -419,12 +425,67 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
 
     resultSpec = writer.write(spec);
 #ifdef RDK_APPMANAGERS_DEBUG
-    LOGINFO("spec: '%s'\n", resultSpec.c_str());
+    Json::Value debugSpec = spec;
+    Json::Value &debugEnvironment = debugSpec["env"];
+    if (debugEnvironment.isArray())
+    {
+        for (Json::Value &entry : debugEnvironment)
+        {
+            if (entry.isString() && 0 == entry.asString().find("APPLICATION_SECRET="))
+            {
+                entry = "APPLICATION_SECRET=<redacted>";
+            }
+        }
+    }
+    Json::Value &debugCredentials = debugSpec["rdkPlugins"]["credentialsmanager"]["data"];
+    if (debugCredentials.isObject())
+    {
+        if (debugCredentials.isMember("certificate"))
+        {
+            debugCredentials["certificate"] = "<redacted>";
+        }
+        if (debugCredentials.isMember("privateKey"))
+        {
+            debugCredentials["privateKey"] = "<redacted>";
+        }
+    }
 
-    std::ofstream generatedSpecFile;
-    generatedSpecFile.open("/tmp/generatedSpec.json");
-    generatedSpecFile << resultSpec.c_str();
-    generatedSpecFile.close();
+    const std::string debugSpecJson = writer.write(debugSpec);
+    LOGINFO("Generated Dobby spec: '%s'", debugSpecJson.c_str());
+    const std::string debugSpecPath = "/tmp/generatedSpec.json";
+    const int debugFd = ::open(debugSpecPath.c_str(),
+                               O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | O_NOFOLLOW, 0600);
+    if (0 <= debugFd)
+    {
+        bool writeSucceeded = (0 == ::fchmod(debugFd, 0600));
+        if (!writeSucceeded)
+        {
+            LOGWARN("Failed to set permissions on redacted Dobby spec %s: %s",
+                    debugSpecPath.c_str(), strerror(errno));
+        }
+        size_t written = 0;
+        while (writeSucceeded && written < debugSpecJson.size())
+        {
+            const ssize_t count = ::write(debugFd, debugSpecJson.data() + written,
+                                          debugSpecJson.size() - written);
+            if (count < 0 && EINTR == errno)
+                continue;
+            if (count <= 0)
+                break;
+            written += static_cast<size_t>(count);
+        }
+        writeSucceeded = writeSucceeded && written == debugSpecJson.size();
+        const bool closeSucceeded = 0 == ::close(debugFd);
+        if (!writeSucceeded || !closeSucceeded)
+        {
+            LOGWARN("Failed to write redacted Dobby spec to %s", debugSpecPath.c_str());
+            ::unlink(debugSpecPath.c_str());
+        }
+    }
+    else
+    {
+        LOGWARN("Failed to securely create Dobby spec dump: %s", strerror(errno));
+    }
 #endif
 
     return true;
@@ -436,6 +497,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
 {
     Json::Value env(Json::arrayValue);
     env.append(std::string("APPLICATION_NAME=") + config.mAppId);
+    const bool useRalfStoragePath = !runtimeConfig.ralfPkgPath.empty() && !config.mAppStorageInfo.path.empty();
     
      //TODO YET TO ANALYZE SUPPORT APPLICATION_LAUNCH_PARAMETERS
      //TODO YET TO ANALYZE SUPPORT APPLICATION_LAUNCH_METHOD
@@ -443,13 +505,35 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
 
    for (const std::string& envInputItem : runtimeConfig.envVariables)
    {
+       if (useRalfStoragePath && 0 == envInputItem.rfind("PERSIST_STORAGE_PATH=", 0))
+       {
+           continue;
+       }
+       if (!runtimeConfig.applicationSecret.empty() &&
+           0 == envInputItem.rfind("APPLICATION_SECRET=", 0))
+       {
+           continue;
+       }
        env.append(envInputItem);
    }
 
    std::list<std::string> configEnvs = mAIConfiguration->getEnvs();
    for (auto it = configEnvs.begin(); it != configEnvs.end(); ++it)
    {
+       if (useRalfStoragePath && 0 == it->rfind("PERSIST_STORAGE_PATH=", 0))
+       {
+           continue;
+       }
+       if (!runtimeConfig.applicationSecret.empty() &&
+           0 == it->rfind("APPLICATION_SECRET=", 0))
+       {
+           continue;
+       }
        env.append(*it);
+   }
+   if (useRalfStoragePath)
+   {
+       env.append("PERSIST_STORAGE_PATH=/data");
    }
 
    if (!config.mWesterosSocketPath.empty())
@@ -519,6 +603,10 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
    }
 #endif
 
+    if (!runtimeConfig.applicationSecret.empty())
+    {
+         env.append("APPLICATION_SECRET=" + runtimeConfig.applicationSecret);
+    }
    return env;
 }
 
@@ -539,7 +627,15 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     mounts.append(createBindMount("/etc/ssl/certs", "/etc/ssl/certs",
                                (MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV)));
 
-    mounts.append(createPrivateDataMount(runtimeConfig));
+    if (!runtimeConfig.ralfPkgPath.empty() && !config.mAppStorageInfo.path.empty())
+    {
+        mounts.append(createBindMount(config.mAppStorageInfo.path, "/data", MS_BIND | MS_REC));
+    }
+
+    if (!runtimeConfig.unpackedPath.empty())
+    {
+        mounts.append(createPrivateDataMount(runtimeConfig));
+    }
     
     createFkpsMounts(config, runtimeConfig, mounts);
 
@@ -915,6 +1011,16 @@ Json::Value DobbySpecGenerator::createRdkPlugins(const ApplicationConfiguration&
     Json::Value rdkPluginsObj(Json::objectValue);
     rdkPluginsObj["ionmemory"] = createIonMemoryPlugin();
     rdkPluginsObj["minidump"] = createMinidumpPlugin();
+    if (!runtimeConfig.ralfPkgPath.empty())
+    {
+        rdkPluginsObj["networking"] = createNetworkPlugin(config, runtimeConfig, capabilities);
+        rdkPluginsObj["appservicesrdk"] = createAppServiceSDKPlugin(config, runtimeConfig, capabilities);
+    }
+    if (!runtimeConfig.credentialsCertificate.empty() && !runtimeConfig.credentialsPrivateKey.empty())
+    {
+        rdkPluginsObj["credentialsmanager"]["data"]["certificate"] = runtimeConfig.credentialsCertificate;
+        rdkPluginsObj["credentialsmanager"]["data"]["privateKey"] = runtimeConfig.credentialsPrivateKey;
+    }
 //MADANA
 /*
     const bool appServicesRequested =

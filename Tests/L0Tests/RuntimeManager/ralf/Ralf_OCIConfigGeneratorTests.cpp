@@ -30,10 +30,12 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <cstdio>
 #include <cstdlib>
+#include <glob.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <json/json.h>
@@ -45,6 +47,9 @@
 #include "ralf/RalfSupport.h"
 #include "ralf/OCISpecConstants.h"
 #include "ApplicationConfiguration.h"
+#include "DobbySpecGenerator.h"
+#include "RuntimeConfiguration.h"
+#include "AIConfiguration.h"
 #include <interfaces/IRuntimeManager.h>
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
@@ -201,41 +206,9 @@ uint32_t Test_RalfOCIConfigGenerator_GenerateFailsWhenBaseSpecFileMissing()
     return tr.failures;
 }
 
-/* Test_RalfOCIConfigGenerator_GenerateFailsWhenGraphicsConfigMissing
- *
- * When the base OCI spec file exists but the graphics config does not,
- * generateRalfOCIConfig() should return false.
- * This test only runs when the base spec is present but graphics config is absent.
- */
-uint32_t Test_RalfOCIConfigGenerator_GenerateFailsWhenGraphicsConfigMissing()
-{
-    L0Test::TestResult tr;
-
-    // Only meaningful when base spec exists but graphics config does not
-    if (!ralf::checkIfPathExists(ralf::RALF_OCI_BASE_SPEC_FILE) ||
-         ralf::checkIfPathExists(ralf::RALF_GRAPHICS_LAYER_CONFIG)) {
-        // Architecture guard: skip if preconditions aren't met in this environment
-        L0Test::ExpectTrue(tr, true,
-                           "SKIP: preconditions for graphics-config-missing test not met");
-        return tr.failures;
-    }
-
-    std::vector<ralf::RalfPkgInfoPair> packages;
-    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_oci_out2.json", packages);
-
-    auto config = MakeAppConfig_OCI("com.test.app2", "inst-oci-002");
-    auto runtimeCfg = MakeRuntimeConfig_OCI();
-
-    const bool result = gen.generateRalfOCIConfig(config, runtimeCfg);
-    L0Test::ExpectTrue(tr, !result,
-                       "generateRalfOCIConfig() returns false when graphics config is absent");
-
-    return tr.failures;
-}
-
 /* Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec
  *
- * Provides a minimal mock OCI base spec and graphics config JSON, and
+ * Provides a minimal mock OCI base spec and empty graphics config, and
  * verifies that generateRalfOCIConfig() processes them without crashing.
  * The test verifies the error path caused by missing package-specific files.
  */
@@ -334,11 +307,10 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
 {
     L0Test::TestResult tr;
 
-    // Skip if system files are already present so production files are not overwritten.
-    if (ralf::checkIfPathExists(ralf::RALF_OCI_BASE_SPEC_FILE) ||
-        ralf::checkIfPathExists(ralf::RALF_GRAPHICS_LAYER_CONFIG)) {
+    // Skip if the system base spec is already present so production files are not overwritten.
+    if (ralf::checkIfPathExists(ralf::RALF_OCI_BASE_SPEC_FILE)) {
         L0Test::ExpectTrue(tr, true,
-                           "SKIP: system OCI base spec or graphics config present, skipping log path test");
+                           "SKIP: system OCI base spec present, skipping log path test");
         return tr.failures;
     }
 
@@ -347,12 +319,10 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
     const std::string appId            = "com.test.logpathapp";
     const std::string expectedLogPath  = appStoragePath + "/" + appId + ".log";
 
-    // Write minimal valid JSON to the required system paths.
-    const bool baseSpecWritten  = WriteFile_OCIGen(ralf::RALF_OCI_BASE_SPEC_FILE, "{}");
-    const bool graphicsWritten  = WriteFile_OCIGen(ralf::RALF_GRAPHICS_LAYER_CONFIG, "{}");
-    if (!baseSpecWritten || !graphicsWritten) {
-        if (baseSpecWritten)  std::remove(ralf::RALF_OCI_BASE_SPEC_FILE.c_str());
-        if (graphicsWritten)  std::remove(ralf::RALF_GRAPHICS_LAYER_CONFIG.c_str());
+    // Write a minimal valid OCI base spec. GPU configuration is passed in-memory.
+    const bool baseSpecWritten = WriteFile_OCIGen(ralf::RALF_OCI_BASE_SPEC_FILE, "{}");
+    if (!baseSpecWritten) {
+        std::remove(ralf::RALF_OCI_BASE_SPEC_FILE.c_str());
         L0Test::ExpectTrue(tr, true,
                            "SKIP: could not write mock OCI spec files, skipping log path test");
         return tr.failures;
@@ -370,16 +340,20 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
     std::vector<ralf::RalfPkgInfoPair> packages;
     ralf::RalfOCIConfigGenerator gen(outputConfigPath, packages);
 
-    const bool result = gen.generateRalfOCIConfig(config, runtimeCfg);
+    const bool result = gen.generateRalfOCIConfig(config, runtimeCfg, Json::Value(Json::objectValue));
 
-    // Remove mock system files before asserting, so cleanup always happens.
+    // Remove the mock system file before asserting, so cleanup always happens.
     std::remove(ralf::RALF_OCI_BASE_SPEC_FILE.c_str());
-    std::remove(ralf::RALF_GRAPHICS_LAYER_CONFIG.c_str());
 
     L0Test::ExpectTrue(tr, result,
                        "generateRalfOCIConfig() should succeed with minimal mock base spec");
 
     if (result) {
+        struct stat configStat;
+        L0Test::ExpectTrue(tr, 0 == stat(outputConfigPath.c_str(), &configStat) &&
+                           0644 == (configStat.st_mode & 07777) && geteuid() == configStat.st_uid,
+                           "Generated OCI config is process-owned with legacy 0644 mode");
+
         Json::Value outputConfig;
         const bool parsed = ralf::JsonFromFile(outputConfigPath, outputConfig);
         L0Test::ExpectTrue(tr, parsed,
@@ -403,6 +377,339 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
         std::remove(outputConfigPath.c_str());
     }
 
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_UsesConfiguredRialtoSocketPath()
+{
+    L0Test::TestResult tr;
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_rialto_config.json", packages);
+    auto config = MakeAppConfig_OCI();
+    auto runtimeCfg = MakeRuntimeConfig_OCI();
+    config.mRialtoSocketPath = "/tmp/ralf_l0test_rialto.sock";
+
+    Json::Value ociConfig(Json::objectValue);
+    const bool status = gen.applyRuntimeAndAppConfigToOCIConfig(ociConfig, runtimeCfg, config);
+    L0Test::ExpectTrue(tr, status,
+                       "applyRuntimeAndAppConfigToOCIConfig() accepts configured Rialto socket path");
+    L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfig,
+                       "RIALTO_SOCKET_PATH=" + config.mRialtoSocketPath),
+                       "RIALTO_SOCKET_PATH uses the path allocated by RialtoConnector");
+
+    bool hasSocketMount = false;
+    const Json::Value& mounts = ociConfig[ralf::MOUNTS];
+    if (mounts.isArray())
+    {
+        for (const Json::Value& mount : mounts)
+        {
+            if (mount[ralf::TYPE].asString() == "bind" &&
+                mount[ralf::SOURCE].asString() == config.mRialtoSocketPath &&
+                mount[ralf::DESTINATION].asString() == config.mRialtoSocketPath)
+            {
+                hasSocketMount = true;
+                break;
+            }
+        }
+    }
+    L0Test::ExpectTrue(tr, hasSocketMount,
+                       "Rialto bind mount uses the allocated host socket path");
+
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsFollowBaseRuntimeAppOrder()
+{
+    L0Test::TestResult tr;
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_process_args.json", packages);
+    Json::Value base(Json::objectValue);
+    base[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_BASE;
+    base[ralf::ENTRY_POINT] = "/usr/libexec/DobbyInit";
+    base[ralf::ENTRY_ARGS].append("ignored-base-arg");
+    Json::Value runtime(Json::objectValue);
+    runtime[ralf::ENTRY_POINT] = "/usr/bin/browser";
+    runtime[ralf::ENTRY_ARGS].append("ignored-runtime-arg");
+    Json::Value app(Json::objectValue);
+    app[ralf::ENTRY_POINT] = ".";
+    app[ralf::ENTRY_ARGS].append("--app");
+    Json::Value ociConfig(Json::objectValue);
+
+    L0Test::ExpectTrue(tr, gen.setLegacyProcessArgs(ociConfig, {base, runtime, app}),
+                       "base, runtime and app entries form a legacy command");
+    const Json::Value &args = ociConfig[ralf::PROCESS][ralf::ARGS];
+    L0Test::ExpectTrue(tr, args.isArray() && 4 == args.size() &&
+                       "/usr/libexec/DobbyInit" == args[0].asString() &&
+                       "/usr/bin/browser" == args[1].asString() &&
+                       "." == args[2].asString() && "--app" == args[3].asString(),
+                       "only app arguments follow the base init, runtime and app entrypoints");
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase()
+{
+    L0Test::TestResult tr;
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_no_base.json", packages);
+    Json::Value runtime(Json::objectValue);
+    runtime[ralf::ENTRY_POINT] = "/usr/bin/browser";
+    Json::Value app(Json::objectValue);
+    app[ralf::ENTRY_POINT] = ".";
+    Json::Value ociConfig(Json::objectValue);
+
+    L0Test::ExpectTrue(tr, !gen.setLegacyProcessArgs(ociConfig, {runtime, app}),
+                       "two-layer manifest without a base init is rejected before Dobby");
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsAllowAppWithoutEntryPoint()
+{
+    L0Test::TestResult tr;
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_widget_layer.json", packages);
+    Json::Value base(Json::objectValue);
+    base[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_BASE;
+    base[ralf::ENTRY_POINT] = "/usr/libexec/DobbyInit";
+    Json::Value runtime(Json::objectValue);
+    runtime[ralf::ENTRY_POINT] = "bin/cobalt";
+    Json::Value widget(Json::objectValue);
+    widget[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_APPLICATION;
+    Json::Value ociConfig(Json::objectValue);
+
+    L0Test::ExpectTrue(tr, gen.setLegacyProcessArgs(ociConfig, {base, runtime, widget}),
+                       "widget layer without entryPoint launches through the runtime");
+    const Json::Value &args = ociConfig[ralf::PROCESS][ralf::ARGS];
+    L0Test::ExpectTrue(tr, args.isArray() && 2 == args.size() &&
+                       "/usr/libexec/DobbyInit" == args[0].asString() &&
+                       "bin/cobalt" == args[1].asString(),
+                       "command is base init followed by the runtime executable");
+
+    Json::Value bareRuntime(Json::objectValue);
+    Json::Value emptyConfig(Json::objectValue);
+    L0Test::ExpectTrue(tr, !gen.setLegacyProcessArgs(emptyConfig, {base, bareRuntime, widget}),
+                       "base init alone is rejected");
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_NullEntryArgsIsOptional()
+{
+    L0Test::TestResult tr;
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_null_entry_args.json", packages);
+
+    Json::Value packageConfig(Json::objectValue);
+    packageConfig[ralf::ENTRY_ARGS] = Json::Value(Json::nullValue);
+    Json::Value ociConfig(Json::objectValue);
+    L0Test::ExpectTrue(tr, gen.addEntryArgsToOCIConfig(ociConfig, packageConfig),
+                       "Null entryArgs is treated as an empty optional argument list");
+
+    Json::Value invalidConfig(Json::objectValue);
+    invalidConfig[ralf::ENTRY_ARGS] = "not-an-array";
+    L0Test::ExpectTrue(tr, !gen.addEntryArgsToOCIConfig(ociConfig, invalidConfig),
+                       "Non-null non-array entryArgs remains invalid");
+
+    return tr.failures;
+}
+
+#ifdef ENTOS_RALF_SUPPORT
+uint32_t Test_Ralf_GetClassicRalfLaunchInfo()
+{
+    L0Test::TestResult tr;
+    const std::string runtimeRoot = "/tmp/ralf_l0test_widget_runtime";
+    const std::string appRoot = "/tmp/ralf_l0test_widget_app";
+    const std::string manifestPath = "/tmp/ralf_l0test_widget_manifest.json";
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json",
+                       "{\"packageType\":\"runtime\",\"entryPoint\":\"bin/browser\"}") &&
+                       WriteFile_OCIGen(appRoot + "/config.json",
+                                         "{\"packageType\":\"application\",\"entryPoint\":\".\",\"entryArgs\":[\"--profile\",\"tv\"],\"runtimeSecrets\":{\"applicationSecret\":\"app-secret\",\"credentialsManager\":{\"certificate\":\"cert\",\"privateKey\":\"key\"}}}"),
+                       "runtime and RALF app configs are available");
+
+    Json::Value manifest(Json::objectValue);
+    Json::Value runtime(Json::objectValue);
+    runtime["pkgMetaDataPath"] = runtimeRoot + "/config.json";
+    runtime["pkgMountPath"] = runtimeRoot;
+    manifest["packages"].append(runtime);
+    Json::Value app(Json::objectValue);
+    app["pkgMetaDataPath"] = appRoot + "/config.json";
+    app["pkgMountPath"] = appRoot;
+    manifest["packages"].append(app);
+    Json::StreamWriterBuilder writer;
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(manifestPath, Json::writeString(writer, manifest)),
+                       "dependency-first mount manifest is available");
+
+    std::string appPath;
+    std::string runtimePath;
+    std::string command;
+    std::vector<std::string> commandArgs;
+    std::string applicationSecret;
+    std::string credentialsCertificate;
+    std::string credentialsPrivateKey;
+    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command,
+                       commandArgs, applicationSecret, credentialsCertificate, credentialsPrivateKey),
+                       "runtime and RALF app select the classic launch path");
+    L0Test::ExpectTrue(tr, appPath == appRoot && runtimePath == runtimeRoot &&
+                       command == "bin/browser",
+                       "classic spec receives app mount, runtime mount and executable");
+    L0Test::ExpectTrue(tr, commandArgs.size() == 2 && "--profile" == commandArgs[0] && "tv" == commandArgs[1],
+                       "classic launch preserves application entryArgs");
+    L0Test::ExpectTrue(tr, applicationSecret == "app-secret" && credentialsCertificate == "cert" &&
+                       credentialsPrivateKey == "key",
+                       "classic launch preserves validated package secrets");
+
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json",
+                       "{\"packageType\":\"runtime\",\"entryPoint\":\"\"}"),
+                       "runtime without an executable config is available");
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(appRoot + "/config.json",
+                       "{\"packageType\":\"application\",\"entryPoint\":\"bin/app\"}"),
+                       "application executable config is available");
+    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),
+                       "base-free runtime without an executable still selects classic launch");
+    L0Test::ExpectTrue(tr, appPath == appRoot && runtimePath.empty() && command == "bin/app",
+                       "classic spec uses the app executable and omits the runtime mount");
+
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json",
+                       "{\"packageType\":\"runtime\"}"),
+                       "runtime with no entryPoint field is available");
+    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),
+                       "runtime with no entryPoint uses the app executable");
+    L0Test::ExpectTrue(tr, runtimePath.empty() && command == "bin/app",
+                       "non-executable runtime is not bind-mounted");
+
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json",
+                       "{\"packageType\":\"application\",\"entryPoint\":\"bin/widget\"}"),
+                       "non-runtime dependency config is available");
+    L0Test::ExpectTrue(tr, !ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),
+                       "non-runtime ZIP layer is not accepted as a runtime");
+
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(appRoot + "/config.json",
+                       "{\"packageType\":\"application\",\"entryPoint\":\"bin/app\",\"entryArgs\":null}"),
+                       "app-only RALF config with null entryArgs is available");
+    manifest["packages"].clear();
+    manifest["packages"].append(app);
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(manifestPath, Json::writeString(writer, manifest)),
+                       "app-only manifest is available for null entryArgs");
+    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command,
+                       commandArgs, applicationSecret, credentialsCertificate, credentialsPrivateKey),
+                       "null entryArgs does not divert a valid app entryPoint from classic launch");
+    L0Test::ExpectTrue(tr, command == "bin/app" && commandArgs.empty(),
+                       "classic launch uses the app entryPoint with no additional arguments");
+
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(appRoot + "/config.json",
+                       "{\"packageType\":\"application\",\"entryPoint\":\"bin/app\"}"),
+                       "app-only RALF config is available");
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(manifestPath, Json::writeString(writer, manifest)),
+                       "app-only manifest is available");
+    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),
+                       "base-free RALF app selects the classic launch path");
+    L0Test::ExpectTrue(tr, appPath == appRoot && runtimePath.empty() && command == "bin/app",
+                       "app-only classic launch uses the app root and entrypoint");
+
+    std::remove((runtimeRoot + "/config.json").c_str());
+    std::remove((appRoot + "/config.json").c_str());
+    std::remove(manifestPath.c_str());
+    ::rmdir(runtimeRoot.c_str());
+    ::rmdir(appRoot.c_str());
+    return tr.failures;
+}
+#endif
+
+uint32_t Test_DobbySpecGenerator_GenerateClassicRalfArgsAndSecrets()
+{
+    L0Test::TestResult tr;
+    WPEFramework::Plugin::AIConfiguration aiConfiguration;
+    WPEFramework::Plugin::DobbySpecGenerator generator(aiConfiguration);
+    WPEFramework::Plugin::ApplicationConfiguration appConfig;
+    appConfig.mAppId = "com.example.classic";
+    appConfig.mAppInstanceId = "classic-001";
+    appConfig.mUserId = 1000;
+    appConfig.mGroupId = 1000;
+    appConfig.mAppStorageInfo.path = "/tmp/classic-ralf-app-storage";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.ralfPkgPath = "/tmp/classic-ralf-manifest.json";
+    runtimeConfig.envVariables = { "PERSIST_STORAGE_PATH=/override" };
+    runtimeConfig.command = "bin/app";
+    runtimeConfig.commandArgs = {"--profile", "tv"};
+    runtimeConfig.systemMemoryLimit = 128 * 1024 * 1024;
+    runtimeConfig.applicationSecret = "test-secret";
+    runtimeConfig.credentialsCertificate = "test-certificate";
+    runtimeConfig.credentialsPrivateKey = "test-private-key";
+
+    std::string serializedSpec;
+    L0Test::ExpectTrue(tr, generator.generate(appConfig, runtimeConfig, serializedSpec),
+                       "Generate classic Dobby spec with RALF arguments and secrets");
+    Json::Value spec;
+    Json::Reader reader;
+    const bool parsed = reader.parse(serializedSpec, spec);
+    L0Test::ExpectTrue(tr, parsed, "Parse generated classic Dobby spec");
+    if (parsed)
+    {
+        const Json::Value &args = spec["args"];
+        L0Test::ExpectTrue(tr, args.isArray() && 3 == args.size() &&
+                           "/package/bin/app" == args[0].asString() &&
+                           "--profile" == args[1].asString() && "tv" == args[2].asString(),
+                           "Preserve classic RALF entryArgs after executable");
+        bool foundSecret = false;
+        for (const Json::Value &env : spec["env"])
+        {
+            foundSecret = foundSecret || "APPLICATION_SECRET=test-secret" == env.asString();
+        }
+        L0Test::ExpectTrue(tr, foundSecret, "Preserve classic RALF application secret");
+        bool foundStorageMount = false;
+        for (const Json::Value &mount : spec["mounts"])
+        {
+            foundStorageMount = foundStorageMount ||
+                ("/tmp/classic-ralf-app-storage" == mount["source"].asString() &&
+                 "/data" == mount["destination"].asString() && "bind" == mount["type"].asString());
+        }
+        L0Test::ExpectTrue(tr, foundStorageMount,
+                           "Classic RALF mounts AppStorageManager storage at /data");
+        bool foundStorageEnvironment = false;
+        bool foundOverride = false;
+        for (const Json::Value &env : spec["env"])
+        {
+            foundStorageEnvironment = foundStorageEnvironment || "PERSIST_STORAGE_PATH=/data" == env.asString();
+            foundOverride = foundOverride || "PERSIST_STORAGE_PATH=/override" == env.asString();
+        }
+        L0Test::ExpectTrue(tr, foundStorageEnvironment && !foundOverride,
+                           "Classic RALF exports the mounted storage path instead of a generic override");
+        L0Test::ExpectTrue(tr,
+                           "test-certificate" == spec["rdkPlugins"]["credentialsmanager"]["data"]["certificate"].asString() &&
+                           "test-private-key" == spec["rdkPlugins"]["credentialsmanager"]["data"]["privateKey"].asString(),
+                           "Preserve classic RALF credentials-manager data");
+    }
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_PrivateDataUsesResolvedImagePath()
+{
+    L0Test::TestResult tr;
+
+    const std::string dataDirectory = "/tmp/ralf_l0test_private_data";
+    const std::string imagePath = dataDirectory + "/private-image.img";
+    if (ralf::checkIfPathExists(dataDirectory))
+    {
+        ralf::removeDirectoryRecursively(dataDirectory);
+    }
+    L0Test::ExpectTrue(tr, ralf::create_directories(dataDirectory) && WriteFile_OCIGen(imagePath, "image"),
+                       "Create a package directory and private image file");
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator generator("/tmp/ralf_l0test_private_data.json", packages);
+    Json::Value directoryConfig(Json::objectValue);
+    generator.addPrivateDataToOCIConfig(directoryConfig, dataDirectory);
+    const Json::Value &directoryLoopback = directoryConfig["rdkPlugins"]["storage"]["data"]["loopback"];
+    L0Test::ExpectTrue(tr, !directoryLoopback.isArray() || 0 == directoryLoopback.size(),
+                       "RuntimeManager does not infer an image path from a package directory");
+
+    Json::Value imageConfig(Json::objectValue);
+    generator.addPrivateDataToOCIConfig(imageConfig, imagePath);
+    L0Test::ExpectTrue(tr, imageConfig["rdkPlugins"]["storage"]["data"]["loopback"].isArray() &&
+                           1 == imageConfig["rdkPlugins"]["storage"]["data"]["loopback"].size() &&
+                           imagePath == imageConfig["rdkPlugins"]["storage"]["data"]["loopback"][0]["source"].asString(),
+                       "RuntimeManager mounts the resolved private-data image path");
+
+    ralf::removeDirectoryRecursively(dataDirectory);
     return tr.failures;
 }
 
@@ -527,5 +834,91 @@ uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThun
                        "applyPermissionsToOCIConfig() adds THUNDER_ACCESS to OCI process env");
 
     unsetenv(ralf::THUNDER_ACCESS_ENV_KEY);
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()
+{
+    L0Test::TestResult tr;
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_runtime_environment.json", packages);
+    Json::Value ociConfigRootNode(Json::objectValue);
+
+    Json::Value packageConfig(Json::objectValue);
+    packageConfig["runtimeSecrets"]["applicationSecret"] = "test-secret";
+    packageConfig["runtimeSecrets"]["credentialsManager"]["certificate"] = "test-certificate";
+    packageConfig["runtimeSecrets"]["credentialsManager"]["privateKey"] = "test-private-key";
+    const bool secretsApplied = gen.addPackageSecretsToOCIConfig(ociConfigRootNode, packageConfig);
+    L0Test::ExpectTrue(tr, secretsApplied, "package secrets are applied to OCI config");
+
+    const std::vector<std::string> envVariables = {
+        "APP_CONFIG_OVERRIDES_JSON=eyJ0ZXN0Ijp0cnVlfQ==",
+        "EXTRA_VALUE=first=second",
+        "APPLICATION_SECRET=generic-secret"
+    };
+    const bool status = gen.addRuntimeEnvironmentToOCIConfig(ociConfigRootNode, envVariables);
+
+    L0Test::ExpectTrue(tr, status, "runtime environment and secret metadata are applied");
+    L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode,
+                                              "APP_CONFIG_OVERRIDES_JSON=eyJ0ZXN0Ijp0cnVlfQ=="),
+                       "RALF config overrides are added to process environment");
+    L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode, "EXTRA_VALUE=first=second"),
+                       "environment values preserve equals signs");
+    L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode, "APPLICATION_SECRET=test-secret"),
+                       "application secret is added to process environment");
+    L0Test::ExpectTrue(tr, !HasEnvEntry_OCIGen(ociConfigRootNode, "APPLICATION_SECRET=generic-secret"),
+                       "generic runtime environment cannot replace the package application secret");
+    L0Test::ExpectTrue(tr, !HasEnvEntry_OCIGen(ociConfigRootNode,
+                                               "RALF_CREDMGR_CERTIFICATE=test-certificate"),
+                       "credentials are not exposed as process environment variables");
+    L0Test::ExpectTrue(tr,
+                       ociConfigRootNode["rdkPlugins"]["credentialsmanager"]["data"]["certificate"] ==
+                           "test-certificate" &&
+                           ociConfigRootNode["rdkPlugins"]["credentialsmanager"]["data"]["privateKey"] ==
+                           "test-private-key",
+                       "credentials are routed to the credentials-manager plugin");
+
+    const std::string outputPath = "/tmp/ralf_l0test_runtime_environment.json";
+#ifdef RDK_APPMANAGERS_DEBUG
+    ::unlink("/tmp/generatedRalfSpec.json");
+#endif
+    struct stat outputStat {};
+    const bool saved = gen.saveOCIConfigToFile(ociConfigRootNode, 0, 0);
+    L0Test::ExpectTrue(tr, saved, "OCI config with package secrets is written successfully");
+    L0Test::ExpectTrue(tr, saved && (::stat(outputPath.c_str(), &outputStat) == 0) &&
+                           ((outputStat.st_mode & 0777) == 0600),
+                       "OCI config containing package secrets is restricted to its owner");
+    ::unlink(outputPath.c_str());
+#ifdef RDK_APPMANAGERS_DEBUG
+    const std::string debugSpecPath = "/tmp/generatedRalfSpec.json";
+    std::ifstream debugSpecFile(debugSpecPath);
+    const std::string debugSpec((std::istreambuf_iterator<char>(debugSpecFile)),
+                                std::istreambuf_iterator<char>());
+    struct stat debugSpecStat {};
+    L0Test::ExpectTrue(tr, !debugSpec.empty(),
+                       "debug OCI config dump is available when secrets are present");
+    L0Test::ExpectTrue(tr, debugSpec.find("test-secret") == std::string::npos &&
+                               debugSpec.find("test-certificate") == std::string::npos &&
+                               debugSpec.find("test-private-key") == std::string::npos,
+                       "debug OCI config dump redacts application secrets and credentials");
+    L0Test::ExpectTrue(tr, debugSpec.find("<redacted>") != std::string::npos,
+                       "debug OCI config dump indicates redacted secret fields");
+    L0Test::ExpectTrue(tr, !debugSpecPath.empty() && 0 == ::stat(debugSpecPath.c_str(), &debugSpecStat) &&
+                           (debugSpecStat.st_mode & 0777) == 0600,
+                       "debug OCI config dump is private to its owner");
+    if (!debugSpecPath.empty())
+    {
+        ::unlink(debugSpecPath.c_str());
+    }
+#endif
+
+    Json::Value incompleteConfig(Json::objectValue);
+    Json::Value incompleteSecrets(Json::objectValue);
+    incompleteSecrets["runtimeSecrets"]["credentialsManager"]["certificate"] = "test-certificate";
+    L0Test::ExpectTrue(tr,
+                       !gen.addPackageSecretsToOCIConfig(incompleteConfig, incompleteSecrets),
+                       "incomplete credentials metadata fails launch config generation");
+
     return tr.failures;
 }

@@ -57,6 +57,10 @@ struct RuntimeConfiguration {
     std::string fireboltVersion;
     bool enableDebugger;
     std::string unpackedPath;
+    std::vector<std::string> commandArgs;
+    std::string applicationSecret;
+    std::string credentialsCertificate;
+    std::string credentialsPrivateKey;
 };
 
 class RuntimeConfigurationDecoder {

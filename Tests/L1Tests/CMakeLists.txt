@@ -237,6 +237,7 @@ target_link_options(${TEST_RUNNER_NAME} PRIVATE
     -Wl,--wrap,unlink
     -Wl,--wrap,statvfs
     -Wl,--wrap,mkdir
+    -Wl,--wrap,chmod
     -Wl,--wrap,stat
     -Wl,--wrap,open
     -Wl,--wrap,rmdir
